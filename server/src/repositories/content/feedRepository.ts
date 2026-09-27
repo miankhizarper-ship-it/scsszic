@@ -11,6 +11,7 @@ import {
   type ProjectDoc,
 } from "../../db/collections.js";
 import { stripInternals, type OmitInternal } from "./strip.js";
+import { feedSocialRepository } from "./feedSocialRepository.js";
 
 /**
  * Feed repository — archived posts never leave the database (spec §13).
@@ -100,15 +101,25 @@ class FeedRepository extends ListRepository<FeedPostDoc, EnrichedFeedPost> {
       buildFilter,
       sort,
       // Bare posts carry an empty refs map; enrich() replaces it before
-      // anything is serialized to a client.
-      toDomain: (doc) => ({ ...stripInternals(doc), refs: {} }),
+      // anything is serialized to a client. Displayed likes = seeded demo
+      // baseline + real likes (likedBy account ids, stripped as internal).
+      toDomain: (doc) => ({
+        ...stripInternals(doc),
+        likes: (doc.likes ?? 0) + (doc.likedBy?.length ?? 0),
+        refs: {},
+      }),
       buildFacets,
     });
   }
 
   /**
-   * Batched cross-reference resolution for a page of posts — four $in
-   * queries total regardless of page size (never one per card).
+   * Batched cross-reference resolution + engagement totals for a page of
+   * posts — four $in lookups + ONE grouped comment count, regardless of
+   * page size (never one per card).
+   *
+   * Displayed engagement = seeded demo baseline + real activity (Phase
+   * FIX: likes live in `likedBy`, comments in `feed_comments`). The demo
+   * numbers on the documents are never mutated.
    */
   async enrich(posts: Array<OmitInternal<FeedPostDoc>>): Promise<EnrichedFeedPost[]> {
     const authorUsernames = [
@@ -123,8 +134,9 @@ class FeedRepository extends ListRepository<FeedPostDoc, EnrichedFeedPost> {
     const blogSlugs = [
       ...new Set(posts.map((p) => p.blogSlug).filter((s): s is string => Boolean(s))),
     ];
+    const postIds = posts.map((p) => p.id);
 
-    const [memberDocs, projects, events, blogs] = await Promise.all([
+    const [memberDocs, projects, events, blogs, commentCounts] = await Promise.all([
       authorUsernames.length > 0
         ? collections
             .members()
@@ -168,6 +180,7 @@ class FeedRepository extends ListRepository<FeedPostDoc, EnrichedFeedPost> {
             .project<{ slug: string; title: string }>({ slug: 1, title: 1, _id: 0 })
             .toArray()
         : Promise.resolve([]),
+      feedSocialRepository.commentCountsFor(postIds),
     ]);
 
     const authors = new Map(memberDocs.map((m) => [m.username, m]));
@@ -179,6 +192,9 @@ class FeedRepository extends ListRepository<FeedPostDoc, EnrichedFeedPost> {
       const author = post.authorUsername ? authors.get(post.authorUsername) : undefined;
       return {
         ...post,
+        // Real comment counts fold on top of the demo baseline here; the
+        // like baseline was already folded in toDomain (raw doc only).
+        comments: (post.comments ?? 0) + (commentCounts.get(post.id) ?? 0),
         refs: {
           ...(author ? { author } : {}),
           ...(post.projectSlug && projectMap.has(post.projectSlug)

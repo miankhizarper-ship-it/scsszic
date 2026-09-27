@@ -19,6 +19,10 @@ interface AlbumCardProps {
  * and a hover overlay with a "View Album" affordance. Meta (date, photo
  * count, optional location) sits in a quiet row beneath. Interaction stays
  * restrained — subtle zoom + overlay fade, never bouncing or glowing.
+ *
+ * The ENTIRE cover is a real link (the hover overlay is decoration — it
+ * never swallows clicks), and the meta row repeats the affordance as text
+ * so touch users get an explicit target too.
  */
 export function AlbumCard({ album, className }: AlbumCardProps) {
   const detailHref = ROUTES.albumDetail(album.slug);
@@ -31,8 +35,12 @@ export function AlbumCard({ album, className }: AlbumCardProps) {
         className,
       )}
     >
-      {/* Cover — the lead element */}
-      <div className="relative aspect-[4/3] overflow-hidden bg-navy-950">
+      {/* Cover — the lead element, fully clickable */}
+      <Link
+        to={detailHref}
+        aria-label={`View album: ${album.title}`}
+        className="relative block aspect-[4/3] overflow-hidden bg-navy-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500"
+      >
         <img
           src={album.coverImage}
           alt={album.coverImageAlt}
@@ -53,8 +61,9 @@ export function AlbumCard({ album, className }: AlbumCardProps) {
           {album.photoCount} {album.photoCount === 1 ? "photo" : "photos"}
         </span>
 
-        {/* Hover overlay + arrow */}
-        <div
+        {/* Hover overlay + arrow — decorative (pointer-events never block
+            the link that wraps it) */}
+        <span
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 flex items-end justify-between bg-gradient-to-t from-navy-950/80 via-navy-950/20 to-transparent p-4 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100"
         >
@@ -65,8 +74,8 @@ export function AlbumCard({ album, className }: AlbumCardProps) {
               className="text-gold-300 transition-transform duration-200 group-hover:translate-x-0.5"
             />
           </span>
-        </div>
-      </div>
+        </span>
+      </Link>
 
       {/* Meta */}
       <div className="flex flex-1 flex-col p-5">
@@ -92,6 +101,13 @@ export function AlbumCard({ album, className }: AlbumCardProps) {
                 <span className="truncate">{album.location}</span>
               </span>
             )}
+            <Link
+              to={detailHref}
+              className="ml-auto inline-flex items-center gap-1 rounded-md font-semibold text-navy-900 transition-colors hover:text-gold-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500"
+            >
+              View Album
+              <ArrowRight size={12} aria-hidden="true" />
+            </Link>
           </p>
         </div>
       </div>

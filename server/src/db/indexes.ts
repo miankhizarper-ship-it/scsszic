@@ -116,6 +116,19 @@ export async function ensureDatabaseIndexes(db: Db): Promise<void> {
     { key: { projectSlug: 1 }, name: "by_projectSlug" },
   ]);
 
+  // ---- feed comments (community engagement) ------------------------------
+  // Per-post threads read oldest-first; the viewer-state probe batches
+  // per-user likes through the compound (userId, postId) shape.
+  await db.collection("feed_comments").createIndexes([
+    { key: { postId: 1, createdAt: 1 }, name: "by_postId_createdAt" },
+    { key: { userId: 1, createdAt: -1 }, name: "by_userId_createdAt" },
+  ]);
+
+  // ---- contact messages ----------------------------------------------------
+  await db.collection("contact_messages").createIndexes([
+    { key: { createdAt: -1 }, name: "by_createdAt_desc" },
+  ]);
+
   // ---- category vocabulary (Phase 10C) ------------------------------------
   // One name per section — DB-level uniqueness backstops the repository's
   // case-insensitive dedupe against write races.

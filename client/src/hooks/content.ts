@@ -1,4 +1,4 @@
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { alumniService } from "@/services/alumniService";
 import { blogService } from "@/services/blogService";
@@ -16,7 +16,7 @@ import type { GalleryFilters } from "@/lib/gallerySearch";
 import type { MemberFilters } from "@/lib/memberSearch";
 import type { ProjectFilters } from "@/lib/projectSearch";
 import type { WatchFilters } from "@/lib/watchSearch";
-import type { CategorySection } from "@/types";
+import type { CategorySection, FeedComment } from "@/types";
 
 /**
  * TanStack Query hooks over the Phase 8 content services (spec §17).
@@ -348,5 +348,57 @@ export function usePostsByProject(slug: string | undefined) {
     queryFn: () => feedService.getPostsByProject(slug),
     enabled: Boolean(slug),
     staleTime: LIST_STALE_TIME,
+  });
+}
+
+/* -------------------------- Feed engagement -------------------------- */
+
+/**
+ * Batched per-viewer like-state for a page of posts (ONE request per
+ * page). `enabled` should be false for anonymous viewers — the endpoint is
+ * safe for them (empty list), but skipping the request avoids the round
+ * trip entirely. The key includes the viewer id so login/logout can never
+ * show a stale user's likes.
+ */
+export function useFeedViewerState(postIds: string[], viewerId: string | null) {
+  const key = [...postIds].sort().join(",");
+  return useQuery({
+    queryKey: ["feed", "viewerState", key, viewerId ?? "anon"],
+    queryFn: () => feedService.getViewerState(postIds),
+    enabled: postIds.length > 0,
+    staleTime: 30 * 1000,
+    retry: 0,
+  });
+}
+
+/** Comment thread for one post — fetched lazily when its panel opens. */
+export function useFeedComments(postId: string | null) {
+  return useQuery({
+    queryKey: ["feed", "comments", postId],
+    queryFn: () => feedService.listComments(postId!),
+    enabled: Boolean(postId),
+    staleTime: 30 * 1000,
+    retry: 0,
+  });
+}
+
+/** Toggle the signed-in viewer's like on one post. */
+export function useToggleFeedLike() {
+  return useMutation({
+    mutationFn: (postId: string) => feedService.toggleLike(postId),
+  });
+}
+
+/** Add a comment as the signed-in viewer; refreshes the thread cache. */
+export function useAddFeedComment(postId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: string) => feedService.addComment(postId, body),
+    onSuccess: (comment) => {
+      queryClient.setQueryData<FeedComment[]>(
+        ["feed", "comments", postId],
+        (existing) => [...(existing ?? []), comment],
+      );
+    },
   });
 }

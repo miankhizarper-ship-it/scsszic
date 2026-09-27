@@ -237,8 +237,9 @@ export interface FeedPostRefs {
  * Cross-references arrive PRE-RESOLVED on `refs` — the API batches
  * author/project/event/blog lookups per page (no per-card requests), and
  * unknown/archived entities simply omit their ref so cards can never
- * render dead links. `likes`/`comments` are display-only demo counts until
- * real posting arrives in a later phase.
+ * render dead links. `likes`/`comments` counts = seeded baseline + real
+ * member activity (likes toggle via POST /api/feed/:id/like, comments via
+ * the /comments endpoints).
  */
 export interface FeedPost {
   id: string;
@@ -263,6 +264,23 @@ export interface FeedPost {
   comments: number;
   status: FeedPostStatus;
   refs?: FeedPostRefs;
+}
+
+/**
+ * A real comment on a feed post (server-persisted, Phase community-engagement).
+ *
+ * Author identity is a server-side snapshot (display name + account
+ * username at posting time). `liked` state never rides on the post — the
+ * batched viewer-state endpoint supplies the viewer's liked ids per page.
+ */
+export interface FeedComment {
+  id: string;
+  postId: string;
+  authorUsername: string;
+  authorName: string;
+  body: string;
+  /** ISO 8601 timestamp. */
+  createdAt: string;
 }
 
 /* ---------- Members ---------- */

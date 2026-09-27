@@ -8,7 +8,11 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
 import { CollectionLoading, ErrorState } from "@/components/ui/CollectionState";
 import { FeedPostCard } from "@/components/community/FeedPostCard";
-import { useFeedPosts } from "@/hooks/content";
+import {
+  useFeedPosts,
+  useFeedViewerState,
+} from "@/hooks/content";
+import { useAuth } from "@/context/AuthProvider";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { hasActiveFilters } from "@/lib/feedSearch";
 import { CTASection } from "@/components/sections/CTASection";
@@ -55,9 +59,20 @@ export default function FeedPage() {
   );
 
   const postsQuery = useFeedPosts(filters);
-  const posts = postsQuery.data?.data ?? [];
+  const postsData = postsQuery.data?.data;
+  const posts = useMemo(() => postsData ?? [], [postsData]);
   const facets = postsQuery.data?.meta.facets;
   const total = facets?.total ?? 0;
+
+  /* Batched per-viewer like-state — ONE request for the whole page,
+   * only while signed in (anonymous visitors skip it entirely). */
+  const { user } = useAuth();
+  const postIds = useMemo(() => posts.map((p) => p.id), [posts]);
+  const viewerStateQuery = useFeedViewerState(postIds, user?.id ?? null);
+  const likedIds = useMemo(
+    () => new Set(viewerStateQuery.data?.likedIds ?? []),
+    [viewerStateQuery.data],
+  );
 
   const popularTags = ((facets?.tags ?? []) as Array<{ value?: string; n?: number }>)
     .map((entry) => String(entry.value ?? ""))
@@ -110,8 +125,7 @@ export default function FeedPage() {
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-slate-300 sm:text-lg">
             Announcements, project milestones, event news, and new articles — the running story of
-            a society that builds together. Every post is demo content while the platform is in
-            development.
+            a society that builds together. Log in to like posts and join the conversation.
           </p>
           <p className="mx-auto mt-7 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-xs font-medium text-slate-200">
             <Rss size={13} aria-hidden="true" className="text-gold-400" />
@@ -200,7 +214,12 @@ export default function FeedPage() {
           {posts.length > 0 && (
             <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
               {posts.map((post) => (
-                <FeedPostCard key={post.id} post={post} className="h-full" />
+                <FeedPostCard
+                  key={post.id}
+                  post={post}
+                  className="h-full"
+                  likedByViewer={likedIds.has(post.id)}
+                />
               ))}
             </div>
           )}

@@ -114,6 +114,26 @@ export interface AuditLogDoc {
 
 /* ---------- Content documents ---------- */
 
+/**
+ * A real comment on a feed post (community engagement). Seed data carries
+ * only demo COUNTS on the post itself — real comments live in their own
+ * collection and are counted separately, so seeded content and member
+ * activity never overwrite each other.
+ */
+export interface FeedCommentDoc {
+  _id: string;
+  /** The feed post this comment belongs to (feed_posts._id). */
+  postId: string;
+  /** Author account id — snapshot from the verified session. */
+  userId: string;
+  /** Account username at posting time (profile links resolve client-side). */
+  authorUsername: string;
+  /** Display-name snapshot — stays readable even if the account changes. */
+  authorName: string;
+  body: string;
+  createdAt: string;
+}
+
 export type EventDoc = SerializedEvent & { _id: string };
 export type BlogDoc = Blog & { _id: string };
 export type AlumnusDoc = SerializedAlumnus & { _id: string };
@@ -121,7 +141,28 @@ export type GalleryAlbumDoc = GalleryAlbum & { _id: string };
 export type VideoDoc = WatchVideo & { _id: string; durationMinutes: number };
 export type MemberDoc = Member & { _id: string };
 export type ProjectDoc = Project & { _id: string };
-export type FeedPostDoc = FeedPost & { _id: string };
+/**
+ * FeedPostDoc — adds the internal real-likes ledger. `likedBy` holds account
+ * ids; it is stripped from every API payload (see strip.ts) and the count is
+ * folded into the displayed `likes` (baseline + real). Optional so existing
+ * documents stay valid with zero migration.
+ */
+export type FeedPostDoc = FeedPost & { _id: string; likedBy?: string[] };
+
+/**
+ * Contact-form submission — persisted by the public POST /api/contact
+ * endpoint. Never exposed through any listing API in this phase; the
+ * society reads them directly in the database (an admin inbox is a
+ * possible later addition).
+ */
+export interface ContactMessageDoc {
+  _id: string;
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  createdAt: string;
+}
 
 /* ---------- Typed collection accessors ---------- */
 
@@ -144,6 +185,10 @@ export const collections = {
   members: (): Collection<MemberDoc> => getDatabase().collection("members"),
   projects: (): Collection<ProjectDoc> => getDatabase().collection("projects"),
   feedPosts: (): Collection<FeedPostDoc> => getDatabase().collection("feed_posts"),
+  feedComments: (): Collection<FeedCommentDoc> =>
+    getDatabase().collection("feed_comments"),
+  contactMessages: (): Collection<ContactMessageDoc> =>
+    getDatabase().collection("contact_messages"),
   categories: (): Collection<CategoryDoc> => getDatabase().collection("categories"),
 } as const;
 
@@ -160,6 +205,8 @@ export const COLLECTION_NAMES = [
   "members",
   "projects",
   "feed_posts",
+  "feed_comments",
+  "contact_messages",
   "categories",
 ] as const;
 

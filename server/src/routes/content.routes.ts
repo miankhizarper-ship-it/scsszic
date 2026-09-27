@@ -8,6 +8,14 @@ import {
   createUsernameDetailHandler,
   getPublicCategories,
 } from "../controllers/content/content.controller.js";
+import {
+  addFeedComment,
+  getFeedViewerState,
+  listFeedComments,
+  toggleFeedLike,
+} from "../controllers/content/feedSocial.controller.js";
+import { createContactMessage } from "../controllers/content/contact.controller.js";
+import { optionalAuth, requireAuth } from "../auth/authMiddleware.js";
 import { alumniRepository } from "../repositories/content/alumniRepository.js";
 import { blogsRepository } from "../repositories/content/blogsRepository.js";
 import { eventsRepository } from "../repositories/content/eventsRepository.js";
@@ -168,6 +176,30 @@ contentRouter.get(
 
 /* -------------------------------- Feed ------------------------------ */
 contentRouter.get("/feed", createFeedListHandler(feedRepository));
+
+/* --------------------- Feed engagement (community) ------------------- */
+/**
+ * Real engagement on published posts (member accounts):
+ *   GET  /api/feed/viewer-state?ids=…   batched like-state for a page
+ *                                       (optionalAuth — anon gets [])
+ *   POST /api/feed/:id/like             toggle like          (requireAuth)
+ *   GET  /api/feed/:id/comments         thread, oldest first (public)
+ *   POST /api/feed/:id/comments         add a comment        (requireAuth)
+ *
+ * Displayed counts = seeded demo baseline + real activity; archived posts
+ * accept nothing. viewer-state MUST stay ahead of the :id routes.
+ */
+contentRouter.get("/feed/viewer-state", optionalAuth, getFeedViewerState);
+contentRouter.post("/feed/:id/like", requireAuth, toggleFeedLike);
+contentRouter.get("/feed/:id/comments", listFeedComments);
+contentRouter.post("/feed/:id/comments", requireAuth, addFeedComment);
+
+/* ------------------------------ Contact ----------------------------- */
+/**
+ * POST /api/contact — anonymous contact-form submissions (validated,
+ * throttled, honeypot-guarded; persisted to contact_messages).
+ */
+contentRouter.post("/contact", createContactMessage);
 
 /* ---------------------------- Categories (10C) ----------------------- */
 /**

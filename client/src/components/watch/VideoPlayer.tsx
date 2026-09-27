@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CirclePlay, Info } from "lucide-react";
 
+import { toEmbeddableUrl } from "@/lib/videoEmbed";
 import type { WatchVideo } from "@/types";
 
 interface VideoPlayerProps {
@@ -16,16 +17,14 @@ interface VideoPlayerProps {
  *                    URL). Play loads the player explicitly — nothing ever
  *                    autoplays without user intent (the poster stays put
  *                    until the viewer presses play).
- *   2. `embedUrl`  → click-to-load privacy-mode iframe (YouTube-nocookie /
- *                    Vimeo style). The embed document is only fetched after
- *                    the viewer asks for it.
+ *   2. `embedUrl`  → click-to-load privacy-mode iframe. The stored value is
+ *                    NORMALIZED at render time (lib/videoEmbed): whatever
+ *                    YouTube/Vimeo share form was pasted into the CMS
+ *                    (watch?v=…, youtu.be/…, shorts/…, playlists…), the
+ *                    iframe only ever receives a genuinely embeddable URL —
+ *                    watch-form URLs would be refused with a blank frame.
  *   3. neither     → poster-only fallback state, so a metadata-only entry
  *                    still renders gracefully.
- *
- * Demo data points videoUrl at two tiny locally-bundled clips (watermarked
- * "DEMO FOOTAGE") — no large media is committed to the repository and no
- * external host is required for the demo to work. Replacing those strings
- * with R2/CDN/embed URLs in a later phase requires zero UI changes.
  *
  * Accessibility: the activate control is a real button with a descriptive
  * label; the 16:9 frame is preserved at every width via aspect-video.
@@ -33,13 +32,15 @@ interface VideoPlayerProps {
 export function VideoPlayer({ video, className }: VideoPlayerProps) {
   const [active, setActive] = useState(false);
 
+  const embedSrc = useMemo(() => toEmbeddableUrl(video.embedUrl), [video.embedUrl]);
+
   /* Reset the activation state when navigating between videos. */
   useEffect(() => {
     setActive(false);
   }, [video.id]);
 
   const hasVideoUrl = Boolean(video.videoUrl);
-  const hasEmbedUrl = Boolean(video.embedUrl);
+  const hasEmbedUrl = embedSrc !== null;
 
   return (
     <figure className={className}>
@@ -59,10 +60,11 @@ export function VideoPlayer({ video, className }: VideoPlayerProps) {
 
         {active && !hasVideoUrl && hasEmbedUrl && (
           <iframe
-            src={video.embedUrl}
+            src={embedSrc ?? undefined}
             title={video.title}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowFullScreen
+            referrerPolicy="strict-origin-when-cross-origin"
             className="absolute inset-0 h-full w-full"
           />
         )}
@@ -115,7 +117,11 @@ export function VideoPlayer({ video, className }: VideoPlayerProps) {
       <figcaption className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
         <span>{video.duration}</span>
         <span aria-hidden="true">·</span>
-        <span>Demo footage — placeholder media, not a real SCS recording.</span>
+        <span>
+          {hasVideoUrl || hasEmbedUrl
+            ? "Recording shared by the society — press play to watch."
+            : "Demo footage — placeholder media, not a real SCS recording."}
+        </span>
       </figcaption>
     </figure>
   );

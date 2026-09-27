@@ -320,3 +320,41 @@ PATCH. Notes:
   (`user.role.updated`, `user.permissions.updated`).
 - No migration is needed for existing databases: accounts without a
   `permissions` field behave as `[]`.
+
+---
+
+## 11. Community engagement & contact form
+
+Two new public surfaces (both live on the same API, no env changes):
+
+### 11.1 Feed likes & comments
+
+Signed-in accounts (any role) can now engage with feed posts:
+
+- `POST /api/feed/:id/like` — toggles the account's like (401 anonymous,
+  404 unknown/archived post). Returns `{ liked, likes }`.
+- `GET /api/feed/:id/comments` — the full thread, oldest first (public).
+- `POST /api/feed/:id/comments` — adds a comment (`{ body }`, 1–1000 chars)
+  authored from the SESSION account — never from client-supplied identity.
+- `GET /api/feed/viewer-state?ids=a,b,c` — batched like-state for a page of
+  posts (one request per page; anonymous callers receive an empty list).
+
+Stored layout: real likes live in `feed_posts.likedBy` (account ids, never
+serialized), real comments in the new `feed_comments` collection. Displayed
+counts = the seeded demo baseline + real activity, so the demo dataset is
+never drained and 9I seed-integrity checks stay green. No migration needed.
+
+### 11.2 Contact page
+
+`/contact` is now a real page: society email / campus location / community
+options plus a contact form → `POST /api/contact` (anonymous).
+
+- Server-side zod validation (name/email/subject/message bounds) with
+  field-level 400 errors mapped back onto the form.
+- Best-effort per-IP throttle: 5 messages / 10 minutes → 429 (in-memory;
+  per warm serverless instance).
+- Honeypot: a hidden `company` field that must stay empty — bot fills are
+  answered with a success response but nothing is stored.
+- Submissions persist to the `contact_messages` collection. There is
+  deliberately NO read API yet — read them directly in MongoDB (Atlas web
+  UI or `mongosh`); an admin inbox is a possible later addition.
