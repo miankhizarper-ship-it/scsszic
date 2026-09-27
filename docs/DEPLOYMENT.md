@@ -93,15 +93,29 @@ stream exactly as it does locally, keeping validation byte-identical.
 ### 3.2 Added — `server/vercel.json`
 
 ```json
-{ "rewrites": [{ "source": "/api/(.*)", "destination": "/api" }] }
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "rewrites": [{ "source": "/api/(.*)", "destination": "/api" }]
+}
 ```
 
-Vercel maps the filesystem function `api/index.ts` to the route `/api` only;
-deeper paths (`/api/auth/login`, `/api/events?…`) would 404 without this
-rewrite. The rewrite forwards the **original URL** to the function, so
-Express sees `/api/auth/login` and the existing `app.use("/api", apiRouter)`
-mount works unchanged. That single rule is the entire routing configuration —
-no headers, no builds, no framework shims.
+Two responsibilities:
+
+1. **`"framework": null`** — disables Vercel's framework auto-detection for
+   the API project. Without it, the detector sees `vite` in
+   `server/package.json` devDependencies (used only by `seed.ts`) and applies
+   the *Vite preset*, which runs the `build` script (`tsc`, emits nothing due
+   to `noEmit`) and then fails with `No Output Directory named "dist" found`.
+   A serverless API has no static output; `framework: null` removes the
+   build/output expectations entirely — the Node runtime bundles
+   `api/index.ts` at deploy time on its own.
+2. **The rewrite** — Vercel maps the filesystem function `api/index.ts` to
+   the route `/api` only; deeper paths (`/api/auth/login`, `/api/events?…`)
+   would 404 without it. The rewrite forwards the **original URL** to the
+   function, so Express sees `/api/auth/login` and the existing
+   `app.use("/api", apiRouter)` mount works unchanged. No other routing,
+   headers, builds, or framework shims are configured.
 
 ### 3.3 Modified — `server/tsconfig.json`
 

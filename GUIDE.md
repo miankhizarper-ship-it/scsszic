@@ -59,12 +59,20 @@ Two Vercel **projects** will be created from the same repository:
 
 1. Vercel dashboard → **Add New… → Project** → import your Git repository.
 2. Configure the project:
-   - **Framework Preset:** `Other`
+   - **Framework Preset:** `Other` — ⚠️ if Vercel auto-detected *Vite*, change
+     it to `Other` (the `vite` devDependency in `server/package.json` is only
+     used by the seeder and fools the detector; `server/vercel.json` now
+     declares `"framework": null` so detection is disabled at the repo level).
    - **Root Directory:** `server`  ← important
    - **Build Command:** leave empty (none) — the serverless TypeScript is
      bundled by Vercel's Node runtime; there is no separate build step.
    - **Output Directory:** leave empty
    - **Install Command:** leave default
+
+   > If you see `Error: No Output Directory named "dist" found`, the Vite
+   > preset is still active: set Framework Preset to `Other`, clear any
+   > Build Command / Output Directory overrides in Project Settings → Build
+   > & Output Settings, and redeploy.
 3. Before deploying, add **Environment Variables** (Project → Settings →
    Environment Variables; select the *Production* target at minimum):
 
@@ -177,6 +185,8 @@ Run this checklist after every first deployment (and after major changes):
 | Login succeeds but session lost on refresh | Cookie topology — set `COOKIE_SAME_SITE=none` (vercel.app) or move both hosts to one apex (custom domains). Also confirm the site is served over HTTPS (secure cookies). |
 | Frontend loads but all API calls fail    | `VITE_API_BASE_URL` missing or missing the trailing `/api`. Rebuild after changing it (Vite bakes it at build time). |
 | First request after idle is slow         | Serverless cold start (DB connect + index verify). Normal; warm requests are fast.  |
+| Build fails: `No Output Directory named "dist"` on the **API** project | The Vite framework preset was auto-applied (from the `vite` devDependency). Set Framework Preset = `Other`, clear Build Command + Output Directory, redeploy. `server/vercel.json` declares `"framework": null` to prevent this permanently. |
+| Warning: `engines { "node": ">=20.19.0" } will automatically upgrade…` | Informational only — the range intentionally accepts any Node ≥ 20.19. Safe to ignore. |
 
 ---
 
