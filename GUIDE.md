@@ -81,7 +81,7 @@ Two Vercel **projects** will be created from the same repository:
    | `MONGODB_URI`        | ✅       | Atlas connection string from step 1.4                       |
    | `MONGODB_DB_NAME`    | ✅       | Database name, e.g. `scs`                                   |
    | `SESSION_SECRET`     | ✅       | ≥ 32 random characters (production refuses to boot without) |
-   | `CORS_ORIGIN`        | ✅       | The frontend URL, e.g. `https://scs-web.vercel.app`         |
+   | `CORS_ORIGIN`        | ✅       | Your **real** deployed frontend origin — the URL shown in the browser when you open the client, e.g. `https://scsszic-client.vercel.app`. Do **not** copy example names from this guide. |
    | `NODE_ENV`           | —        | Vercel sets `production` automatically for prod deployments |
    | `COOKIE_SECURE`      | —        | Leave unset (defaults to `true` in production)              |
    | `COOKIE_SAME_SITE`   | —        | See §4 (cookie topology) — `none` for two `*.vercel.app` hosts, `lax` for same-apex custom domains |
@@ -100,6 +100,12 @@ Two Vercel **projects** will be created from the same repository:
 > sufficiently long `SESSION_SECRET` is missing, the API fails loudly at cold
 > start (500 on first request + error in Vercel logs) instead of serving
 > broken sessions.
+
+> ⚠️ **Placeholder names:** project names used in this guide (`scs-api`,
+> `scs-web`) are *examples only*. Your actual Vercel projects may be named
+> differently (e.g. `scsszic-server`, `scsszic-client`). Every env value must
+> use **your real deployed domains**, taken from the browser address bar of
+> each deployment — not from this guide.
 
 ---
 
@@ -182,9 +188,11 @@ Run this checklist after every first deployment (and after major changes):
 | `/api/health` 500 on cold start          | Missing `MONGODB_URI` or short `SESSION_SECRET` — check Vercel logs, fix env vars. |
 | API returns 503 with `message` envelope  | Backend reachable but **MongoDB unreachable** — check Atlas network access (`0.0.0.0/0`) and the URI. |
 | Browser console: CORS error              | `CORS_ORIGIN` does not exactly match the frontend origin (scheme + host + port).    |
+| Browser: `ACAO` header has value `https://<some-other-host>` that is not equal to the supplied origin | `CORS_ORIGIN` holds an example/placeholder domain (e.g. `scs-web.vercel.app`) or has a trailing slash. Set it to the **real client origin** shown in the browser and **redeploy the backend** (env changes only apply after a redeploy). |
 | Browser: `404` **and** CORS errors for URLs like `https://<api-host>/gallery` (no `/api` segment) | `VITE_API_BASE_URL` is missing the trailing `/api`. Set it to `https://<api-host>/api` in the **frontend** project and **redeploy the frontend** (Vite bakes the value at build time). |
 | Login succeeds but session lost on refresh | Cookie topology — set `COOKIE_SAME_SITE=none` (vercel.app) or move both hosts to one apex (custom domains). Also confirm the site is served over HTTPS (secure cookies). |
 | Frontend loads but all API calls fail    | `VITE_API_BASE_URL` missing or missing the trailing `/api`. Rebuild after changing it (Vite bakes it at build time). |
+| Browser requests URLs like `https://<client-domain>/VITE_API_BASE_URL%20=%20https:/…` | The whole `NAME = value` line was pasted into the **Value** field. Environment variable **Name** and **Value** are separate fields: Name = `VITE_API_BASE_URL`, Value = `https://<api-host>/api` — **only the URL**, no `NAME =` prefix, no spaces, no quotes. Redeploy the frontend after saving. |
 | First request after idle is slow         | Serverless cold start (DB connect + index verify). Normal; warm requests are fast.  |
 | Build fails: `No Output Directory named "dist"` on the **API** project | The Vite framework preset was auto-applied (from the `vite` devDependency). Set Framework Preset = `Other`, clear Build Command + Output Directory, redeploy. `server/vercel.json` declares `"framework": null` to prevent this permanently. |
 | Warning: `engines { "node": ">=20.19.0" } will automatically upgrade…` | Informational only — the range intentionally accepts any Node ≥ 20.19. Safe to ignore. |
