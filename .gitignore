@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+
+# Builds
+client/dist/
+server/dist/
+
+# Environment
+.env
+.env.local
+.env.*.local
+client/.env.local
+
+# Local MongoDB (bundled binary + data + logs)
+.mongodb-data/
+.mongodb-dl/
+.mongodb-logs/
+
+# Logs
+*.log
+dev.log
+server.log
+
+# Session artifacts
+tmp/
+tool-results/
+
+# Platform runtime
+.zscripts/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Vite / TS
+*.tsbuildinfo
+.vite/

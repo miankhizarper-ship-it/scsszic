@@ -1,0 +1,188 @@
+/* ============================================================================
+   SCS — Design System ("Royal Academic Technology")
+   Society of Computer Science · SZIC, University of Peshawar
+   Tailwind CSS v4 theme + base styles + shared utilities
+   ========================================================================== */
+
+@import "tailwindcss";
+
+/* Self-hosted variable fonts (no external runtime requests) */
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/plus-jakarta-sans";
+
+@theme {
+  /* ---- Typography ------------------------------------------------------ */
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Plus Jakarta Sans Variable", "Inter Variable",
+    ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+
+  /* ---- Brand: Navy (Primary) ------------------------------------------- */
+  /* --color-navy-900  → brand "Primary Navy"  #0A1F44                     */
+  /* --color-navy-950  → brand "Primary Dark"  #071530                     */
+  --color-navy-50: #f0f4fa;
+  --color-navy-100: #dbe4f1;
+  --color-navy-200: #b7c9e3;
+  --color-navy-300: #8aa5cd;
+  --color-navy-400: #5677ac;
+  --color-navy-500: #33568b;
+  --color-navy-600: #21406e;
+  --color-navy-700: #16305a;
+  --color-navy-800: #0f264d;
+  --color-navy-900: #0a1f44;
+  --color-navy-950: #071530;
+
+  /* ---- Brand: Gold (Accent) -------------------------------------------- */
+  /* --color-gold-500  → brand "Gold"        #D4AF37                       */
+  /* --color-gold-300  → brand "Gold Light"  #E8C766                       */
+  --color-gold-50: #fbf7ea;
+  --color-gold-100: #f6efd2;
+  --color-gold-200: #eedfa9;
+  --color-gold-300: #e8c766;
+  --color-gold-400: #debb4e;
+  --color-gold-500: #d4af37;
+  --color-gold-600: #b28f2a;
+  --color-gold-700: #8e7023;
+  --color-gold-800: #6b541d;
+  --color-gold-900: #4a3a14;
+
+  /* ---- Neutrals / UI ---------------------------------------------------- */
+  --color-surface: #f8f9fb;
+  --color-ink: #12161f;
+  --color-muted: #64748b;
+  --color-line: #e2e8f0;
+  --color-success: #16a34a;
+  --color-warning: #d97706;
+  --color-error: #dc2626;
+
+  /* ---- Motion ----------------------------------------------------------- */
+  --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ---------------------------------------------------------------------------
+   Base
+   -------------------------------------------------------------------------- */
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-surface);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* Safety net against accidental horizontal scroll (sticky-safe) */
+    overflow-x: clip;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-display);
+    text-wrap: balance;
+  }
+
+  ::selection {
+    background-color: color-mix(in srgb, var(--color-gold-500) 28%, transparent);
+    color: var(--color-ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-gold-500);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Honour OS-level reduced motion for non-Framer animations too */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Shared decorative utilities
+   -------------------------------------------------------------------------- */
+
+/* Subtle technical grid — dark surfaces (hero, CTA, navy bands) */
+.bg-grid-dark {
+  background-image: linear-gradient(
+      to right,
+      rgb(255 255 255 / 0.045) 1px,
+      transparent 1px
+    ),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.045) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+/* Subtle technical grid — light surfaces */
+.bg-grid-light {
+  background-image: linear-gradient(
+      to right,
+      rgb(10 31 68 / 0.05) 1px,
+      transparent 1px
+    ),
+    linear-gradient(to bottom, rgb(10 31 68 / 0.05) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+/* Radial fade mask so grid patterns dissolve toward the edges */
+.mask-fade-radial {
+  mask-image: radial-gradient(
+    ellipse 80% 70% at 50% 30%,
+    black 35%,
+    transparent 100%
+  );
+  -webkit-mask-image: radial-gradient(
+    ellipse 80% 70% at 50% 30%,
+    black 35%,
+    transparent 100%
+  );
+}
+
+/* Thin gold hairline used under section titles / on navy bands */
+.gold-hairline {
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--color-gold-500),
+    transparent
+  );
+}
+
+/* Skip-to-content link: visible only on keyboard focus */
+.skip-link {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 100;
+  transform: translateY(-200%);
+  transition: transform 150ms ease-out;
+  background-color: var(--color-navy-900);
+  color: #fff;
+  border: 1px solid var(--color-gold-500);
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.skip-link:focus-visible {
+  transform: translateY(0);
+}

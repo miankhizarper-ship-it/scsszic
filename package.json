@@ -1,0 +1,24 @@
+{
+  "name": "scs-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Society of Computer Science (SCS) — Shaikh Zayed Islamic Centre, University of Peshawar. Community platform.",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "dev": "cd client && bun run dev 2>&1 | tee ../dev.log",
+    "dev:client": "cd client && bun run dev",
+    "dev:server": "cd server && bun run dev",
+    "build": "cd client && bun run build",
+    "preview": "cd client && bun run preview",
+    "lint": "cd client && bun run lint",
+    "typecheck": "cd client && bun run typecheck && cd ../server && bun run typecheck",
+    "db:push": "echo '[db:push] Skipped — no database in Phase 1. MongoDB + Mongoose will be introduced in Phase 2.'",
+    "server:start": "cd server && bun run start"
+  }
+}
