@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/CollectionState";
 import { UploadMediaButton } from "@/components/admin/UploadMediaButton";
+import { SlugField } from "@/components/admin/SlugField";
 import {
   useAdminAlumnus,
   useCreateAlumnus,
@@ -275,28 +276,20 @@ export default function AdminAlumniFormPage() {
               hint={
                 usernameDirty
                   ? "Custom handle — it becomes the public profile URL (/alumni/your-handle)."
-                  : "URL handle for the public profile. Generate it from the name or set your own."
+                  : "URL handle for the public profile. Generate searches existing alumni first and picks a free variant."
               }
             >
-              <div className="flex gap-2">
-                <input
-                  id="alumni-username"
-                  type="text"
-                  autoComplete="off"
-                  aria-invalid={Boolean(errors.username)}
-                  className={INPUT_CLASS}
-                  {...register("username")}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-auto shrink-0"
-                  onClick={() => setValue("username", slugifyText(name ?? ""), { shouldValidate: true })}
-                >
-                  Generate
-                </Button>
-              </div>
+              <SlugField
+                id="alumni-username"
+                value={usernameValue}
+                onChange={(next) => setValue("username", next, { shouldValidate: true })}
+                title={name ?? ""}
+                slugify={slugifyText}
+                section="alumni"
+                excludeId={alumnus?.id}
+                urlPrefix="/alumni/"
+                inputClass={INPUT_CLASS}
+              />
             </Field>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

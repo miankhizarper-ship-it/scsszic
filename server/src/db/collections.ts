@@ -5,6 +5,7 @@ import type { AdminPermission } from "../auth/types.js";
 import type {
   Alumnus,
   Blog,
+  CategorySection,
   FeedPost,
   GalleryAlbum,
   Member,
@@ -61,6 +62,22 @@ export interface SessionDoc {
   /** TTL index — MongoDB removes expired sessions automatically. */
   expiresAt: Date;
   createdAt: Date;
+}
+
+/**
+ * Category vocabulary document (Phase 10C) — one entry per category name
+ * per taxonomy section. The client merges these with its curated defaults;
+ * renaming a category rewrites the section's content documents so stored
+ * data and the vocabulary never drift apart.
+ */
+export interface CategoryDoc {
+  _id: string;
+  section: CategorySection;
+  /** Display name — trimmed, bounded to 60 chars by the validation layer. */
+  name: string;
+  /** Lowercased name — unique per section (DB-level guard). */
+  normalizedName: string;
+  createdAt: string;
 }
 
 /**
@@ -127,6 +144,7 @@ export const collections = {
   members: (): Collection<MemberDoc> => getDatabase().collection("members"),
   projects: (): Collection<ProjectDoc> => getDatabase().collection("projects"),
   feedPosts: (): Collection<FeedPostDoc> => getDatabase().collection("feed_posts"),
+  categories: (): Collection<CategoryDoc> => getDatabase().collection("categories"),
 } as const;
 
 /** Canonical SCS collection names (used by indexes + seed tooling). */
@@ -142,6 +160,7 @@ export const COLLECTION_NAMES = [
   "members",
   "projects",
   "feed_posts",
+  "categories",
 ] as const;
 
 /* Re-export domain shapes for repository/controller convenience. */

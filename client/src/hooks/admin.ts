@@ -15,6 +15,7 @@ import type {
   AdminVideoListParams,
   AlumnusWrite,
   Blog,
+  CategorySection,
   FeedPost,
   GalleryAlbum,
   GalleryAlbumWrite,
@@ -673,5 +674,55 @@ export function useAdminAudit(params: AdminAuditListParams) {
     queryKey: ["admin", "audit", "list", params],
     queryFn: () => adminService.listAudit(params),
     placeholderData: (previous) => previous,
+  });
+}
+
+/* ------------------- Categories + slug checks (10C) ----------------------- */
+
+/**
+ * Managed category vocabulary for one CMS section. Mutations below replace
+ * the cached list from the server response directly AND invalidate (so the
+ * dashboard/audit surfaces refetch), keeping the picker instant.
+ */
+export function useAdminCategories(section: CategorySection) {
+  return useQuery({
+    queryKey: ["admin", "categories", section],
+    queryFn: () => adminService.listCategories(section),
+    staleTime: 60_000,
+  });
+}
+
+/** Invalidate both the admin vocabulary and the public filter-chip query. */
+function useInvalidateCategorySurfaces(section: CategorySection) {
+  const queryClient = useQueryClient();
+  return () => {
+    void queryClient.invalidateQueries({ queryKey: ["admin", "categories", section] });
+    void queryClient.invalidateQueries({ queryKey: ["public", "categories", section] });
+    void queryClient.invalidateQueries({ queryKey: ["admin", "audit"] });
+  };
+}
+
+export function useAddCategory(section: CategorySection) {
+  const invalidate = useInvalidateCategorySurfaces(section);
+  return useMutation({
+    mutationFn: (name: string) => adminService.addCategory(section, name),
+    onSuccess: () => invalidate(),
+  });
+}
+
+export function useRenameCategory(section: CategorySection) {
+  const invalidate = useInvalidateCategorySurfaces(section);
+  return useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) =>
+      adminService.renameCategory(section, id, name),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteCategory(section: CategorySection) {
+  const invalidate = useInvalidateCategorySurfaces(section);
+  return useMutation({
+    mutationFn: (id: string) => adminService.deleteCategory(section, id),
+    onSuccess: invalidate,
   });
 }

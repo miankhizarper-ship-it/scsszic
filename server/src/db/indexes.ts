@@ -116,5 +116,12 @@ export async function ensureDatabaseIndexes(db: Db): Promise<void> {
     { key: { projectSlug: 1 }, name: "by_projectSlug" },
   ]);
 
+  // ---- category vocabulary (Phase 10C) ------------------------------------
+  // One name per section — DB-level uniqueness backstops the repository's
+  // case-insensitive dedupe against write races.
+  await db.collection("categories").createIndexes([
+    { key: { section: 1, normalizedName: 1 }, unique: true, name: "uniq_section_name" },
+  ]);
+
   logger.info("[db] indexes verified/created");
 }

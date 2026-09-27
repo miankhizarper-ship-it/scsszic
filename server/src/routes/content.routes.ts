@@ -6,6 +6,7 @@ import {
   createListHandler,
   createRelatedHandler,
   createUsernameDetailHandler,
+  getPublicCategories,
 } from "../controllers/content/content.controller.js";
 import { alumniRepository } from "../repositories/content/alumniRepository.js";
 import { blogsRepository } from "../repositories/content/blogsRepository.js";
@@ -167,3 +168,11 @@ contentRouter.get(
 
 /* -------------------------------- Feed ------------------------------ */
 contentRouter.get("/feed", createFeedListHandler(feedRepository));
+
+/* ---------------------------- Categories (10C) ----------------------- */
+/**
+ * GET /api/categories?section=events|blogs|gallery|videos|projects —
+ * public vocabulary for the listing filter chips (managed list union the
+ * values actually in use). No auth; read-only; no internal fields.
+ */
+contentRouter.get("/categories", getPublicCategories);

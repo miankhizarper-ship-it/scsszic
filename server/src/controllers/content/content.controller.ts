@@ -1,8 +1,10 @@
 import type { NextFunction, Request, RequestHandler, Response } from "express";
 
 import { QUERY_SCHEMAS, fieldErrorsFromZod, parseQuery, relatedCountSchema, sanitizeSlug } from "../../http/querySchemas.js";
+import { categorySectionSchema } from "../../http/categorySchemas.js";
 import { isConnectionError } from "../../db/errors.js";
 import { logger } from "../../utils/logger.js";
+import { inUseCategoryNames, listCategories } from "../../repositories/content/categoriesRepository.js";
 import type { ListResult } from "../../repositories/content/listRepository.js";
 import type { EnrichedFeedPost } from "../../repositories/content/feedRepository.js";
 
@@ -190,3 +192,37 @@ export function createFeedListHandler(repo: FeedRepoLike): RequestHandler {
 
 /* ------------------------- Feed refs type re-export ------------------------- */
 export type { FeedPostRefs, FeedAuthorSummary, FeedRefSummary } from "../../repositories/content/feedRepository.js";
+
+/* ----------------------------- Categories (10C) ----------------------------- */
+
+/**
+ * GET /api/categories?section=… — public category vocabulary for the
+ * listing filter chips. Returns the managed vocabulary ordered as the
+ * admins maintain it, UNION the values actually in use (so legacy content
+ * with a category that was since removed from the vocabulary remains
+ * reachable through the filters). No auth — this is public site data.
+ */
+export const getPublicCategories: RequestHandler = withErrorBoundary(
+  async (req: Request, res: Response) => {
+    const parsed = categorySectionSchema.safeParse(
+      typeof req.query.section === "string" ? req.query.section : "",
+    );
+    if (!parsed.success) {
+      res.status(400).json({ message: "Unknown category section." });
+      return;
+    }
+
+    const section = parsed.data;
+    const [managed, inUse] = await Promise.all([listCategories(section), inUseCategoryNames(section)]);
+    const seen = new Set(managed.map((entry) => entry.name.toLowerCase()));
+    const merged = [...managed.map((entry) => entry.name)];
+    for (const name of inUse) {
+      if (!seen.has(name.toLowerCase())) {
+        merged.push(name);
+        seen.add(name.toLowerCase());
+      }
+    }
+    res.status(200).json({ data: { section, categories: merged } });
+  },
+  "public-categories",
+);

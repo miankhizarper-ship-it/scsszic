@@ -6,6 +6,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { ContentBlockEditor } from "@/components/admin/ContentBlockEditor";
 import { UploadMediaButton } from "@/components/admin/UploadMediaButton";
+import { SlugField } from "@/components/admin/SlugField";
+import { CategoryField } from "@/components/admin/CategoryField";
 import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/CollectionState";
 import { useAdminBlogs, useAdminBlog, useCreateBlog, useUpdateBlog } from "@/hooks/admin";
@@ -239,6 +241,7 @@ export default function AdminBlogFormPage() {
 
   const title = useWatch({ control, name: "title" });
   const slugValue = useWatch({ control, name: "slug" });
+  const categoryValue = useWatch({ control, name: "category" });
   const status = useWatch({ control, name: "status" });
   const slugDirty = Boolean(slugValue && slugValue !== slugifyText(title ?? ""));
 
@@ -370,28 +373,20 @@ export default function AdminBlogFormPage() {
               hint={
                 slugDirty
                   ? "Custom slug — it becomes the public page URL (/blogs/your-slug)."
-                  : "URL handle for the public page. Generate it from the title or set your own."
+                  : "URL handle for the public page. Generate searches existing articles first and picks a free variant."
               }
             >
-              <div className="flex gap-2">
-                <input
-                  id="blog-slug"
-                  type="text"
-                  autoComplete="off"
-                  aria-invalid={Boolean(errors.slug)}
-                  className={INPUT_CLASS}
-                  {...register("slug")}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-auto shrink-0"
-                  onClick={() => setValue("slug", slugifyText(title ?? ""), { shouldValidate: true })}
-                >
-                  Generate
-                </Button>
-              </div>
+              <SlugField
+                id="blog-slug"
+                value={slugValue}
+                onChange={(next) => setValue("slug", next, { shouldValidate: true })}
+                title={title ?? ""}
+                slugify={slugifyText}
+                section="blogs"
+                excludeId={blog?.id}
+                urlPrefix="/blogs/"
+                inputClass={INPUT_CLASS}
+              />
             </Field>
 
             <Field id="blog-excerpt" label="Excerpt" required error={errors.excerpt?.message} hint="Short card description shown on listings.">
@@ -405,20 +400,15 @@ export default function AdminBlogFormPage() {
             </Field>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field id="blog-category" label="Category" required error={errors.category?.message} hint="Free label, e.g. Web Development.">
-                <input
+              <Field id="blog-category" label="Category" required error={errors.category?.message} hint="Managed vocabulary — use Manage to add, rename, or remove entries.">
+                <CategoryField
                   id="blog-category"
-                  type="text"
-                  list="blog-category-options"
-                  aria-invalid={Boolean(errors.category)}
-                  className={INPUT_CLASS}
-                  {...register("category")}
+                  section="blogs"
+                  value={categoryValue}
+                  onChange={(next) => setValue("category", next, { shouldValidate: true })}
+                  error={errors.category?.message}
+                  inputClass={INPUT_CLASS}
                 />
-                <datalist id="blog-category-options">
-                  {CATEGORY_SUGGESTIONS.map((option) => (
-                    <option key={option} value={option} />
-                  ))}
-                </datalist>
               </Field>
 
               <Field id="blog-status" label="Status" required error={errors.status?.message} hint="Only published articles appear publicly.">
@@ -579,14 +569,3 @@ export default function AdminBlogFormPage() {
     </div>
   );
 }
-
-/** Real categories from the seeded dataset — suggestions only, not an enum. */
-const CATEGORY_SUGGESTIONS = [
-  "AI & Machine Learning",
-  "Career & Community",
-  "Cybersecurity",
-  "Data Science",
-  "Open Source",
-  "Software Engineering",
-  "Web Development",
-];

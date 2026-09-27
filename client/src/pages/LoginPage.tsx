@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowRight, Info, LogIn } from "lucide-react";
+import { ArrowRight, LogIn } from "lucide-react";
 import { useForm } from "react-hook-form";
 
 import { AuthField, AuthShell } from "@/components/auth/AuthShell";
@@ -87,10 +87,10 @@ export default function LoginPage() {
             id="identifier"
             type="text"
             autoComplete="username"
-            placeholder="e.g. demo-member or you@example.com"
+            placeholder="e.g. ayesha-noor or you@example.com"
             aria-invalid={Boolean(errors.identifier)}
             aria-describedby={errors.identifier ? "identifier-error" : undefined}
-            className="h-11 w-full rounded-lg border bg-white px-3.5 text-sm text-ink shadow-sm transition-colors placeholder:text-muted focus:outline-2 focus:outline-offset-1 focus:outline-gold-500 aria-[invalid=true]:border-error aria-[invalid=true]:focus:outline-error"
+            className="h-11 w-full rounded-lg border bg-white px-3.5 text-base text-ink shadow-sm transition-colors placeholder:text-muted focus:outline-2 focus:outline-offset-1 focus:outline-gold-500 sm:text-sm aria-[invalid=true]:border-error aria-[invalid=true]:focus:outline-error"
             {...register("identifier", { required: "Enter your email or username." })}
           />
         </AuthField>
@@ -116,19 +116,6 @@ export default function LoginPage() {
           {isSubmitting ? "Signing in…" : "Sign in"}
           {!isSubmitting && <ArrowRight size={15} aria-hidden="true" />}
         </Button>
-
-        <aside className="rounded-lg border border-gold-500/30 bg-gold-50/70 px-4 py-3.5">
-          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-gold-700">
-            <Info size={12} aria-hidden="true" />
-            Development demo
-          </p>
-          <p className="mt-1.5 text-xs leading-relaxed text-gold-800/80">
-            Try the signed-in experience with the fictional demo member —{" "}
-            <span className="font-semibold">demo-member</span> /{" "}
-            <span className="font-mono font-semibold">scs-demo-2026</span>. Accounts reset when
-            the development server restarts.
-          </p>
-        </aside>
       </form>
     </AuthShell>
   );

@@ -12,7 +12,8 @@ import { FeaturedAlbum } from "@/components/gallery/FeaturedAlbum";
 import { GalleryFilters, type GalleryFilterGroupId } from "@/components/gallery/GalleryFilters";
 import { CTASection } from "@/components/sections/CTASection";
 import { CollectionLoading, ErrorState } from "@/components/ui/CollectionState";
-import { useAlbums, useFeaturedAlbum } from "@/hooks/content";
+import { useAlbums, useCategories, useFeaturedAlbum } from "@/hooks/content";
+import { GALLERY_CATEGORIES } from "@/data/gallery";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { ROUTES } from "@/routes/paths";
 import { buildPageTitle, usePageMetadata } from "@/lib/seo";
@@ -47,6 +48,9 @@ export default function GalleryPage() {
   );
 
   const albumsQuery = useAlbums(filters);
+  // Admin-managed category vocabulary (falls back to the curated constants).
+  const categoriesQuery = useCategories("gallery", GALLERY_CATEGORIES);
+  const categories = categoriesQuery.data ?? GALLERY_CATEGORIES;
   const filtered = useMemo(() => albumsQuery.data?.data ?? [], [albumsQuery.data]);
   const facets = albumsQuery.data?.meta.facets;
   const total = facets?.total ?? 0;
@@ -126,6 +130,7 @@ export default function GalleryPage() {
           onFilterChange={handleFilterChange}
           years={galleryYears}
           onClear={clearFilters}
+          categories={categories}
         >
           <p className="text-sm text-muted" role="status" aria-live="polite">
             {albumsQuery.isPending

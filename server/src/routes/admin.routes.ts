@@ -81,6 +81,14 @@ import {
   deleteAdminMedia,
   uploadAdminMedia,
 } from "../controllers/admin/adminUploads.controller.js";
+import {
+  addAdminCategory,
+  deleteAdminCategory,
+  listAdminCategories,
+  renameAdminCategory,
+} from "../controllers/admin/adminCategories.controller.js";
+import { getAdminSlugCheck } from "../controllers/admin/adminSlug.controller.js";
+import { isSlugCheckSection } from "../repositories/content/slugAvailabilityRepository.js";
 import { uploadSingleFile } from "../services/storage/multipart.js";
 
 /**
@@ -218,6 +226,30 @@ adminRouter.use("/admin/feed", requireAdminOrPermission("feed"));
 adminRouter.use("/admin/gallery", requireAdminOrPermission("gallery"));
 adminRouter.use("/admin/videos", requireAdminOrPermission("videos"));
 
+// Category vocabulary (Phase 10C) — same per-section permission gates: a
+// manage user with the "events" grant manages event categories, never blog
+// categories. Unknown sections fall through to the controller's 400.
+adminRouter.use("/admin/categories/events", requireAdminOrPermission("events"));
+adminRouter.use("/admin/categories/blogs", requireAdminOrPermission("blogs"));
+adminRouter.use("/admin/categories/gallery", requireAdminOrPermission("gallery"));
+adminRouter.use("/admin/categories/videos", requireAdminOrPermission("videos"));
+adminRouter.use("/admin/categories/projects", requireAdminOrPermission("projects"));
+
+// Slug availability (Phase 10C) — the section arrives as a query param, so
+// the same permission gate is applied dynamically after validating it.
+adminRouter.get(
+  "/admin/slug-check",
+  (req, res, next) => {
+    const section = typeof req.query.section === "string" ? req.query.section : "";
+    if (!isSlugCheckSection(section)) {
+      res.status(400).json({ message: "Unknown section." });
+      return;
+    }
+    requireAdminOrPermission(section)(req, res, next);
+  },
+  getAdminSlugCheck,
+);
+
 adminRouter.get("/admin/ping", getAdminPing);
 adminRouter.get("/admin/dashboard", getAdminDashboard);
 
@@ -289,3 +321,10 @@ adminRouter.patch("/admin/users/:id", updateAdminUser);
 adminRouter.delete("/admin/users/:id", deleteAdminUser);
 
 adminRouter.get("/admin/audit", listAdminAudit);
+
+// Category vocabulary (Phase 10C) — guarded per section above. The section
+// enum is re-validated inside the controller for defense in depth.
+adminRouter.get("/admin/categories/:section", listAdminCategories);
+adminRouter.post("/admin/categories/:section", addAdminCategory);
+adminRouter.patch("/admin/categories/:section/:id", renameAdminCategory);
+adminRouter.delete("/admin/categories/:section/:id", deleteAdminCategory);

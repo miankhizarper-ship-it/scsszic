@@ -15,6 +15,9 @@ interface VideoFiltersProps {
   /** Called with "" when a group is set back to All. */
   onFilterChange: (group: VideoFilterGroupId, value: string) => void;
   onClear: () => void;
+  /** Category options — defaults to the curated constants; pages pass the
+   *  admin-managed vocabulary (Phase 10C) from useCategories("videos"). */
+  categories?: readonly string[];
   /** Result count / hint content rendered under the filter groups. */
   children?: React.ReactNode;
   className?: string;
@@ -35,11 +38,12 @@ export function VideoFilters({
   values,
   onFilterChange,
   onClear,
+  categories = WATCH_CATEGORIES,
   children,
   className,
 }: VideoFiltersProps) {
   const groups: FilterGroup[] = [
-    { id: "category", label: "Category", options: [ALL, ...WATCH_CATEGORIES] },
+    { id: "category", label: "Category", options: [ALL, ...categories] },
     { id: "duration", label: "Length", options: [ALL, ...WATCH_DURATION_OPTIONS] },
   ];
 

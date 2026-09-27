@@ -15,6 +15,9 @@ interface EventFiltersProps {
   /** Called with "" when a group is set back to All. */
   onFilterChange: (group: EventFilterGroupId, value: string) => void;
   onClear: () => void;
+  /** Category options — defaults to the curated constants; pages pass the
+   *  admin-managed vocabulary (Phase 10C) from useCategories("events"). */
+  categories?: readonly string[];
   /** Result count / hint content rendered under the filter groups. */
   children?: React.ReactNode;
   className?: string;
@@ -35,11 +38,12 @@ export function EventFilters({
   values,
   onFilterChange,
   onClear,
+  categories = EVENT_CATEGORIES,
   children,
   className,
 }: EventFiltersProps) {
   const groups: FilterGroup[] = [
-    { id: "category", label: "Category", options: [ALL, ...EVENT_CATEGORIES] },
+    { id: "category", label: "Category", options: [ALL, ...categories] },
     { id: "status", label: "Status", options: [ALL, ...EVENT_STATUSES] },
     { id: "date", label: "Date", options: [ALL, ...EVENT_DATE_OPTIONS] },
   ];

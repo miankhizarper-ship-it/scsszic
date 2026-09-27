@@ -12,7 +12,8 @@ import { FeaturedVideo } from "@/components/watch/FeaturedVideo";
 import { VideoFilters, type VideoFilterGroupId } from "@/components/watch/VideoFilters";
 import { CTASection } from "@/components/sections/CTASection";
 import { CollectionLoading, ErrorState } from "@/components/ui/CollectionState";
-import { useFeaturedVideo, useVideos } from "@/hooks/content";
+import { useCategories, useFeaturedVideo, useVideos } from "@/hooks/content";
+import { WATCH_CATEGORIES } from "@/data/watch";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { ROUTES } from "@/routes/paths";
 import { buildPageTitle, usePageMetadata } from "@/lib/seo";
@@ -49,6 +50,9 @@ export default function WatchPage() {
   );
 
   const videosQuery = useVideos(filters);
+  // Admin-managed category vocabulary (falls back to the curated constants).
+  const categoriesQuery = useCategories("videos", WATCH_CATEGORIES);
+  const categories = categoriesQuery.data ?? WATCH_CATEGORIES;
   const filtered = useMemo(() => videosQuery.data?.data ?? [], [videosQuery.data]);
   const facets = videosQuery.data?.meta.facets;
   const total = facets?.total ?? 0;
@@ -126,6 +130,7 @@ export default function WatchPage() {
           values={{ category, duration }}
           onFilterChange={handleFilterChange}
           onClear={clearFilters}
+          categories={categories}
         >
           <p className="text-sm text-muted" role="status" aria-live="polite">
             {videosQuery.isPending

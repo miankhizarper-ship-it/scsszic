@@ -18,8 +18,11 @@ import { cn } from "@/lib/utils";
  *
  * Structure:
  *  - thin gold hairline (brand accent)
- *  - institutional top strip (hidden on mobile)
- *  - sticky main bar: always deep navy, subtle elevation on scroll
+ *  - institutional top strip (hidden on mobile) — scrolls away with the page
+ *  - FIXED main bar: always deep navy, subtle elevation on scroll. The main
+ *    bar is sticky at the viewport top INDEPENDENT of the strip above it
+ *    (the strip renders outside the sticky header), so scrolling down keeps
+ *    the navigation reachable without jumping back to the top (Phase 10C).
  *  - desktop inline nav (≥ xl), slide-in MobileMenu below xl
  *  - auth-aware actions (Phase 7): Login/Join Us for guests; initials chip,
  *    display name (→ /account), and logout for signed-in members
@@ -47,11 +50,10 @@ export function Navbar() {
   };
 
   return (
-    <header>
-      {/* Royal gold accent hairline */}
+    <>
+      {/* Royal gold accent hairline + institutional strip — these scroll
+          away; only the main bar below stays pinned. */}
       <div aria-hidden="true" className="gold-hairline h-0.5" />
-
-      {/* Institutional strip */}
       <div className="hidden border-b border-white/5 bg-navy-950 sm:block">
         <Container className="flex h-8 items-center justify-between text-[11px] font-medium tracking-wide text-slate-400">
           <p>Shaikh Zayed Islamic Centre · University of Peshawar</p>
@@ -59,14 +61,15 @@ export function Navbar() {
         </Container>
       </div>
 
-      {/* Main bar */}
-      <nav
-        aria-label="Primary"
-        className={cn(
-          "sticky top-0 z-50 border-b border-white/10 bg-navy-950/95 backdrop-blur transition-shadow duration-300",
-          scrolled && "shadow-lg shadow-navy-950/40",
-        )}
-      >
+      {/* Fixed main bar — sticky to the viewport, not bounded by the strip. */}
+      <header className="sticky top-0 z-50">
+        <nav
+          aria-label="Primary"
+          className={cn(
+            "border-b border-white/10 bg-navy-950/95 backdrop-blur transition-shadow duration-300",
+            scrolled && "shadow-lg shadow-navy-950/40",
+          )}
+        >
         <Container className="flex h-16 items-center justify-between gap-4">
           <Logo />
 
@@ -176,9 +179,10 @@ export function Navbar() {
             </button>
           </div>
         </Container>
-      </nav>
+        </nav>
 
-      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
-    </header>
+        <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
+      </header>
+    </>
   );
 }

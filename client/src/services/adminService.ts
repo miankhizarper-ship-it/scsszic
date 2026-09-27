@@ -3,11 +3,13 @@ import type {
   AdminAlumniListEnvelope,
   AdminAuditListEnvelope,
   AdminBlogListEnvelope,
+  AdminCategoryList,
   AdminDashboardData,
   AdminEventListEnvelope,
   AdminFeedListEnvelope,
   AdminGalleryListEnvelope,
   AdminMemberListEnvelope,
+  AdminPermission,
   AdminProjectListEnvelope,
   AdminUser,
   AdminUserListEnvelope,
@@ -16,11 +18,13 @@ import type {
   Alumnus,
   AlumnusWrite,
   Blog,
+  CategorySection,
   FeedPost,
   GalleryAlbum,
   GalleryAlbumWrite,
   Member,
   Project,
+  SlugAvailability,
   SocietyEvent,
   WatchVideo,
 } from "@/types";
@@ -785,5 +789,59 @@ export const adminService = {
         to: params.to,
       },
     });
+  },
+
+  /* ------------------- Slug availability + categories (10C) ---------------- */
+
+  /**
+   * GET /api/admin/slug-check — search-first availability check for the CMS
+   * forms. The server probes the section's live collection and, when the
+   * slug is taken, returns the first free `slug-2`-style suggestion.
+   * `excludeId` lets edit forms skip their own document.
+   */
+  async checkSlug(
+    section: AdminPermission,
+    slug: string,
+    excludeId?: string,
+  ): Promise<SlugAvailability> {
+    const response = await apiFetch<{ data: SlugAvailability }>("/admin/slug-check", {
+      params: { section, slug, excludeId },
+    });
+    return response.data;
+  },
+
+  /** GET /api/admin/categories/:section — ordered managed vocabulary. */
+  async listCategories(section: CategorySection): Promise<AdminCategoryList> {
+    const response = await apiFetch<{ data: AdminCategoryList }>(
+      `/admin/categories/${section}`,
+    );
+    return response.data;
+  },
+
+  /** POST /api/admin/categories/:section — add one name (409 on duplicate). */
+  async addCategory(section: CategorySection, name: string): Promise<AdminCategoryList> {
+    const response = await apiFetch<{ data: AdminCategoryList }>(
+      `/admin/categories/${section}`,
+      { method: "POST", body: { name } },
+    );
+    return response.data;
+  },
+
+  /** PATCH /api/admin/categories/:section/:id — rename (content rewritten server-side). */
+  async renameCategory(section: CategorySection, id: string, name: string): Promise<AdminCategoryList> {
+    const response = await apiFetch<{ data: AdminCategoryList }>(
+      `/admin/categories/${section}/${encodeURIComponent(id)}`,
+      { method: "PATCH", body: { name } },
+    );
+    return response.data;
+  },
+
+  /** DELETE /api/admin/categories/:section/:id — 409 while the name is in use. */
+  async deleteCategory(section: CategorySection, id: string): Promise<AdminCategoryList> {
+    const response = await apiFetch<{ data: AdminCategoryList }>(
+      `/admin/categories/${section}/${encodeURIComponent(id)}`,
+      { method: "DELETE" },
+    );
+    return response.data;
   },
 };

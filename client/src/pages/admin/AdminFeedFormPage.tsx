@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/CollectionState";
 import { UploadMediaButton } from "@/components/admin/UploadMediaButton";
+import { SlugField } from "@/components/admin/SlugField";
 import {
   useAdminFeedPost,
   useCreateFeedPost,
@@ -298,28 +299,20 @@ export default function AdminFeedFormPage() {
               hint={
                 slugDirty
                   ? "Custom slug — feed posts are listed by it internally."
-                  : "URL-style handle for the post. Generate it from the title or set your own."
+                  : "URL-style handle for the post. Generate searches existing posts first and picks a free variant."
               }
             >
-              <div className="flex gap-2">
-                <input
-                  id="feed-slug"
-                  type="text"
-                  autoComplete="off"
-                  aria-invalid={Boolean(errors.slug)}
-                  className={INPUT_CLASS}
-                  {...register("slug")}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-auto shrink-0"
-                  onClick={() => setValue("slug", slugifyText(title ?? ""), { shouldValidate: true })}
-                >
-                  Generate
-                </Button>
-              </div>
+              <SlugField
+                id="feed-slug"
+                value={slugValue}
+                onChange={(next) => setValue("slug", next, { shouldValidate: true })}
+                title={title ?? ""}
+                slugify={slugifyText}
+                section="feed"
+                excludeId={post?.id}
+                urlPrefix="/feed/"
+                inputClass={INPUT_CLASS}
+              />
             </Field>
 
             <Field id="feed-excerpt" label="Excerpt" required error={errors.excerpt?.message} hint="Short card description shown on the feed.">

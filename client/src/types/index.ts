@@ -37,7 +37,11 @@ export interface Stat {
 
 /* ---------- Events ---------- */
 
-/** Event categories — also the events-page filter dimension. */
+/**
+ * Event categories — originally the fixed filter dimension; Phase 10C made
+ * the vocabulary admin-managed, so events carry any category string and
+ * this union only types the curated DEFAULT filter options.
+ */
 export type EventCategory =
   | "Workshops"
   | "Seminars"
@@ -88,7 +92,8 @@ export interface SocietyEvent {
   excerpt: string;
   /** Long-form description for the detail page. */
   description: string;
-  category: EventCategory;
+  /** Admin-managed category (Phase 10C) — free string, not the fixed union. */
+  category: string;
   status: EventStatus;
   /** Marks the event highlighted on /events (exactly one in mock data). */
   featured?: boolean;
@@ -592,6 +597,36 @@ export const ADMIN_PERMISSION_LABELS: Record<AdminPermission, string> = {
   gallery: "Gallery",
   videos: "Videos",
 };
+
+/* ---------- Category vocabulary + slug availability (Phase 10C) ---------- */
+
+/**
+ * The five CMS sections whose content carries a `category` field and thus a
+ * managed vocabulary (matching server CATEGORY_SECTIONS). Alumni/members key
+ * their directory by field/domain and the feed by type — those lists stay
+ * curated code constants, not part of the category manager.
+ */
+export const CATEGORY_SECTIONS = ["events", "blogs", "gallery", "videos", "projects"] as const;
+export type CategorySection = (typeof CATEGORY_SECTIONS)[number];
+
+/** One managed category entry — stable id for rename/delete operations. */
+export interface AdminCategory {
+  id: string;
+  name: string;
+}
+
+/** Envelope payload of the admin category endpoints. */
+export interface AdminCategoryList {
+  section: CategorySection;
+  categories: AdminCategory[];
+}
+
+/** Payload of GET /api/admin/slug-check (search-first availability check). */
+export interface SlugAvailability {
+  available: boolean;
+  slug: string;
+  suggestion: string;
+}
 
 /** Client-safe account representation from /api/auth/* — never contains
  *  password hashes or session internals (the session is an HTTP-only cookie). */

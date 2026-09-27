@@ -7,6 +7,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/CollectionState";
 import { UploadMediaButton } from "@/components/admin/UploadMediaButton";
+import { SlugField } from "@/components/admin/SlugField";
+import { CategoryField } from "@/components/admin/CategoryField";
 import { useAdminEvent, useCreateEvent, useUpdateEvent } from "@/hooks/admin";
 import { eventFormSchema, slugifyTitle, type EventFormValues } from "@/lib/adminEventForm";
 import { ApiError } from "@/services/apiClient";
@@ -219,6 +221,7 @@ export default function AdminEventFormPage() {
 
   const title = watch("title");
   const slugValue = watch("slug");
+  const categoryValue = watch("category");
   const registrationEnabled = watch("registrationEnabled");
   const slugDirty = useMemo(
     () => Boolean(slugValue && slugValue !== slugifyTitle(title ?? "")),
@@ -389,48 +392,32 @@ export default function AdminEventFormPage() {
               hint={
                 slugDirty
                   ? "Custom slug — it becomes the public page URL (/events/your-slug)."
-                  : "URL handle for the public page. Generate it from the title or set your own."
+                  : "URL handle for the public page. Generate searches existing events first and picks a free variant."
               }
             >
-              <div className="flex gap-2">
-                <input
-                  id="event-slug"
-                  type="text"
-                  autoComplete="off"
-                  aria-invalid={Boolean(errors.slug)}
-                  aria-describedby={errors.slug ? "event-slug-error" : undefined}
-                  className={INPUT_CLASS}
-                  {...register("slug")}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-auto shrink-0"
-                  onClick={() => setValue("slug", slugifyTitle(title ?? ""), { shouldValidate: true })}
-                >
-                  Generate
-                </Button>
-              </div>
+              <SlugField
+                id="event-slug"
+                value={slugValue}
+                onChange={(next) => setValue("slug", next, { shouldValidate: true })}
+                title={title ?? ""}
+                slugify={slugifyTitle}
+                section="events"
+                excludeId={event?.id}
+                urlPrefix="/events/"
+                inputClass={INPUT_CLASS}
+              />
             </Field>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field id="event-category" label="Category" required error={errors.category?.message}>
-                <select
+                <CategoryField
                   id="event-category"
-                  aria-invalid={Boolean(errors.category)}
-                  aria-describedby={errors.category ? "event-category-error" : undefined}
-                  className={INPUT_CLASS}
-                  {...register("category")}
-                >
-                  {["Workshops", "Seminars", "Hackathons", "Competitions", "Tech Talks", "Community", "Career"].map(
-                    (option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ),
-                  )}
-                </select>
+                  section="events"
+                  value={categoryValue}
+                  onChange={(next) => setValue("category", next, { shouldValidate: true })}
+                  error={errors.category?.message}
+                  inputClass={INPUT_CLASS}
+                />
               </Field>
 
               <Field id="event-status" label="Status" required error={errors.status?.message}>

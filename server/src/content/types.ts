@@ -35,6 +35,14 @@ export interface SerializedSocialLink {
   icon: string;
 }
 
+/**
+ * Taxonomy sections that carry a `category` field (Phase 10C). Each maps
+ * onto exactly one MongoDB collection; admin users can add/rename/remove
+ * the category vocabulary per section (see categoriesRepository).
+ */
+export const CATEGORY_SECTIONS = ["events", "blogs", "gallery", "videos", "projects"] as const;
+export type CategorySection = (typeof CATEGORY_SECTIONS)[number];
+
 export type SerializedEventSpeaker = Omit<EventSpeaker, "socials"> & {
   socials?: SerializedSocialLink[];
 };

@@ -16,9 +16,11 @@ interface AuthShellProps {
   wide?: boolean;
 }
 
-/** Shared input classes so both auth forms render one visual language. */
+/** Shared input classes so both auth forms render one visual language.
+ *  `text-base` below sm prevents iOS Safari's focus auto-zoom on small
+ *  screens (16px is the threshold); sm+ restores the compact size. */
 export const AUTH_INPUT_CLASSES = [
-  "h-11 w-full rounded-lg border bg-white px-3.5 text-sm text-ink shadow-sm transition-colors",
+  "h-11 w-full rounded-lg border bg-white px-3.5 text-base text-ink shadow-sm transition-colors sm:text-sm",
   "placeholder:text-muted focus:outline-2 focus:outline-offset-1 focus:outline-gold-500",
   "border-line focus:border-navy-300",
   "aria-[invalid=true]:border-error aria-[invalid=true]:focus:outline-error",
@@ -87,10 +89,12 @@ export function AuthShell({
 }: AuthShellProps) {
   return (
     <div className="flex flex-1 items-center bg-surface">
-      <Container className="py-14 lg:py-20">
+      {/* Fluid vertical rhythm on small screens; the card never touches the
+          viewport edges thanks to the Container gutters (px-4 min). */}
+      <Container className="py-8 sm:py-12 lg:py-20">
         <div
           className={cn(
-            "mx-auto w-full rounded-2xl border border-line bg-white p-6 shadow-sm sm:p-10",
+            "mx-auto w-full rounded-2xl border border-line bg-white p-5 shadow-sm sm:p-9 lg:p-10",
             wide ? "max-w-xl" : "max-w-md",
           )}
         >
@@ -102,13 +106,13 @@ export function AuthShell({
             <p className="mt-5 text-xs font-semibold uppercase tracking-[0.22em] text-gold-600">
               {eyebrow}
             </p>
-            <h1 className="mt-2.5 font-display text-3xl font-bold tracking-tight text-navy-900">
+            <h1 className="mt-2.5 font-display text-2xl font-bold tracking-tight text-navy-900 sm:text-3xl">
               {title}
             </h1>
             <p className="mt-3 text-sm leading-relaxed text-muted">{description}</p>
           </div>
 
-          <div className="mt-8">{children}</div>
+          <div className="mt-7 sm:mt-8">{children}</div>
 
           {footer && <div className="mt-7 text-center text-sm text-muted">{footer}</div>}
         </div>

@@ -34,3 +34,17 @@ export function fetchList<T>(
 ): Promise<{ data: T[]; meta: import("@/types").ListMeta }> {
   return apiFetch<{ data: T[]; meta: import("@/types").ListMeta }>(path, { params });
 }
+
+/**
+ * GET /api/categories?section=… (Phase 10C) — public category vocabulary for
+ * the listing filter chips: the admin-managed list union the values actually
+ * in use. Falls back to the curated constants in each page's hook wiring on
+ * failure, so the filters degrade gracefully when the API is unavailable.
+ */
+export async function fetchCategories(section: import("@/types").CategorySection): Promise<string[]> {
+  const response = await apiFetch<{ data: { section: string; categories: string[] } }>(
+    "/categories",
+    { params: { section } },
+  );
+  return response.data.categories;
+}

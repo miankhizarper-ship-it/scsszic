@@ -21,8 +21,6 @@ export interface AdminNavItem {
   to: string;
   icon: LucideIcon;
   description: string;
-  /** "9A" = shipped with the foundation; "9B" = placeholder until implemented. */
-  phase: "9A" | "9B";
   /**
    * Phase 10B — the CMS permission this section requires. undefined = every
    * admin-panel role sees it (Dashboard) or it is admin-only (Users/Audit via
@@ -63,14 +61,12 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     to: ROUTES.admin.home,
     icon: LayoutDashboard,
     description: "Overview of the society's content and community.",
-    phase: "9A",
   },
   {
     label: "Events",
     to: ROUTES.admin.events,
     icon: CalendarDays,
     description: "Create and manage society events.",
-    phase: "9B",
     permission: "events",
   },
   {
@@ -78,7 +74,6 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     to: ROUTES.admin.blogs,
     icon: FileText,
     description: "Write, publish, and archive articles.",
-    phase: "9B",
     permission: "blogs",
   },
   {
@@ -86,7 +81,6 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     to: ROUTES.admin.alumni,
     icon: GraduationCap,
     description: "Curate the alumni directory.",
-    phase: "9B",
     permission: "alumni",
   },
   {
@@ -94,7 +88,6 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     to: ROUTES.admin.gallery,
     icon: Images,
     description: "Organize event photo albums.",
-    phase: "9B",
     permission: "gallery",
   },
   {
@@ -102,7 +95,6 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     to: ROUTES.admin.videos,
     icon: Clapperboard,
     description: "Manage the Watch media hub.",
-    phase: "9B",
     permission: "videos",
   },
   {
@@ -110,7 +102,6 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     to: ROUTES.admin.members,
     icon: Users,
     description: "Maintain the member directory.",
-    phase: "9B",
     permission: "members",
   },
   {
@@ -118,7 +109,6 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     to: ROUTES.admin.projects,
     icon: FolderKanban,
     description: "Review the student project showcase.",
-    phase: "9B",
     permission: "projects",
   },
   {
@@ -126,7 +116,6 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     to: ROUTES.admin.feed,
     icon: Newspaper,
     description: "Moderate community feed posts.",
-    phase: "9B",
     permission: "feed",
   },
   {
@@ -134,7 +123,6 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     to: ROUTES.admin.users,
     icon: UserCog,
     description: "Manage accounts and roles.",
-    phase: "9B",
     adminOnly: true,
   },
   {
@@ -142,7 +130,6 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     to: ROUTES.admin.audit,
     icon: ScrollText,
     description: "Review the admin action log.",
-    phase: "9B",
     adminOnly: true,
   },
 ];

@@ -17,6 +17,9 @@ interface BlogFiltersProps {
   /** Popular tags for the compact tag row (derived from data at page level). */
   tags: string[];
   onClear: () => void;
+  /** Category options — defaults to the curated constants; pages pass the
+   *  admin-managed vocabulary (Phase 10C) from useCategories("blogs"). */
+  categories?: readonly string[];
   /** Result count / hint content rendered under the filter groups. */
   children?: React.ReactNode;
   className?: string;
@@ -38,11 +41,12 @@ export function BlogFilters({
   onFilterChange,
   tags,
   onClear,
+  categories = BLOG_CATEGORIES,
   children,
   className,
 }: BlogFiltersProps) {
   const groups: FilterGroup[] = [
-    { id: "category", label: "Category", options: [ALL, ...BLOG_CATEGORIES] },
+    { id: "category", label: "Category", options: [ALL, ...categories] },
     { id: "tag", label: "Tag", options: [ALL, ...tags] },
   ];
 

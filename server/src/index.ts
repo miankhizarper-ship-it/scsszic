@@ -1,6 +1,7 @@
 import { createApp } from "./app.js";
 import { closeDatabase, connectDatabase, getDatabase } from "./db/client.js";
 import { ensureDatabaseIndexes } from "./db/indexes.js";
+import { ensureDefaultCategories } from "./repositories/content/categoriesRepository.js";
 import { env } from "./config/env.js";
 import { logger } from "./utils/logger.js";
 
@@ -24,6 +25,9 @@ async function main(): Promise<void> {
 
   await connectDatabase();
   await ensureDatabaseIndexes(getDatabase());
+  // Phase 10C — seed the managed category vocabulary for sections that have
+  // none (idempotent; admin-maintained lists are never overwritten).
+  await ensureDefaultCategories();
 
   const app = createApp();
   const server = app.listen(env.port, () => {

@@ -8,6 +8,7 @@ import { galleryService } from "@/services/galleryService";
 import { memberService } from "@/services/memberService";
 import { projectService } from "@/services/projectService";
 import { watchService } from "@/services/watchService";
+import { fetchCategories } from "@/services/contentApi";
 import type { EventFilters } from "@/lib/eventSearch";
 import type { BlogFilters } from "@/lib/blogSearch";
 import type { FeedFilters } from "@/lib/feedSearch";
@@ -15,6 +16,7 @@ import type { GalleryFilters } from "@/lib/gallerySearch";
 import type { MemberFilters } from "@/lib/memberSearch";
 import type { ProjectFilters } from "@/lib/projectSearch";
 import type { WatchFilters } from "@/lib/watchSearch";
+import type { CategorySection } from "@/types";
 
 /**
  * TanStack Query hooks over the Phase 8 content services (spec §17).
@@ -28,6 +30,24 @@ import type { WatchFilters } from "@/lib/watchSearch";
  */
 
 const LIST_STALE_TIME = 60 * 1000;
+
+/* ------------------------------- Categories (10C) ------------------------- */
+
+/**
+ * Public category vocabulary for the listing filter chips — the admin-
+ * managed list (union in-use values) from GET /api/categories. While the
+ * request is in flight (or if it fails), the curated constants are used as
+ * placeholder/fallback data so the filters never flash empty.
+ */
+export function useCategories(section: CategorySection, fallback: readonly string[]) {
+  return useQuery({
+    queryKey: ["public", "categories", section],
+    queryFn: () => fetchCategories(section),
+    placeholderData: fallback as string[],
+    staleTime: LIST_STALE_TIME,
+    retry: 1,
+  });
+}
 
 /* --------------------------------- Events --------------------------------- */
 

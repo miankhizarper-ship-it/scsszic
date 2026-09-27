@@ -12,9 +12,10 @@ import { FeaturedEvent } from "@/components/events/FeaturedEvent";
 import { EventFilters, type EventFilterGroupId } from "@/components/events/EventFilters";
 import { CTASection } from "@/components/sections/CTASection";
 import { CollectionLoading, ErrorState } from "@/components/ui/CollectionState";
-import { useEvents, useFeaturedEvent } from "@/hooks/content";
+import { useCategories, useEvents, useFeaturedEvent } from "@/hooks/content";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { getCompletedEvents, getUpcomingEvents } from "@/lib/eventSearch";
+import { EVENT_CATEGORIES } from "@/data/events";
 import { ROUTES } from "@/routes/paths";
 import { buildPageTitle, usePageMetadata } from "@/lib/seo";
 
@@ -47,6 +48,9 @@ export default function EventsPage() {
   );
 
   const eventsQuery = useEvents(filters);
+  // Admin-managed category vocabulary (falls back to the curated constants).
+  const categoriesQuery = useCategories("events", EVENT_CATEGORIES);
+  const categories = categoriesQuery.data ?? EVENT_CATEGORIES;
   const filtered = useMemo(() => eventsQuery.data?.data ?? [], [eventsQuery.data]);
   const facets = eventsQuery.data?.meta.facets;
   const total = facets?.total ?? 0;
@@ -126,6 +130,7 @@ export default function EventsPage() {
           values={{ category, status, date }}
           onFilterChange={handleFilterChange}
           onClear={clearFilters}
+          categories={categories}
         >
           <p className="text-sm text-muted" role="status" aria-live="polite">
             {eventsQuery.isPending

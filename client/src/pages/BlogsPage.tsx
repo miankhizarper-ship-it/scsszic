@@ -12,7 +12,7 @@ import { FeaturedBlog } from "@/components/blogs/FeaturedBlog";
 import { BlogFilters, type BlogFilterGroupId } from "@/components/blogs/BlogFilters";
 import { CTASection } from "@/components/sections/CTASection";
 import { CollectionLoading, ErrorState } from "@/components/ui/CollectionState";
-import { useBlogs, useFeaturedBlog } from "@/hooks/content";
+import { useBlogs, useCategories, useFeaturedBlog } from "@/hooks/content";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { BLOG_CATEGORIES } from "@/data/blogs";
 import { ROUTES } from "@/routes/paths";
@@ -48,6 +48,9 @@ export default function BlogsPage() {
   );
 
   const blogsQuery = useBlogs(filters);
+  // Admin-managed category vocabulary (falls back to the curated constants).
+  const categoriesQuery = useCategories("blogs", BLOG_CATEGORIES);
+  const categories = categoriesQuery.data ?? BLOG_CATEGORIES;
   const filtered = useMemo(() => blogsQuery.data?.data ?? [], [blogsQuery.data]);
   const facets = blogsQuery.data?.meta.facets;
   const total = facets?.total ?? 0;
@@ -98,7 +101,7 @@ export default function BlogsPage() {
         <dl className="mx-auto mt-10 grid max-w-2xl grid-cols-3 gap-3">
           {[
             { value: `${total}`, label: "Articles" },
-            { value: `${BLOG_CATEGORIES.length}`, label: "Categories" },
+            { value: `${categories.length}`, label: "Categories" },
             { value: `${contributorCount}`, label: "Writers" },
           ].map(({ value, label }) => (
             <div
@@ -126,6 +129,7 @@ export default function BlogsPage() {
           onFilterChange={handleFilterChange}
           tags={popularTags}
           onClear={clearFilters}
+          categories={categories}
         >
           <p className="text-sm text-muted" role="status" aria-live="polite">
             {blogsQuery.isPending

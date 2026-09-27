@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, Info, UserPlus } from "lucide-react";
+import { ArrowRight, UserPlus } from "lucide-react";
 import { useForm } from "react-hook-form";
 
 import { AuthField, AuthShell } from "@/components/auth/AuthShell";
@@ -108,7 +108,7 @@ export default function SignupPage() {
             placeholder="e.g. Ayesha Noor"
             aria-invalid={Boolean(errors.displayName)}
             aria-describedby={errors.displayName ? "displayName-error" : undefined}
-            className="h-11 w-full rounded-lg border bg-white px-3.5 text-sm text-ink shadow-sm transition-colors placeholder:text-muted focus:outline-2 focus:outline-offset-1 focus:outline-gold-500 aria-[invalid=true]:border-error aria-[invalid=true]:focus:outline-error"
+            className="h-11 w-full rounded-lg border bg-white px-3.5 text-base text-ink shadow-sm transition-colors placeholder:text-muted focus:outline-2 focus:outline-offset-1 focus:outline-gold-500 sm:text-sm aria-[invalid=true]:border-error aria-[invalid=true]:focus:outline-error"
             {...register("displayName", {
               required: "Display name is required.",
               minLength: { value: 2, message: "Display name must be at least 2 characters." },
@@ -130,7 +130,7 @@ export default function SignupPage() {
             placeholder="e.g. ayesha-noor"
             aria-invalid={Boolean(errors.username)}
             aria-describedby={errors.username ? "username-error" : undefined}
-            className="h-11 w-full rounded-lg border bg-white px-3.5 font-mono text-sm text-ink shadow-sm transition-colors placeholder:text-muted focus:outline-2 focus:outline-offset-1 focus:outline-gold-500 aria-[invalid=true]:border-error aria-[invalid=true]:focus:outline-error"
+            className="h-11 w-full rounded-lg border bg-white px-3.5 font-mono text-base text-ink shadow-sm transition-colors placeholder:text-muted focus:outline-2 focus:outline-offset-1 focus:outline-gold-500 sm:text-sm aria-[invalid=true]:border-error aria-[invalid=true]:focus:outline-error"
             {...register("username", {
               required: "Username is required.",
               minLength: { value: 3, message: "Username must be at least 3 characters." },
@@ -151,7 +151,7 @@ export default function SignupPage() {
             placeholder="you@example.com"
             aria-invalid={Boolean(errors.email)}
             aria-describedby={errors.email ? "email-error" : undefined}
-            className="h-11 w-full rounded-lg border bg-white px-3.5 text-sm text-ink shadow-sm transition-colors placeholder:text-muted focus:outline-2 focus:outline-offset-1 focus:outline-gold-500 aria-[invalid=true]:border-error aria-[invalid=true]:focus:outline-error"
+            className="h-11 w-full rounded-lg border bg-white px-3.5 text-base text-ink shadow-sm transition-colors placeholder:text-muted focus:outline-2 focus:outline-offset-1 focus:outline-gold-500 sm:text-sm aria-[invalid=true]:border-error aria-[invalid=true]:focus:outline-error"
             {...register("email", {
               required: "Email is required.",
               pattern: { value: EMAIL_PATTERN, message: "Enter a valid email address." },
@@ -203,17 +203,6 @@ export default function SignupPage() {
           {isSubmitting ? "Creating account…" : "Create account"}
           {!isSubmitting && <ArrowRight size={15} aria-hidden="true" />}
         </Button>
-
-        <aside className="rounded-lg border border-gold-500/30 bg-gold-50/70 px-4 py-3.5">
-          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-gold-700">
-            <Info size={12} aria-hidden="true" />
-            Development demo
-          </p>
-          <p className="mt-1.5 text-xs leading-relaxed text-gold-800/80">
-            Accounts you create here are stored in the development database and survive restarts.
-            Passwords are hashed with bcrypt — nothing sensitive is ever stored in your browser.
-          </p>
-        </aside>
       </form>
     </AuthShell>
   );

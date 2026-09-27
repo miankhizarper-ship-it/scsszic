@@ -9,6 +9,12 @@ import { z } from "zod";
  * accepted here either.
  */
 
+/**
+ * Curated default event categories — kept for reference/seed parity only.
+ * Since Phase 10C the category vocabulary is admin-managed (see the
+ * CategoryField picker), so the form accepts any bounded category string,
+ * matching blogs/gallery/videos/projects and the server schema.
+ */
 export const EVENT_CATEGORIES = [
   "Workshops",
   "Seminars",
@@ -66,7 +72,7 @@ export const eventFormSchema = z
       .min(1, "Slug is required.")
       .max(80, "Slug must be at most 80 characters.")
       .regex(/^[a-z0-9][a-z0-9-]*$/, "Use lowercase letters, numbers, and hyphens only."),
-    category: z.enum(EVENT_CATEGORIES, { message: "Choose a valid category." }),
+    category: requiredText("Category", 60),
     status: z.enum(EVENT_STATUSES, { message: "Choose a valid status." }),
     featured: z.boolean(),
     date: isoDate,

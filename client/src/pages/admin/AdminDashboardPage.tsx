@@ -28,8 +28,11 @@ import type {
  * The "Signed-in admin" panel is kept from Phase 9A as the identity context.
  */
 
-/** Sidebar entries for the 9B sections — icon/label source for quick actions. */
-const SECTION_ITEMS = ADMIN_NAV_ITEMS.filter((item) => item.phase === "9B");
+/** Section quick links — every entry except the Dashboard itself (same set the
+ *  old phase flag produced; Users/Audit are admin-only surfaces, kept here). */
+const SECTION_ITEMS = ADMIN_NAV_ITEMS.filter(
+  (item) => item.permission !== undefined || item.adminOnly === true,
+);
 
 const SECTION_ROUTE: Record<AdminContentSection, string> = {
   events: ROUTES.admin.events,

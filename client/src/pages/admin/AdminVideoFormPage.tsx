@@ -7,6 +7,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/CollectionState";
 import { UploadMediaButton } from "@/components/admin/UploadMediaButton";
+import { SlugField } from "@/components/admin/SlugField";
+import { CategoryField } from "@/components/admin/CategoryField";
 import {
   useAdminVideo,
   useCreateVideo,
@@ -142,6 +144,7 @@ export default function AdminVideoFormPage() {
 
   const title = useWatch({ control, name: "title" });
   const slugValue = useWatch({ control, name: "slug" });
+  const categoryValue = useWatch({ control, name: "category" });
   const slugDirty = Boolean(slugValue && slugValue !== slugifyText(title ?? ""));
 
   const pending = isSubmitting || createVideo.isPending || updateVideo.isPending;
@@ -273,28 +276,20 @@ export default function AdminVideoFormPage() {
               hint={
                 slugDirty
                   ? "Custom slug — it becomes the public page URL (/watch/your-slug)."
-                  : "URL handle for the public page. Generate it from the title or set your own."
+                  : "URL handle for the public page. Generate searches existing videos first and picks a free variant."
               }
             >
-              <div className="flex gap-2">
-                <input
-                  id="video-slug"
-                  type="text"
-                  autoComplete="off"
-                  aria-invalid={Boolean(errors.slug)}
-                  className={INPUT_CLASS}
-                  {...register("slug")}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-auto shrink-0"
-                  onClick={() => setValue("slug", slugifyText(title ?? ""), { shouldValidate: true })}
-                >
-                  Generate
-                </Button>
-              </div>
+              <SlugField
+                id="video-slug"
+                value={slugValue}
+                onChange={(next) => setValue("slug", next, { shouldValidate: true })}
+                title={title ?? ""}
+                slugify={slugifyText}
+                section="videos"
+                excludeId={video?.id}
+                urlPrefix="/watch/"
+                inputClass={INPUT_CLASS}
+              />
             </Field>
 
             <Field id="video-excerpt" label="Excerpt" required error={errors.excerpt?.message} hint="Short card description shown on the Watch grid.">
@@ -318,20 +313,15 @@ export default function AdminVideoFormPage() {
             </Field>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field id="video-category" label="Category" required error={errors.category?.message} hint="Free label, e.g. Talks, Tutorials.">
-                <input
+              <Field id="video-category" label="Category" required error={errors.category?.message} hint="Managed vocabulary — use Manage to add, rename, or remove entries.">
+                <CategoryField
                   id="video-category"
-                  type="text"
-                  list="video-category-options"
-                  aria-invalid={Boolean(errors.category)}
-                  className={INPUT_CLASS}
-                  {...register("category")}
+                  section="videos"
+                  value={categoryValue}
+                  onChange={(next) => setValue("category", next, { shouldValidate: true })}
+                  error={errors.category?.message}
+                  inputClass={INPUT_CLASS}
                 />
-                <datalist id="video-category-options">
-                  {["Talks", "Tutorials", "Sessions", "Workshops", "Events", "Community"].map((option) => (
-                    <option key={option} value={option} />
-                  ))}
-                </datalist>
               </Field>
               <Field id="video-status" label="Status" required error={errors.status?.message} hint="Archived videos stay private publicly.">
                 <select

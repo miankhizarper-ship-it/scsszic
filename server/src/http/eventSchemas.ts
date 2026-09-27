@@ -14,7 +14,12 @@ import { fieldErrorsFromZod } from "./querySchemas.js";
 
 /* ------------------------------ shared pieces ------------------------------ */
 
-/** Same shape the canonical EventCategory union (7 values). */
+/**
+ * Same shape the canonical EventCategory union originally had (7 values).
+ * Kept ONLY for tooling/reference since Phase 10C — the create/update/list
+ * schemas accept any admin-managed category string, matching blogs/gallery/
+ * videos/projects, so the vocabulary can grow without code changes.
+ */
 export const EVENT_CATEGORIES = [
   "Workshops",
   "Seminars",
@@ -99,7 +104,11 @@ export const adminEventCreateSchema = z
     title: z.string().trim().min(1, "Title is required.").max(200),
     excerpt: z.string().trim().min(1, "Excerpt is required.").max(500),
     description: z.string().trim().min(1, "Description is required.").max(20_000),
-    category: z.enum(EVENT_CATEGORIES, { message: "Choose a valid category." }),
+    category: z
+      .string()
+      .trim()
+      .min(1, "Category is required.")
+      .max(60, "Category must be at most 60 characters."),
     status: z.enum(EVENT_STATUSES, { message: "Choose a valid status." }),
     featured: z.boolean().optional(),
     date: isoDateSchema,
@@ -133,7 +142,9 @@ export const adminEventListQuerySchema = z.object({
   page: z.coerce.number().int().min(1).max(10_000).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(10),
   search: z.string().trim().max(200).default(""),
-  category: z.enum(EVENT_CATEGORIES).optional(),
+  // Free string (Phase 10C): the category vocabulary is admin-managed, so
+  // the filter can no longer assume the original fixed enum.
+  category: z.string().trim().max(60).optional(),
   status: z.enum(EVENT_STATUSES).optional(),
   sort: z
     .enum(["date_desc", "date_asc", "title_asc", "title_desc", "created_desc"])

@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
-import { ArrowLeft, LogOut, Menu, X } from "lucide-react";
+import { ArrowLeft, LogOut, Menu, PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
 
-import { adminNavItemsFor, type AdminNavItem } from "@/components/admin/adminNav";
+import { adminNavItemsFor } from "@/components/admin/adminNav";
 import { Badge } from "@/components/ui/Badge";
 import { Logo } from "@/components/ui/Logo";
 import { useAuth } from "@/context/AuthProvider";
@@ -11,10 +11,16 @@ import { cn } from "@/lib/utils";
 import { ROUTES } from "@/routes/paths";
 
 /**
- * AdminShell — layout for the /admin area (Phase 9A, Phase 10B navigation).
+ * AdminShell — full-page layout for the /admin area (Phase 10C chrome).
  *
- * Desktop (≥lg): fixed navy sidebar — SCS branding, section navigation with
- * a clear active state, admin identity, return-to-website, logout.
+ * The admin panel is completely self-contained: the public site top nav and
+ * footer never render here (the /admin route tree sits outside the public
+ * RootLayout), so the sidebar IS the navigation.
+ *
+ * Desktop (≥lg): fixed navy sidebar with a collapse toggle — expanded shows
+ * the familiar labelled navigation; collapsed shrinks to an icon-only rail
+ * with tooltips, persisting the choice in localStorage. The identity panel
+ * and actions adapt to both widths.
  * Mobile (<lg): compact sticky header (hamburger + compact brand + identity)
  * opening a slide-in drawer with the same navigation and actions.
  *
@@ -23,10 +29,31 @@ import { ROUTES } from "@/routes/paths";
  * sections (Users/Audit are never shown to them). This filtering is routing
  * UX; the server independently authorizes every /api/admin/* request.
  */
+
+const SIDEBAR_COLLAPSED_KEY = "scs.admin.sidebarCollapsed";
+
+function readCollapsedPreference(): boolean {
+  try {
+    return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1";
+  } catch {
+    // Storage unavailable (privacy mode) — default to expanded.
+    return false;
+  }
+}
+
+function writeCollapsedPreference(collapsed: boolean): void {
+  try {
+    window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, collapsed ? "1" : "0");
+  } catch {
+    // Non-fatal — the preference simply does not persist.
+  }
+}
+
 export function AdminShell() {
   const { user, logout } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [collapsed, setCollapsed] = useState<boolean>(() => readCollapsedPreference());
   useLockBodyScroll(drawerOpen);
 
   // ESC closes the mobile drawer (keyboard accessibility).
@@ -52,6 +79,14 @@ export function AdminShell() {
   const identityName = user?.displayName ?? roleLabel;
   const identityUsername = user?.username ?? roleLabel.toLowerCase();
 
+  function toggleCollapsed() {
+    setCollapsed((previous) => {
+      const next = !previous;
+      writeCollapsedPreference(next);
+      return next;
+    });
+  }
+
   async function handleLogout() {
     setLoggingOut(true);
     try {
@@ -68,21 +103,67 @@ export function AdminShell() {
 
   return (
     <div className="min-h-screen bg-surface">
-      {/* ---------- Desktop sidebar ---------- */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 flex-col bg-navy-950 lg:flex">
-        <div className="flex items-center gap-2.5 border-b border-white/10 px-5 py-4">
-          <Logo variant="light" />
-          <Badge variant="onDark">{roleLabel}</Badge>
+      {/* ---------- Desktop sidebar (collapsible) ---------- */}
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-40 hidden flex-col bg-navy-950 transition-[width] duration-200 ease-out lg:flex",
+          collapsed ? "w-[76px]" : "w-72",
+        )}
+      >
+        <div
+          className={cn(
+            "flex items-center border-b border-white/10 py-4",
+            collapsed ? "flex-col gap-2 px-2" : "gap-2.5 px-5",
+          )}
+        >
+          <Logo variant="light" showWordmark={!collapsed} />
+          {collapsed ? (
+            <span className="sr-only">{roleLabel}</span>
+          ) : (
+            <Badge variant="onDark">{roleLabel}</Badge>
+          )}
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-expanded={!collapsed}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className={cn(
+              "grid size-9 place-items-center rounded-lg text-slate-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500",
+              collapsed ? "mt-2" : "ml-auto",
+            )}
+          >
+            {collapsed ? (
+              <PanelLeftOpen size={18} aria-hidden="true" />
+            ) : (
+              <PanelLeftClose size={18} aria-hidden="true" />
+            )}
+          </button>
         </div>
-        <AdminNav onNavigate={undefined} />
-        <div className="border-t border-white/10 p-4">
-          <AdminIdentity
-            initials={initials}
-            name={identityName}
-            username={identityUsername}
-            roleLabel={roleLabel}
-          />
-          <AdminActions onLogout={handleLogout} loggingOut={loggingOut} />
+
+        <AdminNav collapsed={collapsed} />
+
+        <div className={cn("border-t border-white/10", collapsed ? "px-2 py-4" : "p-4")}>
+          {collapsed ? (
+            <>
+              <span
+                aria-hidden="true"
+                className="mx-auto grid size-9 place-items-center rounded-full bg-navy-800 font-display text-xs font-bold text-gold-300"
+                title={`${identityName} · @${identityUsername}`}
+              >
+                {initials}
+              </span>
+              <span className="sr-only">{`${identityName} — ${roleLabel}`}</span>
+            </>
+          ) : (
+            <AdminIdentity
+              initials={initials}
+              name={identityName}
+              username={identityUsername}
+              roleLabel={roleLabel}
+            />
+          )}
+          <AdminActions onLogout={handleLogout} loggingOut={loggingOut} collapsed={collapsed} />
         </div>
       </aside>
 
@@ -133,7 +214,7 @@ export function AdminShell() {
                 <X size={20} aria-hidden="true" />
               </button>
             </div>
-            <AdminNav onNavigate={() => setDrawerOpen(false)} />
+            <AdminNav collapsed={false} onNavigate={() => setDrawerOpen(false)} />
             <div className="border-t border-white/10 p-4">
               <AdminIdentity
                 initials={initials}
@@ -141,67 +222,60 @@ export function AdminShell() {
                 username={identityUsername}
                 roleLabel={roleLabel}
               />
-              <AdminActions onLogout={handleLogout} loggingOut={loggingOut} />
+              <AdminActions onLogout={handleLogout} loggingOut={loggingOut} collapsed={false} />
             </div>
           </div>
         </div>
       )}
 
-      {/* ---------- Content ---------- */}
-      <div className="flex min-h-screen flex-col lg:pl-72">
+      {/* ---------- Content (no footer — the admin panel is chrome-free) ---------- */}
+      <div className={cn("flex min-h-screen flex-col transition-[padding] duration-200 ease-out", collapsed ? "lg:pl-[76px]" : "lg:pl-72")}>
         <main className="flex-1 px-4 py-6 sm:px-6 lg:px-10 lg:py-10">
           <Outlet />
         </main>
-        <footer className="border-t border-line px-4 py-4 sm:px-6 lg:px-10">
-          <p className="text-xs text-muted">
-            Society of Computer Science · SZIC, University of Peshawar — admin area
-          </p>
-        </footer>
       </div>
     </div>
   );
 }
 
-/** Sidebar/drawer navigation — filtered by the signed-in account's grants. */
-function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
+/**
+ * Sidebar/drawer navigation — filtered by the signed-in account's grants.
+ * Collapsed mode renders icon-only links with a title tooltip; expanded
+ * mode is the labelled list. No phase badges — the sidebar is purely
+ * functional navigation (Phase 10C cleanup).
+ */
+function AdminNav({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
   const { user } = useAuth();
   const items = adminNavItemsFor(user);
   return (
-    <nav aria-label="Admin sections" className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4">
+    <nav
+      aria-label="Admin sections"
+      className={cn("flex flex-1 flex-col gap-1 overflow-y-auto py-4", collapsed ? "px-2" : "px-3")}
+    >
       {items.map((item) => (
         <NavLink
           key={item.to}
           to={item.to}
           end={item.to === ROUTES.admin.home}
           onClick={onNavigate}
+          title={collapsed ? item.label : undefined}
+          aria-label={collapsed ? item.label : undefined}
           className={({ isActive }) =>
             cn(
-              "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+              "flex items-center gap-3 rounded-lg text-sm font-medium transition-colors",
               "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500",
+              collapsed ? "h-11 justify-center px-0" : "px-3 py-2.5",
               isActive
                 ? "bg-white/10 text-gold-300"
                 : "text-slate-300 hover:bg-white/5 hover:text-white",
             )
           }
         >
-          <NavItemContent item={item} />
+          <item.icon size={18} aria-hidden="true" className="shrink-0" />
+          {!collapsed && <span className="flex-1">{item.label}</span>}
         </NavLink>
       ))}
     </nav>
-  );
-}
-
-function NavItemContent({ item }: { item: AdminNavItem }) {
-  return (
-    <>
-      <item.icon size={18} aria-hidden="true" className="shrink-0" />
-      <span className="flex-1">{item.label}</span>
-      {item.phase === "9B" && (
-        <span className="rounded border border-white/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-slate-400">
-          9B
-        </span>
-      )}
-    </>
   );
 }
 
@@ -236,43 +310,51 @@ function AdminIdentity({
 function AdminActions({
   onLogout,
   loggingOut,
+  collapsed,
 }: {
   onLogout: () => void;
   loggingOut: boolean;
+  collapsed: boolean;
 }) {
   return (
-    <div className="mt-3 flex flex-col gap-2">
-      <ReturnToSiteButton />
+    <div className={cn("flex flex-col gap-2", collapsed ? "mt-3 items-center" : "mt-3")}>
+      <ReturnToSiteButton collapsed={collapsed} />
       <button
         type="button"
         onClick={onLogout}
         disabled={loggingOut}
+        title={collapsed ? "Log out" : undefined}
+        aria-label={collapsed ? "Log out" : undefined}
         className={cn(
-          "inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg text-sm font-semibold transition-colors",
+          "inline-flex items-center justify-center gap-2 rounded-lg text-sm font-semibold transition-colors",
           "border border-white/25 text-white hover:border-gold-400 hover:text-gold-300",
           "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500",
           "disabled:pointer-events-none disabled:opacity-50",
+          collapsed ? "size-10" : "h-9 w-full",
         )}
       >
         <LogOut size={16} aria-hidden="true" />
-        {loggingOut ? "Signing out…" : "Log out"}
+        {!collapsed && (loggingOut ? "Signing out…" : "Log out")}
       </button>
     </div>
   );
 }
 
-function ReturnToSiteButton() {
+function ReturnToSiteButton({ collapsed }: { collapsed: boolean }) {
   return (
     <NavLink
       to={ROUTES.home}
+      title={collapsed ? "Return to website" : undefined}
+      aria-label={collapsed ? "Return to website" : undefined}
       className={cn(
-        "inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg text-sm font-semibold transition-colors",
+        "inline-flex items-center justify-center gap-2 rounded-lg text-sm font-semibold transition-colors",
         "border border-white/25 text-white hover:border-gold-400 hover:text-gold-300",
         "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500",
+        collapsed ? "size-10" : "h-9 w-full",
       )}
     >
       <ArrowLeft size={16} aria-hidden="true" />
-      Return to website
+      {!collapsed && "Return to website"}
     </NavLink>
   );
 }

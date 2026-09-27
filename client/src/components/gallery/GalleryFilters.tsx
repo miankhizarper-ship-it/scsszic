@@ -17,6 +17,9 @@ interface GalleryFiltersProps {
   /** Distinct capture years derived from the dataset (lib/gallerySearch). */
   years: string[];
   onClear: () => void;
+  /** Category options — defaults to the curated constants; pages pass the
+   *  admin-managed vocabulary (Phase 10C) from useCategories("gallery"). */
+  categories?: readonly string[];
   /** Result count / hint content rendered under the filter groups. */
   children?: React.ReactNode;
   className?: string;
@@ -39,11 +42,12 @@ export function GalleryFilters({
   onFilterChange,
   years,
   onClear,
+  categories = GALLERY_CATEGORIES,
   children,
   className,
 }: GalleryFiltersProps) {
   const groups: FilterGroup[] = [
-    { id: "category", label: "Category", options: [ALL, ...GALLERY_CATEGORIES] },
+    { id: "category", label: "Category", options: [ALL, ...categories] },
     { id: "year", label: "Year", options: [ALL, ...years] },
   ];
 

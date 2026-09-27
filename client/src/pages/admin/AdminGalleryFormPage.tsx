@@ -7,6 +7,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/CollectionState";
 import { UploadMediaButton } from "@/components/admin/UploadMediaButton";
+import { SlugField } from "@/components/admin/SlugField";
+import { CategoryField } from "@/components/admin/CategoryField";
 import {
   useAdminAlbum,
   useCreateAlbum,
@@ -179,6 +181,7 @@ export default function AdminGalleryFormPage() {
 
   const title = useWatch({ control, name: "title" });
   const slugValue = useWatch({ control, name: "slug" });
+  const categoryValue = useWatch({ control, name: "category" });
   // One top-level watch for the photo rows (never useWatch inside a loop —
   // the row count changes as photos are added/removed).
   const photosWatch = useWatch({ control, name: "photos" });
@@ -313,28 +316,20 @@ export default function AdminGalleryFormPage() {
               hint={
                 slugDirty
                   ? "Custom slug — it becomes the public page URL (/gallery/your-slug)."
-                  : "URL handle for the public page. Generate it from the title or set your own."
+                  : "URL handle for the public page. Generate searches existing albums first and picks a free variant."
               }
             >
-              <div className="flex gap-2">
-                <input
-                  id="album-slug"
-                  type="text"
-                  autoComplete="off"
-                  aria-invalid={Boolean(errors.slug)}
-                  className={INPUT_CLASS}
-                  {...register("slug")}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-auto shrink-0"
-                  onClick={() => setValue("slug", slugifyText(title ?? ""), { shouldValidate: true })}
-                >
-                  Generate
-                </Button>
-              </div>
+              <SlugField
+                id="album-slug"
+                value={slugValue}
+                onChange={(next) => setValue("slug", next, { shouldValidate: true })}
+                title={title ?? ""}
+                slugify={slugifyText}
+                section="gallery"
+                excludeId={album?.id}
+                urlPrefix="/gallery/"
+                inputClass={INPUT_CLASS}
+              />
             </Field>
 
             <Field id="album-description" label="Description" required error={errors.description?.message} hint="The album's story — shown on the public album page.">
@@ -348,20 +343,15 @@ export default function AdminGalleryFormPage() {
             </Field>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field id="album-category" label="Category" required error={errors.category?.message} hint="Free label, e.g. Workshops, Competitions.">
-                <input
+              <Field id="album-category" label="Category" required error={errors.category?.message} hint="Managed vocabulary — use Manage to add, rename, or remove entries.">
+                <CategoryField
                   id="album-category"
-                  type="text"
-                  list="album-category-options"
-                  aria-invalid={Boolean(errors.category)}
-                  className={INPUT_CLASS}
-                  {...register("category")}
+                  section="gallery"
+                  value={categoryValue}
+                  onChange={(next) => setValue("category", next, { shouldValidate: true })}
+                  error={errors.category?.message}
+                  inputClass={INPUT_CLASS}
                 />
-                <datalist id="album-category-options">
-                  {["Competitions", "Workshops", "Seminars", "Community", "Sessions", "Ceremonies"].map((option) => (
-                    <option key={option} value={option} />
-                  ))}
-                </datalist>
               </Field>
               <Field id="album-status" label="Status" required error={errors.status?.message} hint="Archived albums stay private publicly.">
                 <select
