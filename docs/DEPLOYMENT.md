@@ -124,19 +124,38 @@ Two responsibilities:
      as a CORS failure.
    No other routing, headers, builds, or framework shims are configured.
 
-### 3.3 Modified — `server/tsconfig.json`
+### 3.3 Added — `client/vercel.json`
+
+```json
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+}
+```
+
+SPA fallback for the frontend project. React Router owns URLs such as
+`/events`, `/blogs`, `/login`; on a hard refresh (or a shared direct link)
+the request hits the Vercel edge **before** the app has loaded, no static
+file exists at that path, and without this rewrite Vercel answers its own
+`404 NOT_FOUND`. Vercel's routing checks the filesystem first, so real
+assets (`/assets/*`, favicon) are never intercepted — only unmatched paths
+fall back to `index.html`, where the router takes over. This mirrors the
+development behavior of the Vite dev server, which returns `index.html`
+for unknown paths out of the box.
+
+### 3.4 Modified — `server/tsconfig.json`
 
 `"include": ["src", "api"]` — extends local typechecking (`tsc --noEmit`)
 to the new entrypoint so it is covered by `bun run typecheck` in CI and QA.
 No compiler options changed.
 
-### 3.4 Modified — `server/package.json`
+### 3.5 Modified — `server/package.json`
 
 Added `"engines": { "node": ">=20.19.0" }` (mirrors the monorepo root) so the
 Vercel project pins a runtime that matches the code's expectations. No
 dependency changes; no scripts changed.
 
-### 3.5 Explicitly NOT changed
+### 3.6 Explicitly NOT changed
 
 `src/index.ts`, all routes/controllers/repositories, auth + session logic,
 validation schemas, audit logging, error handling, the client application,
@@ -151,7 +170,7 @@ Vite config, and both `.env.example` files. The production startup guard in
 ```
 GET https://scs-api.vercel.app/api/events?category=competition
   → Vercel edge routing: no static file matches
-  → rewrite /api/(.*) → /api  (server/vercel.json)
+  → rewrite /(.*) → /api  (server/vercel.json)
   → serverless function api/index.ts invoked with the ORIGINAL URL
       → initialize(): ready promise?  cold: connect + indexes (once)
                                       warm: resolved promise (≈0 ms)

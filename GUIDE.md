@@ -126,6 +126,12 @@ Two Vercel **projects** will be created from the same repository:
 4. **Deploy.** Open the frontend URL — the public site should render and load
    content from the API.
 
+> **SPA refresh:** `client/vercel.json` is preconfigured to rewrite every
+> unknown path to `/index.html` (static files always win). That is what makes
+> hard refresh and direct links to deep pages like `/events` or `/login`
+> work — without it Vercel returns `404 NOT_FOUND` on refresh. It is picked
+> up automatically; no dashboard setting needed.
+
 ---
 
 ## 4. Cookie topology (decide before first login)
@@ -201,15 +207,18 @@ Run this checklist after every first deployment (and after major changes):
 
 ## 8. What was changed in this repository for Vercel
 
-Only four files — application code is untouched:
+Only five files — application code is untouched:
 
 1. **`server/api/index.ts`** (new) — serverless adapter that reuses the exact
    same Express app; connects MongoDB + verifies indexes once per warm
    instance before serving; no `listen()`.
-2. **`server/vercel.json`** (new) — one rewrite: `/api/(.*)` → the function.
-3. **`server/tsconfig.json`** (modified) — `"include": ["src", "api"]` so the
+2. **`server/vercel.json`** (new) — one rewrite: `/(.*)` → the function.
+3. **`client/vercel.json`** (new) — SPA fallback: rewrites unknown paths to
+   `/index.html` so refreshing deep links doesn't 404 (Vercel serves real
+   static files first).
+4. **`server/tsconfig.json`** (modified) — `"include": ["src", "api"]` so the
    entrypoint is typechecked.
-4. **`server/package.json`** (modified) — declares `"engines": { "node": ">=20.19.0" }`.
+5. **`server/package.json`** (modified) — declares `"engines": { "node": ">=20.19.0" }`.
 
 `server/src/index.ts` (the `listen()`-based local entrypoint) is unchanged and
 remains the local development server. No routes, controllers, repositories or
