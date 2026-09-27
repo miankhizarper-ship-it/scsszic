@@ -2,7 +2,7 @@ import { createBrowserRouter } from "react-router-dom";
 
 import { RootLayout } from "@/components/layout/RootLayout";
 import { GuestRoute, ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import { AdminRoute } from "@/components/admin/AdminRoute";
+import { AdminOnlyRoute, AdminPermissionRoute, AdminRoute } from "@/components/admin/AdminRoute";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { ROUTES } from "@/routes/paths";
 
@@ -76,6 +76,12 @@ import NotFoundPage from "@/pages/NotFoundPage";
  * Admin Users + Audit (Phase 9H): /admin/users (role/displayName management
  *   with server-side final-admin safeguards), /admin/audit (read-only trail
  *   of every successful privileged mutation)
+ *
+ * Phase 10B: every CMS section (list + form routes) is wrapped in
+ * AdminPermissionRoute so a manage user WITHOUT that section's permission
+ * gets the access-denied panel on direct URL entry instead of a broken page.
+ * Users/Audit stay reachable by admins only — enforced here for routing UX
+ * and independently re-verified server-side on every API call.
  */
 export const appRouter = createBrowserRouter([
   {
@@ -119,32 +125,214 @@ export const appRouter = createBrowserRouter([
         ),
         children: [
           { index: true, element: <AdminDashboardPage /> },
-          { path: "events", element: <AdminEventsPage /> },
-          { path: "events/new", element: <AdminEventFormPage /> },
-          { path: "events/:id/edit", element: <AdminEventFormPage /> },
-          { path: "blogs", element: <AdminBlogsPage /> },
-          { path: "blogs/new", element: <AdminBlogFormPage /> },
-          { path: "blogs/:id/edit", element: <AdminBlogFormPage /> },
-          { path: "alumni", element: <AdminAlumniPage /> },
-          { path: "alumni/new", element: <AdminAlumniFormPage /> },
-          { path: "alumni/:id/edit", element: <AdminAlumniFormPage /> },
-          { path: "gallery", element: <AdminGalleryPage /> },
-          { path: "gallery/new", element: <AdminGalleryFormPage /> },
-          { path: "gallery/:id/edit", element: <AdminGalleryFormPage /> },
-          { path: "videos", element: <AdminVideosPage /> },
-          { path: "videos/new", element: <AdminVideoFormPage /> },
-          { path: "videos/:id/edit", element: <AdminVideoFormPage /> },
-          { path: "members", element: <AdminMembersPage /> },
-          { path: "members/new", element: <AdminMemberFormPage /> },
-          { path: "members/:id/edit", element: <AdminMemberFormPage /> },
-          { path: "projects", element: <AdminProjectsPage /> },
-          { path: "projects/new", element: <AdminProjectFormPage /> },
-          { path: "projects/:id/edit", element: <AdminProjectFormPage /> },
-          { path: "feed", element: <AdminFeedPage /> },
-          { path: "feed/new", element: <AdminFeedFormPage /> },
-          { path: "feed/:id/edit", element: <AdminFeedFormPage /> },
-          { path: "users", element: <AdminUsersPage /> },
-          { path: "audit", element: <AdminAuditPage /> },
+          {
+            path: "events",
+            element: (
+              <AdminPermissionRoute permission="events" label="Events">
+                <AdminEventsPage />
+              </AdminPermissionRoute>
+            ),
+          },
+          {
+            path: "events/new",
+            element: (
+              <AdminPermissionRoute permission="events" label="Events">
+                <AdminEventFormPage />
+              </AdminPermissionRoute>
+            ),
+          },
+          {
+            path: "events/:id/edit",
+            element: (
+              <AdminPermissionRoute permission="events" label="Events">
+                <AdminEventFormPage />
+              </AdminPermissionRoute>
+            ),
+          },
+          {
+            path: "blogs",
+            element: (
+              <AdminPermissionRoute permission="blogs" label="Blogs">
+                <AdminBlogsPage />
+              </AdminPermissionRoute>
+            ),
+          },
+          {
+            path: "blogs/new",
+            element: (
+              <AdminPermissionRoute permission="blogs" label="Blogs">
+                <AdminBlogFormPage />
+              </AdminPermissionRoute>
+            ),
+          },
+          {
+            path: "blogs/:id/edit",
+            element: (
+              <AdminPermissionRoute permission="blogs" label="Blogs">
+                <AdminBlogFormPage />
+              </AdminPermissionRoute>
+            ),
+          },
+          {
+            path: "alumni",
+            element: (
+              <AdminPermissionRoute permission="alumni" label="Alumni">
+                <AdminAlumniPage />
+              </AdminPermissionRoute>
+            ),
+          },
+          {
+            path: "alumni/new",
+            element: (
+              <AdminPermissionRoute permission="alumni" label="Alumni">
+                <AdminAlumniFormPage />
+              </AdminPermissionRoute>
+            ),
+          },
+          {
+            path: "alumni/:id/edit",
+            element: (
+              <AdminPermissionRoute permission="alumni" label="Alumni">
+                <AdminAlumniFormPage />
+              </AdminPermissionRoute>
+            ),
+          },
+          {
+            path: "gallery",
+            element: (
+              <AdminPermissionRoute permission="gallery" label="Gallery">
+                <AdminGalleryPage />
+              </AdminPermissionRoute>
+            ),
+          },
+          {
+            path: "gallery/new",
+            element: (
+              <AdminPermissionRoute permission="gallery" label="Gallery">
+                <AdminGalleryFormPage />
+              </AdminPermissionRoute>
+            ),
+          },
+          {
+            path: "gallery/:id/edit",
+            element: (
+              <AdminPermissionRoute permission="gallery" label="Gallery">
+                <AdminGalleryFormPage />
+              </AdminPermissionRoute>
+            ),
+          },
+          {
+            path: "videos",
+            element: (
+              <AdminPermissionRoute permission="videos" label="Videos">
+                <AdminVideosPage />
+              </AdminPermissionRoute>
+            ),
+          },
+          {
+            path: "videos/new",
+            element: (
+              <AdminPermissionRoute permission="videos" label="Videos">
+                <AdminVideoFormPage />
+              </AdminPermissionRoute>
+            ),
+          },
+          {
+            path: "videos/:id/edit",
+            element: (
+              <AdminPermissionRoute permission="videos" label="Videos">
+                <AdminVideoFormPage />
+              </AdminPermissionRoute>
+            ),
+          },
+          {
+            path: "members",
+            element: (
+              <AdminPermissionRoute permission="members" label="Members">
+                <AdminMembersPage />
+              </AdminPermissionRoute>
+            ),
+          },
+          {
+            path: "members/new",
+            element: (
+              <AdminPermissionRoute permission="members" label="Members">
+                <AdminMemberFormPage />
+              </AdminPermissionRoute>
+            ),
+          },
+          {
+            path: "members/:id/edit",
+            element: (
+              <AdminPermissionRoute permission="members" label="Members">
+                <AdminMemberFormPage />
+              </AdminPermissionRoute>
+            ),
+          },
+          {
+            path: "projects",
+            element: (
+              <AdminPermissionRoute permission="projects" label="Projects">
+                <AdminProjectsPage />
+              </AdminPermissionRoute>
+            ),
+          },
+          {
+            path: "projects/new",
+            element: (
+              <AdminPermissionRoute permission="projects" label="Projects">
+                <AdminProjectFormPage />
+              </AdminPermissionRoute>
+            ),
+          },
+          {
+            path: "projects/:id/edit",
+            element: (
+              <AdminPermissionRoute permission="projects" label="Projects">
+                <AdminProjectFormPage />
+              </AdminPermissionRoute>
+            ),
+          },
+          {
+            path: "feed",
+            element: (
+              <AdminPermissionRoute permission="feed" label="Feed">
+                <AdminFeedPage />
+              </AdminPermissionRoute>
+            ),
+          },
+          {
+            path: "feed/new",
+            element: (
+              <AdminPermissionRoute permission="feed" label="Feed">
+                <AdminFeedFormPage />
+              </AdminPermissionRoute>
+            ),
+          },
+          {
+            path: "feed/:id/edit",
+            element: (
+              <AdminPermissionRoute permission="feed" label="Feed">
+                <AdminFeedFormPage />
+              </AdminPermissionRoute>
+            ),
+          },
+          {
+            path: "users",
+            element: (
+              <AdminOnlyRoute>
+                <AdminUsersPage />
+              </AdminOnlyRoute>
+            ),
+          },
+          {
+            path: "audit",
+            element: (
+              <AdminOnlyRoute>
+                <AdminAuditPage />
+              </AdminOnlyRoute>
+            ),
+          },
         ],
       },
       { path: ROUTES.terms, element: <TermsPage /> },

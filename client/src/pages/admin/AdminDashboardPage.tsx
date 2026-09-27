@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
-import { ArrowUpRight, Clock3, RefreshCw, ShieldCheck } from "lucide-react";
+import { ArrowUpRight, Clock3, LayoutDashboard, RefreshCw, ShieldCheck } from "lucide-react";
 
-import { ADMIN_NAV_ITEMS } from "@/components/admin/adminNav";
+import { ADMIN_NAV_ITEMS, adminNavItemsFor } from "@/components/admin/adminNav";
 import { Badge, type BadgeVariant } from "@/components/ui/Badge";
 import { ErrorState } from "@/components/ui/CollectionState";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -219,9 +219,120 @@ function DashboardSkeleton() {
   );
 }
 
+/**
+ * Phase 10B — dashboard variant for the "manage" role. The aggregate stats
+ * endpoint (GET /api/admin/dashboard) is admin-only, so manage users get a
+ * purposeful landing panel instead: who they are, which CMS sections THEY
+ * can manage, and an honest empty state when they have no grants. No admin
+ * aggregate data is fetched or shown.
+ */
+function ManageDashboardPage() {
+  const { user } = useAuth();
+  const sections = adminNavItemsFor(user).filter((item) => item.permission !== undefined);
+  const memberSince = user ? formatCardDate(user.createdAt) : "—";
+
+  return (
+    <div className="mx-auto w-full max-w-6xl" data-state="ready">
+      <header>
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-gold-600">
+          Content management
+        </p>
+        <h1 className="mt-1 font-display text-2xl font-bold text-navy-900 sm:text-3xl">
+          Dashboard
+        </h1>
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
+          Welcome back, {user?.displayName ?? "content manager"}. You manage only
+          the sections assigned to your account — an administrator can adjust
+          them on the Users page.
+        </p>
+      </header>
+
+      {/* Signed-in identity (manage variant of the Phase 9A panel) */}
+      <section
+        aria-labelledby="admin-identity-heading"
+        className="mt-6 rounded-xl border border-line bg-white p-5 sm:p-6"
+      >
+        <h2 id="admin-identity-heading" className="font-display text-sm font-bold text-navy-900">
+          Signed-in content manager
+        </h2>
+        <dl className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <dt className="text-[11px] font-semibold uppercase tracking-wider text-muted">Name</dt>
+            <dd className="mt-0.5 truncate text-sm font-semibold text-navy-900">
+              {user?.displayName ?? "—"}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-[11px] font-semibold uppercase tracking-wider text-muted">Username</dt>
+            <dd className="mt-0.5 truncate text-sm font-semibold text-navy-900">
+              @{user?.username ?? "—"}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-[11px] font-semibold uppercase tracking-wider text-muted">Role</dt>
+            <dd className="mt-0.5 text-sm font-semibold text-navy-900">Content manager</dd>
+          </div>
+          <div>
+            <dt className="text-[11px] font-semibold uppercase tracking-wider text-muted">Member since</dt>
+            <dd className="mt-0.5 text-sm font-semibold text-navy-900">{memberSince}</dd>
+          </div>
+        </dl>
+        <p className="mt-4 flex items-center gap-2 text-xs text-muted">
+          <ShieldCheck size={14} aria-hidden="true" className="shrink-0 text-gold-600" />
+          Every request is re-verified server-side against your account's own
+          permissions over the existing HTTP-only session cookie.
+        </p>
+      </section>
+
+      {/* The sections THIS account may manage — no fabricated global stats */}
+      <section id="admin-overview" aria-labelledby="admin-manage-sections-heading" className="mt-8">
+        <h2 id="admin-manage-sections-heading" className="font-display text-lg font-bold text-navy-900">
+          Your sections
+        </h2>
+        <p className="mt-1 text-sm text-muted">
+          Content areas assigned to your account by an administrator.
+        </p>
+        {sections.length === 0 ? (
+          <div className="mt-4">
+            <EmptyState
+              icon={LayoutDashboard}
+              title="No sections assigned yet"
+              description="Your account can sign in, but no CMS sections have been granted to it. An administrator can assign sections from the Users page — you will see them here after signing out and back in, or on your next visit."
+            />
+          </div>
+        ) : (
+          <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {sections.map((item) => (
+              <li key={item.to}>
+                <Link
+                  to={item.to}
+                  className="flex h-full items-center gap-2.5 rounded-xl border border-line bg-white px-4 py-4 text-sm font-semibold text-navy-900 transition-colors hover:border-gold-400 hover:bg-navy-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500"
+                >
+                  <item.icon size={18} aria-hidden="true" className="shrink-0 text-navy-700" />
+                  <span className="truncate">{item.label}</span>
+                  <ArrowUpRight
+                    size={14}
+                    aria-hidden="true"
+                    className="ml-auto shrink-0 text-muted"
+                  />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  );
+}
+
 export default function AdminDashboardPage() {
   const { user } = useAuth();
-  const { data, isError, isFetching, refetch } = useAdminDashboard();
+  const isManage = user?.role === "manage";
+  const { data, isError, isFetching, refetch } = useAdminDashboard({ enabled: !isManage });
+
+  if (isManage) {
+    return <ManageDashboardPage />;
+  }
 
   const memberSince = user ? formatCardDate(user.createdAt) : "—";
 

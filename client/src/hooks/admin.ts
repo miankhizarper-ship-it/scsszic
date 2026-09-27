@@ -70,11 +70,14 @@ import type {
  * page must refetch to stay truthful. User mutations invalidate the admin
  * users list and the audit trail. No CMS state touches localStorage.
  */
-export function useAdminDashboard() {
+export function useAdminDashboard(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ["admin", "dashboard"],
     queryFn: () => adminService.getDashboard(),
     staleTime: 0,
+    /** Phase 10B — manage users never call this admin-only endpoint; the
+     *  dashboard renders a section-links panel for them instead. */
+    enabled: options?.enabled ?? true,
   });
 }
 

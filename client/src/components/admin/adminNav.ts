@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { ROUTES } from "@/routes/paths";
+import type { AdminPermission, AuthUser } from "@/types";
 
 export interface AdminNavItem {
   label: string;
@@ -22,6 +23,32 @@ export interface AdminNavItem {
   description: string;
   /** "9A" = shipped with the foundation; "9B" = placeholder until implemented. */
   phase: "9A" | "9B";
+  /**
+   * Phase 10B — the CMS permission this section requires. undefined = every
+   * admin-panel role sees it (Dashboard) or it is admin-only (Users/Audit via
+   * `adminOnly`). The sidebar reflection is UX only; the API is the boundary.
+   */
+  permission?: AdminPermission;
+  /** Phase 10B — sections manage users must NEVER see (Users, Audit). */
+  adminOnly?: boolean;
+}
+
+/**
+ * Phase 10B — sidebar entries for the authenticated admin-panel user:
+ *   admin  → every item (permissions irrelevant, full access);
+ *   manage → Dashboard + only the CMS sections in the USER'S OWN permissions;
+ *            admin-only items (Users/Audit) are never shown.
+ * Direct URL access is re-checked per route by AdminPermissionRoute and
+ * independently enforced server-side — this filter is presentation only.
+ */
+export function adminNavItemsFor(user: Pick<AuthUser, "role" | "permissions"> | null): AdminNavItem[] {
+  if (!user) return [];
+  if (user.role === "admin") return ADMIN_NAV_ITEMS;
+  if (user.role !== "manage") return [];
+  const granted = new Set(user.permissions ?? []);
+  return ADMIN_NAV_ITEMS.filter(
+    (item) => !item.adminOnly && (item.permission === undefined || granted.has(item.permission)),
+  );
 }
 
 /**
@@ -44,6 +71,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     icon: CalendarDays,
     description: "Create and manage society events.",
     phase: "9B",
+    permission: "events",
   },
   {
     label: "Blogs",
@@ -51,6 +79,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     icon: FileText,
     description: "Write, publish, and archive articles.",
     phase: "9B",
+    permission: "blogs",
   },
   {
     label: "Alumni",
@@ -58,6 +87,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     icon: GraduationCap,
     description: "Curate the alumni directory.",
     phase: "9B",
+    permission: "alumni",
   },
   {
     label: "Gallery",
@@ -65,6 +95,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     icon: Images,
     description: "Organize event photo albums.",
     phase: "9B",
+    permission: "gallery",
   },
   {
     label: "Videos",
@@ -72,6 +103,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     icon: Clapperboard,
     description: "Manage the Watch media hub.",
     phase: "9B",
+    permission: "videos",
   },
   {
     label: "Members",
@@ -79,6 +111,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     icon: Users,
     description: "Maintain the member directory.",
     phase: "9B",
+    permission: "members",
   },
   {
     label: "Projects",
@@ -86,6 +119,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     icon: FolderKanban,
     description: "Review the student project showcase.",
     phase: "9B",
+    permission: "projects",
   },
   {
     label: "Feed",
@@ -93,6 +127,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     icon: Newspaper,
     description: "Moderate community feed posts.",
     phase: "9B",
+    permission: "feed",
   },
   {
     label: "Users",
@@ -100,6 +135,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     icon: UserCog,
     description: "Manage accounts and roles.",
     phase: "9B",
+    adminOnly: true,
   },
   {
     label: "Audit",
@@ -107,5 +143,6 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     icon: ScrollText,
     description: "Review the admin action log.",
     phase: "9B",
+    adminOnly: true,
   },
 ];

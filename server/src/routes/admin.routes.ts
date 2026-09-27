@@ -1,6 +1,10 @@
 import { Router } from "express";
 
-import { requireAdmin } from "../auth/authMiddleware.js";
+import {
+  requireAdminOrPermission,
+  requireAdminSection,
+  requirePanelAccess,
+} from "../auth/authMiddleware.js";
 import { getAdminPing } from "../controllers/admin/admin.controller.js";
 import { getAdminDashboard } from "../controllers/admin/dashboard.controller.js";
 import {
@@ -178,17 +182,49 @@ import { uploadSingleFile } from "../services/storage/multipart.js";
  * mounted at the apiRouter root — the "/admin" prefix scopes the namespace
  * guard to /api/admin/* only, so unknown /api/* paths still fall through to
  * the 404 handler instead of being swallowed by this router.
+ *
+ * Phase 10B — granular authorization. The namespace guard is now
+ * requirePanelAccess (auth + role admin|manage; members still 403). On top
+ * of it:
+ *   - requireAdminSection keeps users/audit/uploads/dashboard/ping
+ *     admin-ONLY (manage users must never reach user management, the audit
+ *     trail, media uploads, or aggregate stats);
+ *   - requireAdminOrPermission(section) gates each CMS section — the admin
+ *     role always passes; a manage role passes only when THAT user's own
+ *     permissions include the section. Permission checks read req.user,
+ *     which requireAuth re-resolves from MongoDB on every request, so grants
+ *     and revocations take effect on the next request without session churn.
+ * Client-side sidebar filtering is routing UX only and carries no security
+ * weight, exactly as before.
  */
 export const adminRouter = Router();
 
-adminRouter.use("/admin", requireAdmin);
+adminRouter.use("/admin", requirePanelAccess);
+
+// Admin-only sections — manage users are rejected here (403, generic envelope).
+adminRouter.use("/admin/ping", requireAdminSection);
+adminRouter.use("/admin/dashboard", requireAdminSection);
+adminRouter.use("/admin/uploads", requireAdminSection);
+adminRouter.use("/admin/users", requireAdminSection);
+adminRouter.use("/admin/audit", requireAdminSection);
+
+// CMS sections — permission-gated (admin always; manage per-user grants).
+adminRouter.use("/admin/events", requireAdminOrPermission("events"));
+adminRouter.use("/admin/blogs", requireAdminOrPermission("blogs"));
+adminRouter.use("/admin/alumni", requireAdminOrPermission("alumni"));
+adminRouter.use("/admin/members", requireAdminOrPermission("members"));
+adminRouter.use("/admin/projects", requireAdminOrPermission("projects"));
+adminRouter.use("/admin/feed", requireAdminOrPermission("feed"));
+adminRouter.use("/admin/gallery", requireAdminOrPermission("gallery"));
+adminRouter.use("/admin/videos", requireAdminOrPermission("videos"));
 
 adminRouter.get("/admin/ping", getAdminPing);
 adminRouter.get("/admin/dashboard", getAdminDashboard);
 
 // Media uploads (Phase 10A) — Cloudflare R2 via the storage service. Both
-// routes are admin-only through the namespace guard above; the multipart
-// body is parsed in-memory (serverless-safe) and never touches the disk.
+// routes stay ADMIN-ONLY (Phase 10B requireAdminSection above): manage users
+// work with URL inputs; per-permission upload grants are a later decision.
+// The multipart body is parsed in-memory (serverless-safe), never on disk.
 adminRouter.post("/admin/uploads", uploadSingleFile("file"), uploadAdminMedia);
 adminRouter.delete("/admin/uploads", deleteAdminMedia);
 

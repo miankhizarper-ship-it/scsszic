@@ -1,13 +1,16 @@
 import type { Request, RequestHandler, Response } from "express";
 
 import { withErrorBoundary } from "../content/content.controller.js";
+import type { AdminPermission } from "../../auth/types.js";
 import { adminUsersRepository } from "../../repositories/adminUsersRepository.js";
 import {
   adminUserListQuerySchema,
   adminUserUpdateSchema,
+  normalizeAdminPermissions,
   sanitizeAdminUserId,
   userFieldErrors,
 } from "../../http/userSchemas.js";
+import type { AdminUserUpdateInput } from "../../http/userSchemas.js";
 import { sessionStore } from "../../auth/store.js";
 import { recordAudit } from "../../audit/auditLogger.js";
 
@@ -78,9 +81,18 @@ export const getAdminUser: RequestHandler = withErrorBoundary(
 );
 
 /**
- * PATCH /api/admin/users/:id — displayName and/or role update with the
- * final-admin safeguard. A role change audit entry distinguishes the
- * sensitive dimension (user.role.updated) from an ordinary profile edit.
+ * PATCH /api/admin/users/:id — displayName, role and/or per-user permissions
+ * update (Phase 10B extends the Phase 9H surface) with the final-admin
+ * safeguard. Audit entries distinguish the sensitive dimensions
+ * (user.role.updated / user.permissions.updated) from an ordinary edit.
+ *
+ * Permission policy (server-side, authoritative):
+ *   - the effective role AFTER this update decides the stored grants;
+ *   - "manage" keeps/sets the requested (validated, deduped, canonically
+ *     ordered) permission list;
+ *   - switching to member/admin CLEARS the stored list — stale manage grants
+ *     can never linger on an account that no longer has the manage role;
+ *     admins bypass permission checks anyway, so their stored list stays [].
  */
 export const updateAdminUser: RequestHandler = withErrorBoundary(
   async (req: Request, res: Response) => {
@@ -104,17 +116,20 @@ export const updateAdminUser: RequestHandler = withErrorBoundary(
       return;
     }
 
-    // Safeguard: demoting the LAST administrator (self or anyone) is always
-    // rejected. Self-demotion with another admin present is allowed — that
-    // is a deliberate handover, and the other admin retains access.
-    const demotesSelfToMember = req.user?.id === id && parsed.data.role === "member";
+    const effectiveRole = parsed.data.role ?? existing.role;
+
+    // Safeguard: demoting the LAST administrator (to member OR manage —
+    // anything that strips the admin role) is always rejected, self or
+    // anyone. Self-demotion with another admin present is allowed — that is
+    // a deliberate handover, and the other admin retains access.
+    const demotesSelf = req.user?.id === id && effectiveRole !== "admin";
     if (
       existing.role === "admin" &&
-      parsed.data.role === "member" &&
+      effectiveRole !== "admin" &&
       (await adminUsersRepository.countOtherAdmins(id)) === 0
     ) {
       res.status(409).json({
-        message: demotesSelfToMember
+        message: demotesSelf
           ? "You are the only administrator — promote another administrator before stepping down."
           : LAST_ADMIN,
         errors: { role: LAST_ADMIN },
@@ -122,7 +137,26 @@ export const updateAdminUser: RequestHandler = withErrorBoundary(
       return;
     }
 
-    const user = await adminUsersRepository.update(id, parsed.data);
+    // Permissions normalization: only "manage" accounts carry grants.
+    let permissions: AdminPermission[] | undefined;
+    if (parsed.data.permissions !== undefined) {
+      permissions =
+        effectiveRole === "manage"
+          ? normalizeAdminPermissions(parsed.data.permissions)
+          : []; // stale grants cleared when the role is not manage
+    } else if (parsed.data.role !== undefined && existing.role === "manage" && effectiveRole !== "manage") {
+      // Role switched AWAY from manage without an explicit permissions key —
+      // clear proactively so revoked managers keep no dormant grants.
+      permissions = [];
+    }
+
+    const update: AdminUserUpdateInput = {
+      ...(parsed.data.displayName !== undefined ? { displayName: parsed.data.displayName } : {}),
+      ...(parsed.data.role !== undefined ? { role: parsed.data.role } : {}),
+      ...(permissions !== undefined ? { permissions } : {}),
+    };
+
+    const user = await adminUsersRepository.update(id, update);
     if (!user) {
       res.status(404).json({ message: NOT_FOUND });
       return;
@@ -137,12 +171,34 @@ export const updateAdminUser: RequestHandler = withErrorBoundary(
         metadata: { from: existing.role, to: parsed.data.role },
       });
     }
+
+    const before = existing.permissions ?? [];
+    const after = user.permissions ?? [];
+    const permissionsChanged =
+      permissions !== undefined &&
+      (before.length !== after.length || before.some((entry) => !after.includes(entry)));
+    if (permissionsChanged) {
+      const added = after.filter((entry) => !before.includes(entry));
+      const removed = before.filter((entry) => !after.includes(entry));
+      await recordAudit(req, {
+        action: "user.permissions.updated",
+        resourceType: "user",
+        resourceId: id,
+        resourceLabel: user.username,
+        metadata: {
+          ...(added.length > 0 ? { added: added.join(", ") } : {}),
+          ...(removed.length > 0 ? { removed: removed.join(", ") } : {}),
+          total: after.length,
+        },
+      });
+    }
+
     await recordAudit(req, {
       action: "user.updated",
       resourceType: "user",
       resourceId: id,
       resourceLabel: user.username,
-      metadata: { fields: Object.keys(parsed.data).sort().join(", ") },
+      metadata: { fields: Object.keys(update).sort().join(", ") },
     });
 
     res.status(200).json({ data: user });

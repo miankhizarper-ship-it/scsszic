@@ -558,7 +558,40 @@ export interface ListEnvelope<T> {
 
 /* ---------- Auth (Phase 7) ---------- */
 
-export type AuthUserRole = "member" | "admin";
+/** Phase 10B — "manage" is the content-manager role (per-user CMS grants). */
+export type AuthUserRole = "member" | "manage" | "admin";
+
+/**
+ * Phase 10B — the eight CMS sections a "manage" user can be granted,
+ * matching the server's ADMIN_PERMISSIONS (auth/types.ts). Permissions belong
+ * to individual users; the admin role bypasses permission checks entirely.
+ * Server-side requireAdminOrPermission is the security boundary — client
+ * filtering of navigation/routes is UX only.
+ */
+export const ADMIN_PERMISSIONS = [
+  "events",
+  "blogs",
+  "alumni",
+  "members",
+  "projects",
+  "feed",
+  "gallery",
+  "videos",
+] as const;
+
+export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];
+
+/** Human labels for the permission editor, keyed by section. */
+export const ADMIN_PERMISSION_LABELS: Record<AdminPermission, string> = {
+  events: "Events",
+  blogs: "Blogs",
+  alumni: "Alumni",
+  members: "Members",
+  projects: "Projects",
+  feed: "Feed",
+  gallery: "Gallery",
+  videos: "Videos",
+};
 
 /** Client-safe account representation from /api/auth/* — never contains
  *  password hashes or session internals (the session is an HTTP-only cookie). */
@@ -568,6 +601,9 @@ export interface AuthUser {
   email: string;
   displayName: string;
   role: AuthUserRole;
+  /** Phase 10B — CMS sections this account may manage ([] unless role is
+   *  "manage" with grants; admins bypass permission checks server-side). */
+  permissions: AdminPermission[];
   /** Phase 6 Member profile this account can claim, when linked. */
   memberProfileId?: string;
   createdAt: string;
@@ -1063,7 +1099,9 @@ export interface AdminUser {
   username: string;
   email: string;
   displayName: string;
-  role: "member" | "admin";
+  role: "member" | "manage" | "admin";
+  /** Phase 10B — per-user CMS grants ([] for member/admin accounts). */
+  permissions: AdminPermission[];
   memberProfileId?: string;
   createdAt: string;
   updatedAt: string;
@@ -1073,6 +1111,9 @@ export interface AdminUser {
 export interface AdminUserUpdate {
   displayName?: string;
   role?: AdminUser["role"];
+  /** Phase 10B — CMS sections granted to this account. Only meaningful for
+   *  the "manage" role; the server clears grants for member/admin. */
+  permissions?: AdminPermission[];
 }
 
 /** Server-side sort options for the admin users management table. */

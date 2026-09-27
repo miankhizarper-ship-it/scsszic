@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AlertTriangle, RefreshCw, ShieldCheck, UserCog, Users, X } from "lucide-react";
+import { AlertTriangle, KeyRound, RefreshCw, ShieldCheck, UserCog, Users, X } from "lucide-react";
 
 import { AdminEventDeleteDialog } from "@/components/admin/AdminEventDeleteDialog";
 import { Badge, type BadgeVariant } from "@/components/ui/Badge";
@@ -11,29 +11,38 @@ import { SearchInput } from "@/components/ui/SearchInput";
 import { useAdminUsers, useDeleteUser, useUpdateUser } from "@/hooks/admin";
 import { useAuth } from "@/context/AuthProvider";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { cn } from "@/lib/utils";
 import { formatCardDate } from "@/lib/format";
-import type { AdminUser, AdminUserSort } from "@/types";
+import {
+  ADMIN_PERMISSIONS,
+  ADMIN_PERMISSION_LABELS,
+} from "@/types";
+import type { AdminPermission, AdminUser, AdminUserSort } from "@/types";
 
 /**
- * Admin Users CMS (Phase 9H) — the /admin/users management page over the
- * EXISTING auth accounts through GET /api/admin/users (requireAdmin-gated).
+ * Admin Users CMS (Phase 9H, Phase 10B role/permission management) — the
+ * /admin/users management page over the EXISTING auth accounts through
+ * GET /api/admin/users (admin-only API).
  *
- * Scope follows the actual model (no invented account state):
- *  - editable fields are displayName + role; username/email/password are
- *    NOT editable here (login identity + signup flow own those);
+ * Scope follows the actual model:
+ *  - editable fields are displayName + role + (Phase 10B) per-user CMS
+ *    permissions; username/email/password are NOT editable here (login
+ *    identity + signup flow own those);
  *  - there is deliberately NO create button — accounts self-register via
  *    the public signup flow;
- *  - deletion is safeguarded server-side (never the last admin, never the
- *    signed-in account) and the UI communicates the same rules while the
- *    server stays the authority.
+ *  - deletion/role changes are safeguarded server-side (never the last
+ *    admin, never the signed-in account) and the UI communicates the same
+ *    rules while the server stays the authority.
  *
- * Role changes are high-impact: the edit dialog explains the consequence
- * and every successful write lands in the server-side audit trail.
+ * Phase 10B: the "manage" role unlocks a permission editor — checkboxes for
+ * the eight CMS sections, saved with the same PATCH. Permissions only take
+ * effect for the manage role; the server clears them when the role moves to
+ * member/admin, so stale grants can never linger.
  */
 
 const PAGE_SIZE = 10;
 
-const ROLE_OPTIONS = ["member", "admin"] as const;
+const ROLE_OPTIONS = ["member", "manage", "admin"] as const;
 
 const SORT_OPTIONS: Array<{ value: AdminUserSort; label: string }> = [
   { value: "created_desc", label: "Newest accounts first" },
@@ -50,10 +59,79 @@ function formatRole(role: string): string {
 
 function roleChipStyle(role: string): { variant: BadgeVariant; className?: string } {
   if (role === "admin") return { variant: "goldSoft" };
-  return { variant: "navySoft" };
+  if (role === "manage") return { variant: "navySoft" };
+  return { variant: "navySoft", className: "border-line bg-surface text-muted" };
 }
 
-/** Accessible edit dialog — displayName + role, server errors surface inline. */
+/** Compact permission chips under the role badge for manage accounts. */
+function PermissionChips({ permissions }: { permissions: AdminPermission[] }) {
+  if (permissions.length === 0) return null;
+  return (
+    <span className="mt-1 flex flex-wrap gap-1">
+      {permissions.map((permission) => (
+        <span
+          key={permission}
+          className="rounded border border-navy-100 bg-white px-1.5 py-0.5 text-[10px] font-semibold text-navy-700"
+        >
+          {ADMIN_PERMISSION_LABELS[permission]}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+/**
+ * Permission editor (Phase 10B) — checkbox grid over the eight CMS sections.
+ * Purely local state; the server validates, dedupes, canonicalizes, and
+ * clears the list whenever the effective role is not "manage".
+ */
+function PermissionEditor({
+  selected,
+  onToggle,
+}: {
+  selected: AdminPermission[];
+  onToggle: (permission: AdminPermission) => void;
+}) {
+  return (
+    <fieldset className="rounded-lg border border-line bg-surface p-3">
+      <legend className="flex items-center gap-1.5 px-1 text-xs font-semibold uppercase tracking-[0.16em] text-muted">
+        <KeyRound size={13} aria-hidden="true" />
+        CMS sections
+      </legend>
+      <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1.5 sm:grid-cols-3">
+        {ADMIN_PERMISSIONS.map((permission) => {
+          const checked = selected.includes(permission);
+          const checkboxId = `admin-user-perm-${permission}`;
+          return (
+            <label
+              key={permission}
+              htmlFor={checkboxId}
+              className={cn(
+                "flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
+                "hover:bg-navy-50",
+              )}
+            >
+              <input
+                id={checkboxId}
+                type="checkbox"
+                checked={checked}
+                onChange={() => onToggle(permission)}
+                className="size-4 shrink-0 rounded border-line text-gold-600 accent-gold-600 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold-500"
+              />
+              <span className="truncate text-ink">{ADMIN_PERMISSION_LABELS[permission]}</span>
+            </label>
+          );
+        })}
+      </div>
+      <p className="mt-2 text-xs leading-relaxed text-muted">
+        Sections this account may open and edit. Everything else — including
+        Users, Audit, and uploads — stays administrator-only.
+      </p>
+    </fieldset>
+  );
+}
+
+/** Accessible edit dialog — displayName + role + permissions, inline errors. */
 function UserEditDialog({
   user,
   isSelf,
@@ -66,6 +144,7 @@ function UserEditDialog({
   const updateUser = useUpdateUser();
   const [displayName, setDisplayName] = useState(user.displayName);
   const [role, setRole] = useState<AdminUser["role"]>(user.role);
+  const [permissions, setPermissions] = useState<AdminPermission[]>(user.permissions ?? []);
   const dialogRef = useRef<HTMLDivElement>(null);
 
   // ESC cancels; focus lands on the first field; focus returns on close.
@@ -83,12 +162,33 @@ function UserEditDialog({
     };
   }, [onClose, updateUser.isPending]);
 
-  const dirty = displayName !== user.displayName || role !== user.role;
+  const samePermissions =
+    permissions.length === (user.permissions ?? []).length &&
+    permissions.every((entry) => (user.permissions ?? []).includes(entry));
+  const dirty =
+    displayName !== user.displayName || role !== user.role || !samePermissions;
   const serverError = updateUser.isError ? updateUser.error?.message ?? null : null;
 
+  function togglePermission(permission: AdminPermission) {
+    setPermissions((current) =>
+      current.includes(permission)
+        ? current.filter((entry) => entry !== permission)
+        : [...current, permission],
+    );
+  }
+
   function submit() {
+    // Permissions are always sent in canonical client order; the server
+    // re-validates and clears them automatically for non-manage roles.
     updateUser.mutate(
-      { id: user.id, body: { displayName: displayName.trim(), role } },
+      {
+        id: user.id,
+        body: {
+          displayName: displayName.trim(),
+          role,
+          permissions: role === "manage" ? permissions : [],
+        },
+      },
       { onSuccess: onClose },
     );
   }
@@ -171,13 +271,22 @@ function UserEditDialog({
                 </option>
               ))}
             </select>
-            {isSelf && role === "member" && user.role === "admin" && (
+            {isSelf && user.role === "admin" && role !== "admin" && (
               <p className="mt-1.5 text-xs leading-relaxed text-error" role="note">
                 You are stepping down from administration. This is rejected while you are the
                 only administrator — promote another account first.
               </p>
             )}
           </div>
+          {role === "manage" && (
+            <PermissionEditor selected={permissions} onToggle={togglePermission} />
+          )}
+          {role !== "manage" && (user.permissions ?? []).length > 0 && (
+            <p className="text-xs leading-relaxed text-muted" role="note">
+              Saving this role clears the account's CMS section grants — they only
+              apply to content managers.
+            </p>
+          )}
         </div>
 
         {serverError && (
@@ -222,6 +331,7 @@ function UserRowCells({ user, isSelf }: { user: AdminUser; isSelf: boolean }) {
           <ShieldCheck size={12} aria-hidden="true" className="mr-1 inline" />
           {formatRole(user.role)}
         </Badge>
+        <PermissionChips permissions={user.permissions ?? []} />
       </td>
       <td className="px-4 py-3.5">
         <span className="block truncate text-sm text-ink">{formatCardDate(user.createdAt)}</span>
@@ -280,7 +390,10 @@ function UserCard({ user, isSelf, onEdit, onDelete }: UserRowProps) {
           </p>
           <p className="mt-0.5 truncate text-xs text-muted">@{user.username}</p>
         </div>
-        <Badge variant={style.variant}>{formatRole(user.role)}</Badge>
+        <div>
+          <Badge variant={style.variant}>{formatRole(user.role)}</Badge>
+          <PermissionChips permissions={user.permissions ?? []} />
+        </div>
       </div>
 
       <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">

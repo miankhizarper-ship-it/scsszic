@@ -4,7 +4,8 @@ import { sessionStore, userRepository } from "./store.js";
 import { getUserFromToken } from "./session.js";
 import { SESSION_COOKIE_NAME } from "./cookies.js";
 import { clearSessionCookie } from "./cookies.js";
-import { toPublicUser } from "./types.js";
+import { toAdminPermissions, toPublicUser } from "./types.js";
+import type { AdminPermission } from "./types.js";
 
 /**
  * Authentication middleware.
@@ -103,4 +104,104 @@ export function requireAdmin(
     }
     next();
   });
+}
+
+/* ------------------------------------------------------------------------
+ * Phase 10B — granular admin-panel authorization.
+ *
+ * The admin namespace is now layered:
+ *
+ *   requirePanelAccess                     the /admin namespace gate —
+ *                                          requireAuth + role ∈ {admin,
+ *                                          manage}; members stay 403.
+ *   requireAdminSection                    role-only "admin-only" gate for
+ *                                          the sections manage users must
+ *                                          NEVER reach (users, audit,
+ *                                          uploads, dashboard, ping). Runs
+ *                                          after the panel gate, so the
+ *                                          session is already resolved —
+ *                                          exactly one DB lookup/request.
+ *   requireAdminOrPermission(perm)         the per-CMS-section gate — admin
+ *                                          always allowed; manage allowed
+ *                                          only when the USER'S OWN
+ *                                          permissions include `perm`;
+ *                                          members/anon rejected.
+ *
+ * req.user is re-read from the session store + users collection on EVERY
+ * request (requireAuth), so role/permission changes made by an admin take
+ * effect on the affected account's very next request — no session
+ * invalidation step, nothing cached client-side is trusted.
+ * ------------------------------------------------------------------------ */
+
+/** Admin-panel namespace gate (Phase 10B): authentication + admin|manage. */
+export function requirePanelAccess(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
+  requireAuth(req, res, () => {
+    const role = req.user?.role;
+    if (role !== "admin" && role !== "manage") {
+      res.status(403).json({ message: "You do not have access to this resource." });
+      return;
+    }
+    next();
+  });
+}
+
+/**
+ * Admin-only section gate (Phase 10B) — layered AFTER requirePanelAccess on
+ * the /admin sections manage users must never reach (users, audit, uploads,
+ * dashboard, ping). Same 403 envelope as requireAdmin; the generic message
+ * never reveals whether the resource exists.
+ */
+export function requireAdminSection(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
+  if (!req.user) {
+    res.status(401).json({ message: "Authentication required." });
+    return;
+  }
+  if (req.user.role !== "admin") {
+    res.status(403).json({ message: "You do not have access to this resource." });
+    return;
+  }
+  next();
+}
+
+/**
+ * Per-CMS-section authorization gate (Phase 10B) — the Phase 10B spec's
+ * requireAdminOrPermission("events") primitive.
+ *
+ *   admin                       → always allowed (permissions irrelevant)
+ *   manage + user permission    → allowed
+ *   manage without / member /   → 403, generic envelope, no existence leak
+ *   anonymous                   → 401 when the session never resolved
+ *
+ * Runs after requirePanelAccess (which has already authenticated the
+ * request), but stays self-sufficient so it can guard any route stack.
+ */
+export function requireAdminOrPermission(
+  permission: AdminPermission,
+): (req: Request, res: Response, next: NextFunction) => void {
+  return (req, res, next) => {
+    if (!req.user) {
+      res.status(401).json({ message: "Authentication required." });
+      return;
+    }
+    if (req.user.role === "admin") {
+      next();
+      return;
+    }
+    if (
+      req.user.role === "manage" &&
+      toAdminPermissions(req.user.permissions).includes(permission)
+    ) {
+      next();
+      return;
+    }
+    res.status(403).json({ message: "You do not have access to this resource." });
+  };
 }

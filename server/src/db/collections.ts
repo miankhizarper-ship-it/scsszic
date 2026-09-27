@@ -1,6 +1,7 @@
 import type { Collection } from "mongodb";
 
 import { getDatabase } from "./client.js";
+import type { AdminPermission } from "../auth/types.js";
 import type {
   Alumnus,
   Blog,
@@ -43,7 +44,11 @@ export interface UserDoc {
   /** bcrypt hash — server-only, never returned or logged. */
   passwordHash: string;
   displayName: string;
-  role: "member" | "admin";
+  role: "member" | "manage" | "admin";
+  /** Phase 10B — per-user CMS grants for the "manage" role. Optional in the
+   *  document so pre-10B records stay valid without any migration; the
+   *  repository mapping normalizes absence to []. */
+  permissions?: AdminPermission[];
   memberProfileId?: string;
   createdAt: string;
   updatedAt: string;
@@ -73,7 +78,7 @@ export interface AuditLogDoc {
   actorId: string;
   /** Actor identity snapshot — readable even if the account changes/deletes. */
   actorUsername: string;
-  actorRole: "member" | "admin";
+  actorRole: "member" | "manage" | "admin";
   /** Dotted action, e.g. "event.created" / "user.role.updated". */
   action: string;
   /** Resource family, e.g. "event" / "blog" / "user" / "gallery". */

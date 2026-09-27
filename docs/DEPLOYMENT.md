@@ -349,6 +349,26 @@ console step — the app never creates buckets or credentials.
   on event/gallery/videos/blog forms, public gallery + home render all
   seeded images (network-verified, no page errors)
 
+## 9B. Phase 10B — manage role + granular CMS permissions (additive)
+
+Authorization only — no deployment/env changes:
+
+- `users` documents gain an optional `permissions: string[]` field
+  (admin-granted CMS sections). Absent field behaves as `[]`, so existing
+  databases need **no migration**.
+- New middleware on `server`: `requirePanelAccess` (namespace gate for
+  admin|manage), `requireAdminSection` (users/audit/uploads/dashboard stay
+  admin-only), `requireAdminOrPermission(section)` (per-CMS-section gate).
+  `requireAdmin` itself is unchanged.
+- `PATCH /api/admin/users/:id` accepts `permissions` (manage accounts only;
+  cleared automatically for member/admin). New audit actions:
+  `user.permissions.updated`. The final-admin safeguard now also covers
+  demotion to `manage`.
+- No new environment variables; no client deployment differences beyond the
+  normal build. See GUIDE §10 for operator-facing behavior.
+
+---
+
 ## 10. Deployment checklist (condensed)
 
 - [ ] Atlas cluster + DB user + `0.0.0.0/0` network rule

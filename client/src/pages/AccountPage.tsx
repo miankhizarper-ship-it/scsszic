@@ -93,7 +93,11 @@ export default function AccountPage() {
             <div className="min-w-0">
               <Badge variant="onDark">
                 <ShieldCheck size={12} aria-hidden="true" className="mr-1" />
-                {user.role === "admin" ? "Administrator" : "Member account"}
+                {user.role === "admin"
+                  ? "Administrator"
+                  : user.role === "manage"
+                    ? "Content manager"
+                    : "Member account"}
               </Badge>
               <h1 className="mt-3 font-display text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
                 {user.displayName}
@@ -134,7 +138,12 @@ export default function AccountPage() {
                   {
                     icon: ShieldCheck,
                     term: "Role",
-                    detail: user.role === "admin" ? "Admin (architecture demo)" : "Member",
+                    detail:
+                      user.role === "admin"
+                        ? "Admin (architecture demo)"
+                        : user.role === "manage"
+                          ? "Content manager"
+                          : "Member",
                   },
                   {
                     icon: CalendarDays,

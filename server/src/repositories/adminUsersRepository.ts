@@ -1,7 +1,8 @@
 import type { Filter, Sort, WithId } from "mongodb";
 
 import { collections, type UserDoc } from "../db/collections.js";
-import type { AuthUserRole } from "../auth/types.js";
+import { toAdminPermissions } from "../auth/types.js";
+import type { AdminPermission, AuthUserRole } from "../auth/types.js";
 import { escapeRegExp } from "./content/text.js";
 import type { AdminUserListQuery, AdminUserUpdateInput } from "../http/userSchemas.js";
 
@@ -27,6 +28,8 @@ export interface SafeAdminUser {
   email: string;
   displayName: string;
   role: AuthUserRole;
+  /** Phase 10B — per-user CMS grants (normalized; [] when absent/invalid). */
+  permissions: AdminPermission[];
   memberProfileId?: string;
   createdAt: string;
   updatedAt: string;
@@ -43,6 +46,7 @@ function toSafeAdminUser(doc: WithId<UserDoc>): SafeAdminUser {
     email: doc.email,
     displayName: doc.displayName,
     role: doc.role,
+    permissions: toAdminPermissions(doc.permissions),
     ...(doc.memberProfileId ? { memberProfileId: doc.memberProfileId } : {}),
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
@@ -157,7 +161,11 @@ class AdminUsersRepository {
     return this.coll().countDocuments(filter);
   }
 
-  /** Partial update (displayName/role only — validated upstream), bumps updatedAt. */
+  /**
+   * Partial update (displayName/role/permissions — validated + normalized
+   * upstream), bumps updatedAt. Keys absent from the input are left as-is;
+   * permissions: [] explicitly clears the grants.
+   */
   async update(id: string, input: AdminUserUpdateInput): Promise<SafeAdminUser | null> {
     const set: Record<string, unknown> = { ...input, updatedAt: new Date().toISOString() };
     const result = await this.coll().findOneAndUpdate(

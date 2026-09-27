@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
-import type { AuthUser, AuthUserRole } from "./types.js";
+import type { AdminPermission, AuthUser, AuthUserRole } from "./types.js";
+import { toAdminPermissions } from "./types.js";
 
 /**
  * Temporary user repository — Phase 7 development-only persistence.
@@ -30,6 +31,8 @@ export interface CreateUserInput {
   passwordHash: string;
   displayName: string;
   role?: AuthUserRole;
+  /** Phase 10B — optional per-user CMS grants (normalized/validated). */
+  permissions?: AdminPermission[];
   memberProfileId?: string;
 }
 
@@ -93,6 +96,7 @@ export class InMemoryUserRepository implements UserRepository {
       passwordHash: input.passwordHash,
       displayName: input.displayName.trim(),
       role: input.role ?? "member",
+      permissions: toAdminPermissions(input.permissions),
       ...(input.memberProfileId ? { memberProfileId: input.memberProfileId } : {}),
       createdAt: now,
       updatedAt: now,

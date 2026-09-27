@@ -1,21 +1,27 @@
 import { z } from "zod";
 
+import { ADMIN_PERMISSIONS } from "../auth/types.js";
 import { fieldErrorsFromZod } from "./querySchemas.js";
 
 /**
- * Admin Users CMS validation (Phase 9H) — server-side, authoritative, over
- * the EXISTING auth user model (auth/types.ts AuthUser). No invented fields:
- * the model has exactly `displayName`, `role` ("member" | "admin") and no
- * account-status dimension, so the management surface supports displayName +
- * role updates and deletion with final-admin safeguards — nothing else.
- *
- * Deliberately NOT part of this schema: username/email edits (they interact
- * with the login identity and the AuthUser → member profile link) and any
- * password handling (creation is the existing signup flow's job; there is no
- * POST /api/admin/users). Invalid input → 400 with `{ message, errors }`.
+ * Admin Users CMS validation (Phase 9H, extended Phase 10B) — server-side,
+ * authoritative, over the EXISTING auth user model (auth/types.ts AuthUser).
+ * The model carries displayName, role and (Phase 10B) per-user CMS
+ * `permissions`; username/email edits and password handling stay out of this
+ * surface (login identity + signup flow own those). Invalid input → 400 with
+ * `{ message, errors }`.
  */
 
-export const ADMIN_USER_ROLES = ["member", "admin"] as const;
+export const ADMIN_USER_ROLES = ["member", "manage", "admin"] as const;
+
+/**
+ * Permissions are accepted ONLY as exact section keys, deduplicated and
+ * re-ordered into the canonical ADMIN_PERMISSIONS order by the controller
+ * (normalizeAdminPermissions) so stored arrays stay deterministic.
+ */
+export const adminPermissionsSchema = z
+  .array(z.enum(ADMIN_PERMISSIONS, { message: "Unknown CMS section." }))
+  .max(ADMIN_PERMISSIONS.length, "Too many permissions requested.");
 
 /** Server-side sort options for the admin users management table. */
 export const ADMIN_USER_SORTS = [
@@ -27,7 +33,7 @@ export const ADMIN_USER_SORTS = [
   "name_desc",
 ] as const;
 
-/** The full update payload — role + displayName are the model's editable fields. */
+/** The full update payload — role, displayName and per-user permissions. */
 export const adminUserUpdateSchema = z
   .object({
     displayName: z
@@ -36,12 +42,18 @@ export const adminUserUpdateSchema = z
       .min(1, "Display name is required.")
       .max(120, "Display name must be at most 120 characters."),
     role: z.enum(ADMIN_USER_ROLES, { message: "Choose a valid role." }),
+    /** Phase 10B — CMS sections granted to THIS account. Only meaningful for
+     *  the "manage" role; the controller clears them for member/admin. */
+    permissions: adminPermissionsSchema,
   })
   .partial()
   .strict()
   .refine(
-    (value) => value.displayName !== undefined || value.role !== undefined,
-    "Provide a display name or a role to update.",
+    (value) =>
+      value.displayName !== undefined ||
+      value.role !== undefined ||
+      value.permissions !== undefined,
+    "Provide a display name, a role, or permissions to update.",
   );
 
 /** Admin list query — only filters backed by actual model fields. */
@@ -66,6 +78,15 @@ export function sanitizeAdminUserId(raw: string | string[] | undefined): string 
 /** Zod error → field→message map (shared with the query layer). */
 export function userFieldErrors(error: z.ZodError): Record<string, string> {
   return fieldErrorsFromZod(error);
+}
+
+/**
+ * Normalize a validated permissions array: dedupe + canonical order. Returns
+ * a NEW array; safe to call with untrusted arrays that passed the enum check.
+ */
+export function normalizeAdminPermissions(value: readonly string[]): typeof ADMIN_PERMISSIONS[number][] {
+  const set = new Set(value);
+  return ADMIN_PERMISSIONS.filter((permission) => set.has(permission));
 }
 
 export type AdminUserUpdateInput = z.infer<typeof adminUserUpdateSchema>;

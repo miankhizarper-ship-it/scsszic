@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { ArrowLeft, LogOut, Menu, X } from "lucide-react";
 
-import { ADMIN_NAV_ITEMS } from "@/components/admin/adminNav";
+import { adminNavItemsFor, type AdminNavItem } from "@/components/admin/adminNav";
 import { Badge } from "@/components/ui/Badge";
 import { Logo } from "@/components/ui/Logo";
 import { useAuth } from "@/context/AuthProvider";
@@ -11,17 +11,17 @@ import { cn } from "@/lib/utils";
 import { ROUTES } from "@/routes/paths";
 
 /**
- * AdminShell — layout for the /admin area (Phase 9A).
+ * AdminShell — layout for the /admin area (Phase 9A, Phase 10B navigation).
  *
  * Desktop (≥lg): fixed navy sidebar — SCS branding, section navigation with
  * a clear active state, admin identity, return-to-website, logout.
  * Mobile (<lg): compact sticky header (hamburger + compact brand + identity)
  * opening a slide-in drawer with the same navigation and actions.
  *
- * Operational styling: compact paddings, no decorative motion — the admin
- * area stays visually consistent with the public site (navy/gold) while
- * reading as a workspace. Navigation items for Phase 9B sections are links
- * that render an honest placeholder page; no fake statistics anywhere.
+ * Phase 10B: navigation derives from the signed-in account — admins see every
+ * section; manage users see the Dashboard plus ONLY their granted CMS
+ * sections (Users/Audit are never shown to them). This filtering is routing
+ * UX; the server independently authorizes every /api/admin/* request.
  */
 export function AdminShell() {
   const { user, logout } = useAuth();
@@ -48,6 +48,10 @@ export function AdminShell() {
       .join("")
       .toUpperCase() || "A";
 
+  const roleLabel = user?.role === "manage" ? "Manager" : "Admin";
+  const identityName = user?.displayName ?? roleLabel;
+  const identityUsername = user?.username ?? roleLabel.toLowerCase();
+
   async function handleLogout() {
     setLoggingOut(true);
     try {
@@ -68,14 +72,15 @@ export function AdminShell() {
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 flex-col bg-navy-950 lg:flex">
         <div className="flex items-center gap-2.5 border-b border-white/10 px-5 py-4">
           <Logo variant="light" />
-          <Badge variant="onDark">Admin</Badge>
+          <Badge variant="onDark">{roleLabel}</Badge>
         </div>
         <AdminNav onNavigate={undefined} />
         <div className="border-t border-white/10 p-4">
           <AdminIdentity
             initials={initials}
-            name={user?.displayName ?? "Admin"}
-            username={user?.username ?? "admin"}
+            name={identityName}
+            username={identityUsername}
+            roleLabel={roleLabel}
           />
           <AdminActions onLogout={handleLogout} loggingOut={loggingOut} />
         </div>
@@ -132,8 +137,9 @@ export function AdminShell() {
             <div className="border-t border-white/10 p-4">
               <AdminIdentity
                 initials={initials}
-                name={user?.displayName ?? "Admin"}
-                username={user?.username ?? "admin"}
+                name={identityName}
+                username={identityUsername}
+                roleLabel={roleLabel}
               />
               <AdminActions onLogout={handleLogout} loggingOut={loggingOut} />
             </div>
@@ -156,11 +162,13 @@ export function AdminShell() {
   );
 }
 
-/** Sidebar/drawer navigation — desktop passes no onNavigate; drawer closes on click. */
+/** Sidebar/drawer navigation — filtered by the signed-in account's grants. */
 function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
+  const { user } = useAuth();
+  const items = adminNavItemsFor(user);
   return (
     <nav aria-label="Admin sections" className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4">
-      {ADMIN_NAV_ITEMS.map((item) => (
+      {items.map((item) => (
         <NavLink
           key={item.to}
           to={item.to}
@@ -176,16 +184,24 @@ function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
             )
           }
         >
-          <item.icon size={18} aria-hidden="true" className="shrink-0" />
-          <span className="flex-1">{item.label}</span>
-          {item.phase === "9B" && (
-            <span className="rounded border border-white/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-slate-400">
-              9B
-            </span>
-          )}
+          <NavItemContent item={item} />
         </NavLink>
       ))}
     </nav>
+  );
+}
+
+function NavItemContent({ item }: { item: AdminNavItem }) {
+  return (
+    <>
+      <item.icon size={18} aria-hidden="true" className="shrink-0" />
+      <span className="flex-1">{item.label}</span>
+      {item.phase === "9B" && (
+        <span className="rounded border border-white/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-slate-400">
+          9B
+        </span>
+      )}
+    </>
   );
 }
 
@@ -193,10 +209,12 @@ function AdminIdentity({
   initials,
   name,
   username,
+  roleLabel,
 }: {
   initials: string;
   name: string;
   username: string;
+  roleLabel: string;
 }) {
   return (
     <div className="flex items-center gap-3">
@@ -210,7 +228,7 @@ function AdminIdentity({
         <p className="truncate text-sm font-semibold text-white">{name}</p>
         <p className="truncate text-xs text-slate-400">@{username}</p>
       </div>
-      <Badge variant="onDark">Admin</Badge>
+      <Badge variant="onDark">{roleLabel}</Badge>
     </div>
   );
 }

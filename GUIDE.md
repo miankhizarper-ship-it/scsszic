@@ -289,3 +289,34 @@ apiClient.ts`, `client/src/components/admin/UploadMediaButton.tsx`, Upload
 buttons inside the existing CMS media fields, and the `R2_*` names in
 `server/.env.example`. Media fields remain plain URL strings — no schema
 changes, no migration.
+
+---
+
+## 10. Roles & CMS permissions (Phase 10B)
+
+The admin panel supports three roles. Roles and permissions live on each user
+account (MongoDB `users` collection) and are enforced **server-side** on every
+request — the sidebar/filtering you see in the UI is only a reflection.
+
+| Role | Access |
+|------|--------|
+| `admin` | Everything: all 8 CMS sections, Users, Audit, media uploads, dashboard |
+| `manage` | Only the CMS sections explicitly granted to THAT account (events, blogs, alumni, members, projects, feed, gallery, videos). Never Users/Audit/uploads/dashboard |
+| `member` | No admin-panel access (unchanged) |
+
+Managing roles and permissions: sign in as an admin → **Users** → edit an
+account → set the role (`member` / `manage` / `admin`). For `manage` accounts
+a checkbox grid appears with the eight CMS sections; grants save with the same
+PATCH. Notes:
+
+- Grant changes take effect on the affected account's **next request** — no
+  re-login needed (the server re-reads the user on every request).
+- Switching an account away from `manage` automatically clears its stored
+  section grants (no stale permissions).
+- The final-admin safeguard covers every path that strips the admin role:
+  the last administrator can never be demoted (to `member` **or** `manage`)
+  or deleted.
+- Every role/permission change is written to the audit trail
+  (`user.role.updated`, `user.permissions.updated`).
+- No migration is needed for existing databases: accounts without a
+  `permissions` field behave as `[]`.
