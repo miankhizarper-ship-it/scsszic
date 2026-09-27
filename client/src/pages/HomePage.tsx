@@ -6,14 +6,17 @@ import { CommunityPreview } from "@/components/sections/CommunityPreview";
 import { FeaturedBlog } from "@/components/sections/FeaturedBlog";
 import { Highlights } from "@/components/sections/Highlights";
 import { GalleryPreview } from "@/components/sections/GalleryPreview";
-import { AlumniHighlight } from "@/components/sections/AlumniHighlight";
 import { JoinCTA } from "@/components/sections/JoinCTA";
 import { usePageMetadata } from "@/lib/seo";
 
 /**
  * HomePage — Phase 1 showpiece.
  * Order: Hero → Society intro → Stats → Events → Community feed →
- * Featured blog → Highlights → Gallery → Alumni → Join CTA.
+ * Featured blog → Highlights → Gallery → Join CTA.
+ *
+ * The former AlumniHighlight strip (static demo profiles) was removed on
+ * request — the alumni directory at /alumni is the single, API-backed home
+ * for real graduate profiles.
  */
 export default function HomePage() {
   usePageMetadata({
@@ -33,7 +36,6 @@ export default function HomePage() {
       <FeaturedBlog />
       <Highlights />
       <GalleryPreview />
-      <AlumniHighlight />
       <JoinCTA />
     </>
   );

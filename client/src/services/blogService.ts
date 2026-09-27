@@ -34,6 +34,12 @@ export const blogService = {
     return (await this.listBlogs()).data;
   },
 
+  /** The N newest published articles (home page section) — newest first. */
+  async getLatestBlogs(limit = 3): Promise<Blog[]> {
+    const response = await fetchList<Blog>("/blogs", { limit });
+    return response.data;
+  },
+
   /** Published article by URL slug — null when unknown/draft/archived. */
   async getBlogBySlug(slug: string | undefined): Promise<Blog | null> {
     return fetchSingle<Blog>(`/blogs/${encodeURIComponent(slug ?? "")}`);

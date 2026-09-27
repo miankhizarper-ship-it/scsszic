@@ -119,6 +119,15 @@ export function useFeaturedBlog() {
   });
 }
 
+/** The N newest published articles (home page blog section). */
+export function useLatestBlogs(limit = 3) {
+  return useQuery({
+    queryKey: ["blogs", "latest", limit],
+    queryFn: () => blogService.getLatestBlogs(limit),
+    staleTime: LIST_STALE_TIME,
+  });
+}
+
 export function useRelatedBlogs(slug: string | undefined, count = 3) {
   return useQuery({
     queryKey: ["blogs", "related", slug, count],
