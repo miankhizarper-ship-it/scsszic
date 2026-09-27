@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/CollectionState";
+import { UploadMediaButton } from "@/components/admin/UploadMediaButton";
 import {
   useAdminProject,
   useCreateProject,
@@ -467,14 +468,23 @@ export default function AdminProjectFormPage() {
         <Section id="project-media" title="Media & links" description="Cover artwork, technologies, tags, and repository/demo links.">
           <div className="grid grid-cols-1 gap-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field id="project-cover" label="Cover image" required error={errors.coverImage?.message} hint="Path or URL, e.g. /src/assets/projects/….jpg">
-                <input
-                  id="project-cover"
-                  type="text"
-                  aria-invalid={Boolean(errors.coverImage)}
-                  className={INPUT_CLASS}
-                  {...register("coverImage")}
-                />
+              <Field id="project-cover" label="Cover image" required error={errors.coverImage?.message} hint="Path or URL, e.g. /src/assets/projects/….jpg — or upload a file.">
+                <div className="flex items-center gap-2">
+                  <div className="min-w-0 flex-1">
+                    <input
+                      id="project-cover"
+                      type="text"
+                      aria-invalid={Boolean(errors.coverImage)}
+                      className={INPUT_CLASS}
+                      {...register("coverImage")}
+                    />
+                  </div>
+                  <UploadMediaButton
+                    folder="projects"
+                    accept="image/*"
+                    onUploaded={(url) => setValue("coverImage", url, { shouldValidate: true })}
+                  />
+                </div>
               </Field>
               <Field id="project-cover-alt" label="Cover image alt text" required error={errors.coverImageAlt?.message}>
                 <input

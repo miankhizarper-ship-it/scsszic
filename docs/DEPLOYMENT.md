@@ -272,7 +272,84 @@ investigated informational item; no action was taken within this scope.
 
 ---
 
-## 9. Deployment checklist (condensed)
+---
+
+## 9. Phase 10A — Cloudflare R2 media storage (additive)
+
+### 9.1 Architecture
+
+New server-only storage service — `server/src/services/storage/`:
+
+| File | Responsibility |
+| --- | --- |
+| `config.ts` | Reads the five `R2_*` variables; `null` until all five exist (feature-detect, no boot-time fail-fast) |
+| `validation.ts` | MIME allow-lists, magic-byte sniffing, folder enum, 4 MB cap, object-key pattern |
+| `keys.ts` | Server-generated keys `uploads/<folder>/<yyyy>/<mm>/<uuid>.<ext>` |
+| `multipart.ts` | multer memoryStorage wrapper — in-memory only, multer errors → 413/400 |
+| `index.ts` | `uploadObject` / `deleteObject` / `headObject` / `isStorageConfigured`; StorageError codes → controller maps to 415/413/400/503/502 |
+
+Endpoints (both inside the existing `requireAdmin` namespace guard):
+
+```
+POST   /api/admin/uploads   multipart: file (binary), folder (enum)  → 201 { data: { url, key, contentType, size } }
+DELETE /api/admin/uploads?key=<key>                                  → 200 { data: { key, deleted: true } }
+```
+
+Client: `apiFetch` passes FormData through untouched (browser sets the
+multipart boundary); `adminService.uploadMedia(file, folder)` is the single
+boundary; `UploadMediaButton` sits beside every CMS media URL input — the
+input keeps working for external/local URLs, so no UX redesign and no
+permission/UI changes.
+
+### 9.2 URL strategy (decision record)
+
+MongoDB media fields have always been plain strings (`/src/assets/…` seed
+paths; gallery/videos already validate `(/|https?://…)` via `mediaRefSchema`).
+The lowest-friction production model is therefore **public bucket URLs**:
+`url = ${R2_PUBLIC_URL}/${key}` with `R2_PUBLIC_URL` being the bucket's
+r2.dev public URL or a custom domain. Stored metadata stays ordinary strings,
+every existing public renderer keeps working unchanged, and old + new URLs
+are freely interchangeable. Signed server-generated access URLs were rejected
+(expires — bad for stored metadata); server proxying was rejected (bandwidth
+through serverless functions). Bucket public-read is a manual Cloudflare
+console step — the app never creates buckets or credentials.
+
+### 9.3 Serverless + security notes
+
+- Request bytes live only in multer memory buffers during one invocation —
+  no filesystem persistence; the S3 client is created lazily and cached per
+  warm instance (same model as `db/client.ts`).
+- 4 MB file cap keeps requests under Vercel's 4.5 MB serverless body limit.
+- Credentials live in backend env vars only; they never reach the client
+  bundle, logs, audit records or API responses. Failures are summarized by
+  error name/code (no raw SDK objects, no signed URLs).
+- Validation order: input validation (empty/size/MIME sniffing) runs BEFORE
+  the configuration gate, so malformed uploads answer 415/413/400 even on a
+  server without R2 configured, and 503 is reserved for server state.
+- Delete accepts only keys matching the app's own generated-key pattern —
+  arbitrary object deletion is impossible even for authenticated admins of
+  a different deployment sharing the bucket.
+- Audit actions `media.uploaded` / `media.deleted` (folder/type/size scalars
+  only) flow through the existing centralized audit logger.
+
+### 9.4 Phase 10A verification (executed locally)
+
+- server `tsc --noEmit` CLEAN · client `tsc -b` CLEAN · both ESLint CLEAN ·
+  client production build OK (pre-existing chunk advisory only)
+- `scripts/qa-phase10a-storage.ts` (fake S3 client, real HTTP + auth):
+  34/34 PASS — authorized 201 upload with PutObject wiring asserted, MIME
+  mismatch/unsupported 415, oversized 413, anonymous 401, member 403,
+  delete auth + key checks, R2 upstream failure → 502 envelope, head
+  NotFound → null, seeded `/src/assets/…` media untouched in public APIs
+- `scripts/qa-phase10a-api.sh` (live server WITHOUT R2 env): 21/21 PASS —
+  validation precedes the 503 storage gate; compatibility of all public
+  media URLs confirmed
+- Regression: `qa-phase9i-api.sh` 143/143 PASS after the integration
+- Browser (dev server + agent-browser): admin login, Upload buttons rendered
+  on event/gallery/videos/blog forms, public gallery + home render all
+  seeded images (network-verified, no page errors)
+
+## 10. Deployment checklist (condensed)
 
 - [ ] Atlas cluster + DB user + `0.0.0.0/0` network rule
 - [ ] Repo pushed to Git; Vercel project `scs-api` (Root `server`, no build)
@@ -283,3 +360,4 @@ investigated informational item; no action was taken within this scope.
 - [ ] `bun run db:seed` executed once against Atlas (from local machine)
 - [ ] Cookie topology decided (`COOKIE_SAME_SITE`) — see GUIDE §4
 - [ ] GUIDE §6 smoke test checklist passed
+- [ ] (optional) R2 bucket + public URL + five `R2_*` vars on the backend — see GUIDE §8

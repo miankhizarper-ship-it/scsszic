@@ -25,6 +25,29 @@ import type {
   WatchVideo,
 } from "@/types";
 
+/** Target library for an upload — matches the server's folder allow-list
+ * (services/storage/validation.ts) and maps onto the CMS modules. */
+export type MediaFolder =
+  | "gallery"
+  | "blogs"
+  | "events"
+  | "alumni"
+  | "members"
+  | "projects"
+  | "feed"
+  | "videos"
+  | "misc";
+
+/** Response payload of POST /api/admin/uploads. */
+export interface MediaUploadResult {
+  /** Public media URL — store this in the same CMS field as any other URL. */
+  url: string;
+  /** Server-generated object key (stable storage reference). */
+  key: string;
+  contentType: string;
+  size: number;
+}
+
 /**
  * Admin service — the client's single boundary to /api/admin/* (Phase 9B/9C/9D).
  *
@@ -92,6 +115,25 @@ import type {
  * forms bind to.
  */
 export const adminService = {
+  /**
+   * POST /api/admin/uploads — multipart media upload to Cloudflare R2 via
+   * the authenticated API (Phase 10A). The browser never sees storage
+   * credentials; the server answers { url, key, contentType, size } and the
+   * `url` is stored in the same CMS fields that always held media strings.
+   * ApiError surfaces the server's safe message (415 type / 413 size / 401
+   * 403 auth / 503 unconfigured / 502 storage unavailable).
+   */
+  async uploadMedia(file: File, folder: MediaFolder): Promise<MediaUploadResult> {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("folder", folder);
+    const response = await apiFetch<{ data: MediaUploadResult }>("/admin/uploads", {
+      method: "POST",
+      body: formData,
+    });
+    return response.data;
+  },
+
   /** GET /api/admin/dashboard — real MongoDB counts + recent content. */
   async getDashboard(): Promise<AdminDashboardData> {
     const response = await apiFetch<{ data: AdminDashboardData }>("/admin/dashboard");

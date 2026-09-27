@@ -5,6 +5,7 @@ import { useForm, useWatch, type Control } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { ContentBlockEditor } from "@/components/admin/ContentBlockEditor";
+import { UploadMediaButton } from "@/components/admin/UploadMediaButton";
 import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/CollectionState";
 import { useAdminBlogs, useAdminBlog, useCreateBlog, useUpdateBlog } from "@/hooks/admin";
@@ -489,14 +490,23 @@ export default function AdminBlogFormPage() {
         <Section id="media" title="Media & metadata" description="Cover artwork, tags, and optional SEO fields.">
           <div className="grid grid-cols-1 gap-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field id="blog-cover" label="Cover image" required error={errors.coverImage?.message} hint="Path or URL, e.g. /src/assets/blogs/….jpg">
-                <input
-                  id="blog-cover"
-                  type="text"
-                  aria-invalid={Boolean(errors.coverImage)}
-                  className={INPUT_CLASS}
-                  {...register("coverImage")}
-                />
+              <Field id="blog-cover" label="Cover image" required error={errors.coverImage?.message} hint="Path or URL, e.g. /src/assets/blogs/….jpg — or upload a file.">
+                <div className="flex items-center gap-2">
+                  <div className="min-w-0 flex-1">
+                    <input
+                      id="blog-cover"
+                      type="text"
+                      aria-invalid={Boolean(errors.coverImage)}
+                      className={INPUT_CLASS}
+                      {...register("coverImage")}
+                    />
+                  </div>
+                  <UploadMediaButton
+                    folder="blogs"
+                    accept="image/*"
+                    onUploaded={(url) => setValue("coverImage", url, { shouldValidate: true })}
+                  />
+                </div>
               </Field>
               <Field id="blog-cover-alt" label="Cover image alt text" required error={errors.coverImageAlt?.message}>
                 <input

@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/CollectionState";
+import { UploadMediaButton } from "@/components/admin/UploadMediaButton";
 import {
   useAdminFeedPost,
   useCreateFeedPost,
@@ -483,14 +484,23 @@ export default function AdminFeedFormPage() {
         <Section id="feed-media" title="Media & metadata" description="Optional artwork, publication timestamp, tags, and demo engagement counts.">
           <div className="grid grid-cols-1 gap-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field id="feed-image" label="Image path/URL" error={errors.image?.message}>
-                <input
-                  id="feed-image"
-                  type="text"
-                  aria-invalid={Boolean(errors.image)}
-                  className={INPUT_CLASS}
-                  {...register("image")}
-                />
+              <Field id="feed-image" label="Image path/URL" error={errors.image?.message} hint="Path or URL — or upload a file.">
+                <div className="flex items-center gap-2">
+                  <div className="min-w-0 flex-1">
+                    <input
+                      id="feed-image"
+                      type="text"
+                      aria-invalid={Boolean(errors.image)}
+                      className={INPUT_CLASS}
+                      {...register("image")}
+                    />
+                  </div>
+                  <UploadMediaButton
+                    folder="feed"
+                    accept="image/*"
+                    onUploaded={(url) => setValue("image", url, { shouldValidate: true })}
+                  />
+                </div>
               </Field>
               <Field id="feed-image-alt" label="Image alt text" error={errors.imageAlt?.message}>
                 <input

@@ -73,6 +73,11 @@ import {
   updateAdminUser,
 } from "../controllers/admin/adminUsers.controller.js";
 import { listAdminAudit } from "../controllers/admin/adminAudit.controller.js";
+import {
+  deleteAdminMedia,
+  uploadAdminMedia,
+} from "../controllers/admin/adminUploads.controller.js";
+import { uploadSingleFile } from "../services/storage/multipart.js";
 
 /**
  * /api/admin routes — Phase 9A (admin foundation).
@@ -180,6 +185,12 @@ adminRouter.use("/admin", requireAdmin);
 
 adminRouter.get("/admin/ping", getAdminPing);
 adminRouter.get("/admin/dashboard", getAdminDashboard);
+
+// Media uploads (Phase 10A) — Cloudflare R2 via the storage service. Both
+// routes are admin-only through the namespace guard above; the multipart
+// body is parsed in-memory (serverless-safe) and never touches the disk.
+adminRouter.post("/admin/uploads", uploadSingleFile("file"), uploadAdminMedia);
+adminRouter.delete("/admin/uploads", deleteAdminMedia);
 
 adminRouter.get("/admin/events", listAdminEvents);
 adminRouter.get("/admin/events/:id", getAdminEvent);

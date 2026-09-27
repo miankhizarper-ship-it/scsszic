@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/CollectionState";
+import { UploadMediaButton } from "@/components/admin/UploadMediaButton";
 import {
   useAdminAlumnus,
   useCreateAlumnus,
@@ -408,14 +409,23 @@ export default function AdminAlumniFormPage() {
         <Section id="alumni-media" title="Portrait & links" description="Placeholder portrait reference and social profiles.">
           <div className="grid grid-cols-1 gap-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field id="alumni-image" label="Portrait path/URL" error={errors.image?.message} hint="Path or URL, e.g. /src/assets/people/….jpg">
-                <input
-                  id="alumni-image"
-                  type="text"
-                  aria-invalid={Boolean(errors.image)}
-                  className={INPUT_CLASS}
-                  {...register("image")}
-                />
+              <Field id="alumni-image" label="Portrait path/URL" error={errors.image?.message} hint="Path or URL, e.g. /src/assets/people/….jpg — or upload a file.">
+                <div className="flex items-center gap-2">
+                  <div className="min-w-0 flex-1">
+                    <input
+                      id="alumni-image"
+                      type="text"
+                      aria-invalid={Boolean(errors.image)}
+                      className={INPUT_CLASS}
+                      {...register("image")}
+                    />
+                  </div>
+                  <UploadMediaButton
+                    folder="alumni"
+                    accept="image/*"
+                    onUploaded={(url) => setValue("image", url, { shouldValidate: true })}
+                  />
+                </div>
               </Field>
               <Field id="alumni-image-alt" label="Portrait alt text" error={errors.imageAlt?.message}>
                 <input

@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/CollectionState";
+import { UploadMediaButton } from "@/components/admin/UploadMediaButton";
 import {
   useAdminMember,
   useCreateMember,
@@ -471,14 +472,23 @@ export default function AdminMemberFormPage() {
         <Section id="member-media" title="Avatar & references" description="Avatar reference, social links, and project cross-references.">
           <div className="grid grid-cols-1 gap-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field id="member-avatar" label="Avatar path/URL" error={errors.avatar?.message} hint="Path or URL, e.g. /src/assets/people/….jpg">
-                <input
-                  id="member-avatar"
-                  type="text"
-                  aria-invalid={Boolean(errors.avatar)}
-                  className={INPUT_CLASS}
-                  {...register("avatar")}
-                />
+              <Field id="member-avatar" label="Avatar path/URL" error={errors.avatar?.message} hint="Path or URL, e.g. /src/assets/people/….jpg — or upload a file.">
+                <div className="flex items-center gap-2">
+                  <div className="min-w-0 flex-1">
+                    <input
+                      id="member-avatar"
+                      type="text"
+                      aria-invalid={Boolean(errors.avatar)}
+                      className={INPUT_CLASS}
+                      {...register("avatar")}
+                    />
+                  </div>
+                  <UploadMediaButton
+                    folder="members"
+                    accept="image/*"
+                    onUploaded={(url) => setValue("avatar", url, { shouldValidate: true })}
+                  />
+                </div>
               </Field>
               <Field id="member-avatar-alt" label="Avatar alt text" error={errors.avatarAlt?.message}>
                 <input

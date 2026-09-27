@@ -31,6 +31,7 @@ export class ApiError extends Error {
 type QueryParams = Record<string, string | number | boolean | undefined>;
 
 type ApiFetchOptions = Omit<RequestInit, "body"> & {
+  /** Plain object → JSON; FormData → multipart passthrough (uploads). */
   body?: unknown;
   /** Query parameters — undefined/empty values are skipped, values stringified. */
   params?: QueryParams;
@@ -51,13 +52,22 @@ export async function apiFetch<T>(
   path: string,
   { body, params, headers, ...rest }: ApiFetchOptions = {},
 ): Promise<T> {
+  // FormData (media uploads, Phase 10A) is passed through untouched: the
+  // browser then sets its own Content-Type with the multipart boundary, and
+  // credentials ride along exactly like every other call.
+  const isFormData = body instanceof FormData;
   const response = await fetch(`${API_BASE}${path}${buildQueryString(params)}`, {
     credentials: "include",
     headers: {
-      ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+      ...(body !== undefined && !isFormData ? { "Content-Type": "application/json" } : {}),
       ...headers,
     },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body:
+      body === undefined
+        ? undefined
+        : isFormData
+          ? (body as FormData)
+          : JSON.stringify(body),
     ...rest,
   });
 

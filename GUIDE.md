@@ -87,6 +87,7 @@ Two Vercel **projects** will be created from the same repository:
    | `COOKIE_SAME_SITE`   | —        | See §4 (cookie topology) — `none` for two `*.vercel.app` hosts, `lax` for same-apex custom domains |
    | `SESSION_TTL_HOURS`  | —        | Default `168` (7 days)                                      |
    | `MONGODB_TIMEOUT_MS` | —        | Default `10000`                                             |
+   | `R2_ACCOUNT_ID`        | —      | Cloudflare R2 media uploads (see §8) — all five `R2_*` vars are optional; uploads answer 503 until all are set |
 
    Generate a session secret locally with:
    `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"`
@@ -198,16 +199,72 @@ Run this checklist after every first deployment (and after major changes):
 | Browser: `404` **and** CORS errors for URLs like `https://<api-host>/gallery` (no `/api` segment) | `VITE_API_BASE_URL` is missing the trailing `/api`. Set it to `https://<api-host>/api` in the **frontend** project and **redeploy the frontend** (Vite bakes the value at build time). |
 | Login succeeds but session lost on refresh | Cookie topology — set `COOKIE_SAME_SITE=none` (vercel.app) or move both hosts to one apex (custom domains). Also confirm the site is served over HTTPS (secure cookies). |
 | Frontend loads but all API calls fail    | `VITE_API_BASE_URL` missing or missing the trailing `/api`. Rebuild after changing it (Vite bakes it at build time). |
-| Browser requests URLs like `https://<client-domain>/VITE_API_BASE_URL%20=%20https:/…` | The whole `NAME = value` line was pasted into the **Value** field. Environment variable **Name** and **Value** are separate fields: Name = `VITE_API_BASE_URL`, Value = `https://<api-host>/api` — **only the URL**, no `NAME =` prefix, no spaces, no quotes. Redeploy the frontend after saving. |
+| Browser requests URLs like `https://<client-domain>/VITE_API_BASE_URL%20=%20https:/…` | The whole `NAME = value` line was pasted into the **Value** field. Environment variable **Name** and **Value** are separate fields: Name = `VITE_API_BASE_URL`, Value = `https://<api-host>/api` — **only the URL**, no `NAME =` prefix, no spaces, no quotes. Redeploy the frontend after saving. These requests show `404` before the SPA rewrite ships and `405` after (POST/PUT to a rewritten static page) — a `405` here means the deployment is new but the env value is still wrong. |
 | First request after idle is slow         | Serverless cold start (DB connect + index verify). Normal; warm requests are fast.  |
 | Build fails: `No Output Directory named "dist"` on the **API** project | The Vite framework preset was auto-applied (from the `vite` devDependency). Set Framework Preset = `Other`, clear Build Command + Output Directory, redeploy. `server/vercel.json` declares `"framework": null` to prevent this permanently. |
 | Warning: `engines { "node": ">=20.19.0" } will automatically upgrade…` | Informational only — the range intentionally accepts any Node ≥ 20.19. Safe to ignore. |
+| Uploads answer `503: Media storage is not configured` | The five `R2_*` variables are not (all) set on the **backend** project — see §8. Everything else keeps working. |
+| Upload rejected `415: This file type is not supported` | File bytes are checked against an allow-list (images everywhere; mp4/webm only for the videos library) and must match the declared type. |
+| Upload rejected `413` | Files are capped at 4 MB — Vercel's serverless request limit is 4.5 MB. Host larger media externally and paste its URL instead. |
 
 ---
 
-## 8. What was changed in this repository for Vercel
+## 8. Cloudflare R2 media uploads (Phase 10A)
 
-Only five files — application code is untouched:
+Admins can upload images (and small mp4/webm clips for the Videos library)
+through every CMS form — each media field keeps its URL text input and gains
+an **Upload** button. Uploads go through the authenticated API
+(`POST /api/admin/uploads`); the browser never sees any storage credential.
+MongoDB keeps storing ordinary URL strings, so old content and new uploads
+are fully interchangeable.
+
+### 9.1 One-time Cloudflare setup (manual — never done by the app)
+
+1. Cloudflare dashboard → **R2 → Create bucket** (e.g. `scs-media`).
+2. **R2 → API → Create API token** with *Object Read & Write* scoped to that
+   bucket — this yields the Access Key ID + Secret Access Key.
+3. Enable **public access** so the site can display the files, either via:
+   - the bucket's **r2.dev public URL** (quick, rate-limited — fine to start), or
+   - a **custom domain** bound to the bucket (recommended for production).
+   The public base (e.g. `https://pub-xxxx.r2.dev` or `https://media.your-domain.org`)
+   is what goes into `R2_PUBLIC_URL` — no trailing slash.
+4. No CORS configuration is needed on the bucket: uploads are made
+   **server-to-server** from the API, never from the browser.
+
+### 9.2 Environment variables (backend project only — 5, all required together)
+
+| Name                 | Notes                                                            |
+| -------------------- | ---------------------------------------------------------------- |
+| `R2_ACCOUNT_ID`      | Cloudflare account id (builds the S3 endpoint)                   |
+| `R2_ACCESS_KEY_ID`   | R2 API token access key — **server-side only**                   |
+| `R2_SECRET_ACCESS_KEY` | R2 API token secret — **server-side only, never to the client** |
+| `R2_BUCKET_NAME`     | Bucket holding uploaded objects                                  |
+| `R2_PUBLIC_URL`      | Public media base URL (r2.dev or custom domain), no trailing slash |
+
+Set them in Vercel → **backend** project → Environment Variables, then
+redeploy the backend. Until all five exist the API runs normally and the
+upload/delete endpoints answer `503` with a clear message — nothing else
+changes. For local development put real values in `server/.env` (git-ignored).
+
+### 9.3 Behavior notes
+
+- Objects are stored as `uploads/<library>/<yyyy>/<mm>/<uuid>.<ext>` — the
+  original filename is never used, so collisions and path tricks are impossible.
+- Accepted types: images (jpeg/png/webp/gif/avif) in every library;
+  `video/mp4`/`video/webm` additionally in the **videos** library. The real
+  bytes are sniffed and must match the declared type.
+- Size cap 4 MB (Vercel's serverless request limit is 4.5 MB); larger media
+  should be hosted externally and referenced by URL, as today.
+- Deleting media (`DELETE /api/admin/uploads?key=…`) is admin-only and only
+  accepts keys this app generated. Deleting an object does not rewrite
+  existing content that references it — remove references first.
+
+---
+
+## 9. What was changed in this repository for Vercel
+
+For the Vercel deployment itself, only five files — application code is
+untouched:
 
 1. **`server/api/index.ts`** (new) — serverless adapter that reuses the exact
    same Express app; connects MongoDB + verifies indexes once per warm
@@ -223,3 +280,12 @@ Only five files — application code is untouched:
 `server/src/index.ts` (the `listen()`-based local entrypoint) is unchanged and
 remains the local development server. No routes, controllers, repositories or
 auth logic were modified. Details: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+
+Phase 10A (R2 media) added on top, without touching any of the above behavior:
+`server/src/services/storage/*` (R2 service), `server/src/controllers/admin/
+adminUploads.controller.ts`, two routes in `admin.routes.ts` (both behind the
+existing `requireAdmin` guard), a FormData path in `client/src/services/
+apiClient.ts`, `client/src/components/admin/UploadMediaButton.tsx`, Upload
+buttons inside the existing CMS media fields, and the `R2_*` names in
+`server/.env.example`. Media fields remain plain URL strings — no schema
+changes, no migration.

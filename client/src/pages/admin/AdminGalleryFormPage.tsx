@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/CollectionState";
+import { UploadMediaButton } from "@/components/admin/UploadMediaButton";
 import {
   useAdminAlbum,
   useCreateAlbum,
@@ -446,17 +447,26 @@ export default function AdminGalleryFormPage() {
         <Section
           id="album-cover"
           title="Cover"
-          description="The album's card artwork on the gallery grid. Existing media reference — there is no upload pipeline yet."
+          description="The album's card artwork on the gallery grid — an existing media reference or an R2 upload."
         >
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field id="album-cover" label="Cover image reference" required error={errors.coverImage?.message} hint="Path or URL of existing media, e.g. /src/assets/media/gallery-lecture.jpg">
-              <input
-                id="album-cover"
-                type="text"
-                aria-invalid={Boolean(errors.coverImage)}
-                className={INPUT_CLASS}
-                {...register("coverImage")}
-              />
+            <Field id="album-cover" label="Cover image reference" required error={errors.coverImage?.message} hint="Path or URL of existing media, e.g. /src/assets/media/gallery-lecture.jpg — or upload a file.">
+              <div className="flex items-center gap-2">
+                <div className="min-w-0 flex-1">
+                  <input
+                    id="album-cover"
+                    type="text"
+                    aria-invalid={Boolean(errors.coverImage)}
+                    className={INPUT_CLASS}
+                    {...register("coverImage")}
+                  />
+                </div>
+                <UploadMediaButton
+                  folder="gallery"
+                  accept="image/*"
+                  onUploaded={(url) => setValue("coverImage", url, { shouldValidate: true })}
+                />
+              </div>
             </Field>
             <Field id="album-cover-alt" label="Cover image alt text" required error={errors.coverImageAlt?.message}>
               <input
@@ -529,16 +539,27 @@ export default function AdminGalleryFormPage() {
                             label={`Photo ${index + 1} media reference`}
                             required
                             error={rowError?.src?.message}
-                            hint="Path or URL of existing media, e.g. /src/assets/gallery/photo-1.jpg"
+                            hint="Path or URL of existing media, e.g. /src/assets/gallery/photo-1.jpg — or upload a file."
                           >
-                            <input
-                              id={`album-photo-${index}-src`}
-                              type="text"
-                              autoComplete="off"
-                              aria-invalid={Boolean(rowError?.src)}
-                              className={INPUT_CLASS}
-                              {...register(`photos.${index}.src` as const)}
-                            />
+                            <div className="flex items-center gap-2">
+                              <div className="min-w-0 flex-1">
+                                <input
+                                  id={`album-photo-${index}-src`}
+                                  type="text"
+                                  autoComplete="off"
+                                  aria-invalid={Boolean(rowError?.src)}
+                                  className={INPUT_CLASS}
+                                  {...register(`photos.${index}.src` as const)}
+                                />
+                              </div>
+                              <UploadMediaButton
+                                folder="gallery"
+                                accept="image/*"
+                                onUploaded={(url) =>
+                                  setValue(`photos.${index}.src`, url, { shouldValidate: true })
+                                }
+                              />
+                            </div>
                           </Field>
                           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                             <Field

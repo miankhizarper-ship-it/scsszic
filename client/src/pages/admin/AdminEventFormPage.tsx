@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/CollectionState";
+import { UploadMediaButton } from "@/components/admin/UploadMediaButton";
 import { useAdminEvent, useCreateEvent, useUpdateEvent } from "@/hooks/admin";
 import { eventFormSchema, slugifyTitle, type EventFormValues } from "@/lib/adminEventForm";
 import { ApiError } from "@/services/apiClient";
@@ -547,15 +548,24 @@ export default function AdminEventFormPage() {
             </Field>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field id="event-cover" label="Cover image" required error={errors.coverImage?.message} hint="Path or URL, e.g. /src/assets/events/….jpg">
-                <input
-                  id="event-cover"
-                  type="text"
-                  aria-invalid={Boolean(errors.coverImage)}
-                  aria-describedby={errors.coverImage ? "event-cover-error" : undefined}
-                  className={INPUT_CLASS}
-                  {...register("coverImage")}
-                />
+              <Field id="event-cover" label="Cover image" required error={errors.coverImage?.message} hint="Path or URL, e.g. /src/assets/events/….jpg — or upload a file.">
+                <div className="flex items-center gap-2">
+                  <div className="min-w-0 flex-1">
+                    <input
+                      id="event-cover"
+                      type="text"
+                      aria-invalid={Boolean(errors.coverImage)}
+                      aria-describedby={errors.coverImage ? "event-cover-error" : undefined}
+                      className={INPUT_CLASS}
+                      {...register("coverImage")}
+                    />
+                  </div>
+                  <UploadMediaButton
+                    folder="events"
+                    accept="image/*"
+                    onUploaded={(url) => setValue("coverImage", url, { shouldValidate: true })}
+                  />
+                </div>
               </Field>
               <Field id="event-cover-alt" label="Cover image alt text" required error={errors.coverImageAlt?.message}>
                 <input
@@ -580,7 +590,7 @@ export default function AdminEventFormPage() {
               />
             </Field>
 
-            <Field id="event-gallery" label="Gallery images" error={errors.gallery?.message} hint="One image path/URL per line (optional).">
+            <Field id="event-gallery" label="Gallery images" error={errors.gallery?.message} hint="One image path/URL per line (optional). Upload appends a new line.">
               <textarea
                 id="event-gallery"
                 rows={3}
@@ -589,6 +599,21 @@ export default function AdminEventFormPage() {
                 className={INPUT_CLASS}
                 {...register("gallery")}
               />
+              <div className="mt-2">
+                <UploadMediaButton
+                  folder="events"
+                  accept="image/*"
+                  label="Upload to gallery"
+                  onUploaded={(url) => {
+                    const existing = watch("gallery") ?? "";
+                    setValue(
+                      "gallery",
+                      existing ? `${existing.replace(/\s*$/, "")}\n${url}` : url,
+                      { shouldValidate: true },
+                    );
+                  }}
+                />
+              </div>
             </Field>
           </div>
         </Section>

@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/CollectionState";
+import { UploadMediaButton } from "@/components/admin/UploadMediaButton";
 import {
   useAdminVideo,
   useCreateVideo,
@@ -427,18 +428,27 @@ export default function AdminVideoFormPage() {
         <Section
           id="video-media"
           title="Media & source"
-          description="Existing media references — there is no upload or transcoding pipeline yet. The public page keeps its click-to-play player."
+          description="Existing media references or R2 uploads — direct clips play via the click-to-play player; embed URLs are unchanged."
         >
           <div className="grid grid-cols-1 gap-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field id="video-thumbnail" label="Thumbnail reference" required error={errors.thumbnail?.message} hint="Path or URL of existing media, e.g. /src/assets/watch/….jpg">
-                <input
-                  id="video-thumbnail"
-                  type="text"
-                  aria-invalid={Boolean(errors.thumbnail)}
-                  className={INPUT_CLASS}
-                  {...register("thumbnail")}
-                />
+              <Field id="video-thumbnail" label="Thumbnail reference" required error={errors.thumbnail?.message} hint="Path or URL of existing media, e.g. /src/assets/watch/….jpg — or upload a file.">
+                <div className="flex items-center gap-2">
+                  <div className="min-w-0 flex-1">
+                    <input
+                      id="video-thumbnail"
+                      type="text"
+                      aria-invalid={Boolean(errors.thumbnail)}
+                      className={INPUT_CLASS}
+                      {...register("thumbnail")}
+                    />
+                  </div>
+                  <UploadMediaButton
+                    folder="videos"
+                    accept="image/*"
+                    onUploaded={(url) => setValue("thumbnail", url, { shouldValidate: true })}
+                  />
+                </div>
               </Field>
               <Field id="video-thumbnail-alt" label="Thumbnail alt text" required error={errors.thumbnailAlt?.message}>
                 <input
@@ -455,15 +465,24 @@ export default function AdminVideoFormPage() {
               id="video-url"
               label="Direct video URL"
               error={errors.videoUrl?.message}
-              hint="Optional — direct media file (path or URL). Used by the public player when present."
+              hint="Optional — direct media file (path or URL, mp4/webm up to 4 MB). Used by the public player when present."
             >
-              <input
-                id="video-url"
-                type="text"
-                aria-invalid={Boolean(errors.videoUrl)}
-                className={INPUT_CLASS}
-                {...register("videoUrl")}
-              />
+              <div className="flex items-center gap-2">
+                <div className="min-w-0 flex-1">
+                  <input
+                    id="video-url"
+                    type="text"
+                    aria-invalid={Boolean(errors.videoUrl)}
+                    className={INPUT_CLASS}
+                    {...register("videoUrl")}
+                  />
+                </div>
+                <UploadMediaButton
+                  folder="videos"
+                  accept="video/mp4,video/webm"
+                  onUploaded={(url) => setValue("videoUrl", url, { shouldValidate: true })}
+                />
+              </div>
             </Field>
 
             <Field
