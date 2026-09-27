@@ -110,12 +110,19 @@ Two responsibilities:
    A serverless API has no static output; `framework: null` removes the
    build/output expectations entirely — the Node runtime bundles
    `api/index.ts` at deploy time on its own.
-2. **The rewrite** — Vercel maps the filesystem function `api/index.ts` to
-   the route `/api` only; deeper paths (`/api/auth/login`, `/api/events?…`)
-   would 404 without it. The rewrite forwards the **original URL** to the
-   function, so Express sees `/api/auth/login` and the existing
-   `app.use("/api", apiRouter)` mount works unchanged. No other routing,
-   headers, builds, or framework shims are configured.
+2. **The rewrite** — a catch-all `/(.*)` → `/api` sends every request on the
+   API host to the Express app (correct for a backend-only project with no
+   static files). The function receives the **original URL**, so Express sees
+   `/api/auth/login` and the existing `app.use("/api", apiRouter)` mount
+   works unchanged. Two deliberate consequences:
+   - known `/api/*` routes are served exactly as locally;
+   - **stray paths** (e.g. `/gallery` from a client whose `VITE_API_BASE_URL`
+     is missing the `/api` suffix) reach Express instead of dying at the
+     edge — the app's JSON 404 (`notFoundHandler`) responds **with CORS
+     headers** (the `cors` middleware is global), so misconfiguration shows
+     up as a legible 404 instead of an opaque edge 404 that browsers report
+     as a CORS failure.
+   No other routing, headers, builds, or framework shims are configured.
 
 ### 3.3 Modified — `server/tsconfig.json`
 

@@ -182,6 +182,7 @@ Run this checklist after every first deployment (and after major changes):
 | `/api/health` 500 on cold start          | Missing `MONGODB_URI` or short `SESSION_SECRET` — check Vercel logs, fix env vars. |
 | API returns 503 with `message` envelope  | Backend reachable but **MongoDB unreachable** — check Atlas network access (`0.0.0.0/0`) and the URI. |
 | Browser console: CORS error              | `CORS_ORIGIN` does not exactly match the frontend origin (scheme + host + port).    |
+| Browser: `404` **and** CORS errors for URLs like `https://<api-host>/gallery` (no `/api` segment) | `VITE_API_BASE_URL` is missing the trailing `/api`. Set it to `https://<api-host>/api` in the **frontend** project and **redeploy the frontend** (Vite bakes the value at build time). |
 | Login succeeds but session lost on refresh | Cookie topology — set `COOKIE_SAME_SITE=none` (vercel.app) or move both hosts to one apex (custom domains). Also confirm the site is served over HTTPS (secure cookies). |
 | Frontend loads but all API calls fail    | `VITE_API_BASE_URL` missing or missing the trailing `/api`. Rebuild after changing it (Vite bakes it at build time). |
 | First request after idle is slow         | Serverless cold start (DB connect + index verify). Normal; warm requests are fast.  |
