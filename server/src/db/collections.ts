@@ -13,6 +13,7 @@ import type {
   SerializedAlumnus,
   SerializedEvent,
   SerializedSocialLink,
+  SiteSettings,
   SocietyEvent,
   TeamCard,
   WatchVideo,
@@ -181,6 +182,16 @@ export interface ContactMessageDoc {
   createdAt: string;
 }
 
+/**
+ * Site-settings document (Task 15) — ONE record, fixed id "site". Created
+ * lazily on first admin save; reads before that return the repository's
+ * default (empty socials → footer placeholder set). No indexes needed.
+ */
+export interface SiteSettingsDoc extends SiteSettings {
+  _id: "site";
+  createdAt: string;
+}
+
 /* ---------- Typed collection accessors ---------- */
 
 /**
@@ -208,6 +219,8 @@ export const collections = {
   contactMessages: (): Collection<ContactMessageDoc> =>
     getDatabase().collection("contact_messages"),
   categories: (): Collection<CategoryDoc> => getDatabase().collection("categories"),
+  siteSettings: (): Collection<SiteSettingsDoc> =>
+    getDatabase().collection("site_settings"),
 } as const;
 
 /** Canonical SCS collection names (used by indexes + seed tooling). */
@@ -227,6 +240,7 @@ export const COLLECTION_NAMES = [
   "feed_comments",
   "contact_messages",
   "categories",
+  "site_settings",
 ] as const;
 
 /* Re-export domain shapes for repository/controller convenience. */

@@ -5,6 +5,7 @@ import { categorySectionSchema } from "../../http/categorySchemas.js";
 import { isConnectionError } from "../../db/errors.js";
 import { logger } from "../../utils/logger.js";
 import { inUseCategoryNames, listCategories } from "../../repositories/content/categoriesRepository.js";
+import { siteSettingsRepository } from "../../repositories/content/siteSettingsRepository.js";
 import type { ListResult } from "../../repositories/content/listRepository.js";
 import type { EnrichedFeedPost } from "../../repositories/content/feedRepository.js";
 
@@ -225,4 +226,18 @@ export const getPublicCategories: RequestHandler = withErrorBoundary(
     res.status(200).json({ data: { section, categories: merged } });
   },
   "public-categories",
+);
+
+/**
+ * GET /api/settings (Task 15) — public site configuration: the footer
+ * social links the admin manages under Admin → Settings. No auth, read-
+ * only; returns the DEFAULT empty list before the first admin save (the
+ * footer then renders its curated placeholder set, unchanged behavior).
+ */
+export const getPublicSettings: RequestHandler = withErrorBoundary(
+  async (_req: Request, res: Response) => {
+    const settings = await siteSettingsRepository.get();
+    res.status(200).json({ data: settings });
+  },
+  "public-settings",
 );

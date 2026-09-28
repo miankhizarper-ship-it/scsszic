@@ -7,6 +7,7 @@ import {
   createRelatedHandler,
   createUsernameDetailHandler,
   getPublicCategories,
+  getPublicSettings,
 } from "../controllers/content/content.controller.js";
 import {
   addFeedComment,
@@ -218,3 +219,11 @@ contentRouter.post("/contact", createContactMessage);
  * values actually in use). No auth; read-only; no internal fields.
  */
 contentRouter.get("/categories", getPublicCategories);
+
+/* --------------------------- Site settings (15) ---------------------- */
+/**
+ * GET /api/settings — public site configuration (footer social links).
+ * Read-only, no auth; an empty list means "not configured yet" and the
+ * footer renders its curated placeholder set.
+ */
+contentRouter.get("/settings", getPublicSettings);

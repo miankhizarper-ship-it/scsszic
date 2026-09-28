@@ -1,4 +1,5 @@
 import {
+  Facebook,
   Github,
   Globe,
   Instagram,
@@ -31,6 +32,7 @@ const ICON_REGISTRY: Record<string, LucideIcon> = {
   instagram: Instagram,
   twitter: Twitter,
   x: Twitter,
+  facebook: Facebook,
   youtube: Youtube,
   link: Link2,
 };

@@ -10,10 +10,12 @@ import type { TeamMember } from "@/types";
 
 /**
  * DevelopersSection — the people who build and maintain the SCS platform
- * (Phase 12), rendered as a dark band so it reads as a distinct,
- * technical beat between the light home-page sections. Cards come from
- * the admin-managed Team CMS (group = "developers") and the section hides
- * itself while loading, on error, or when no published cards exist.
+ * (Phase 12). The dark navy DeveloperCards pop against a LIGHT band so the
+ * section reads as a distinct, technical beat — and the closing JoinCTA
+ * navy-950 band stays the page's single dark finale (two adjacent navy
+ * bands used to bleed together). Cards come from the admin-managed Team
+ * CMS (group = "developers") and the section hides itself while loading,
+ * on error, or when no published cards exist.
  */
 export function DevelopersSection() {
   const teamQuery = useTeamGroup("developers", 4);
@@ -38,17 +40,18 @@ export function DevelopersSection() {
   return (
     <section
       aria-labelledby="developers-heading"
-      className="relative overflow-hidden bg-navy-950 py-20 lg:py-24"
+      className="relative overflow-hidden bg-white py-20 lg:py-24"
     >
-      {/* Decorative layers — same treatment as the PageHero band */}
-      <div aria-hidden="true" className="absolute inset-0 bg-grid-dark mask-fade-radial" />
+      {/* Decorative layers — the light-surface treatment: faint navy grid
+          plus two soft navy/gold glows so the band never reads flat. */}
+      <div aria-hidden="true" className="absolute inset-0 bg-grid-light mask-fade-radial" />
       <div
         aria-hidden="true"
-        className="absolute -bottom-32 left-[-10%] h-[380px] w-[380px] rounded-full bg-navy-600/40 blur-3xl"
+        className="absolute -bottom-32 left-[-10%] h-[380px] w-[380px] rounded-full bg-navy-200/30 blur-3xl"
       />
       <div
         aria-hidden="true"
-        className="absolute -top-24 right-[-10%] h-[320px] w-[320px] rounded-full bg-gold-500/[0.07] blur-3xl"
+        className="absolute -top-24 right-[-10%] h-[320px] w-[320px] rounded-full bg-gold-300/20 blur-3xl"
       />
 
       <Container className="relative">
@@ -71,8 +74,8 @@ export function DevelopersSection() {
         </ul>
 
         <Reveal delay={0.24}>
-          <p className="mt-10 flex items-center justify-center gap-2 text-center text-sm text-slate-400">
-            <Code2 size={14} aria-hidden="true" className="text-gold-400" />
+          <p className="mt-10 flex items-center justify-center gap-2 text-center text-sm text-muted">
+            <Code2 size={14} aria-hidden="true" className="text-gold-600" />
             Want to build with us? Join the society and pick a project team.
           </p>
         </Reveal>

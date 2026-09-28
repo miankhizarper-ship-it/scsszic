@@ -46,6 +46,7 @@ import AdminVideosPage from "@/pages/admin/AdminVideosPage";
 import AdminVideoFormPage from "@/pages/admin/AdminVideoFormPage";
 import AdminUsersPage from "@/pages/admin/AdminUsersPage";
 import AdminAuditPage from "@/pages/admin/AdminAuditPage";
+import AdminSettingsPage from "@/pages/admin/AdminSettingsPage";
 import ContactPage from "@/pages/ContactPage";
 import LoginPage from "@/pages/LoginPage";
 import SignupPage from "@/pages/SignupPage";
@@ -434,6 +435,14 @@ export const appRouter = createBrowserRouter([
         element: (
           <AdminOnlyRoute>
             <AdminAuditPage />
+          </AdminOnlyRoute>
+        ),
+      },
+      {
+        path: "settings",
+        element: (
+          <AdminOnlyRoute>
+            <AdminSettingsPage />
           </AdminOnlyRoute>
         ),
       },

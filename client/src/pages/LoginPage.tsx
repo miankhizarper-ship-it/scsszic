@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowRight, LogIn } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { useForm } from "react-hook-form";
 
 import { AuthField, AuthShell } from "@/components/auth/AuthShell";
@@ -68,7 +68,6 @@ export default function LoginPage() {
       eyebrow="Member Access"
       title="Welcome back"
       description="Sign in to your SCS account with your email or username."
-      icon={LogIn}
       footer={
         <>
           New to the society?{" "}

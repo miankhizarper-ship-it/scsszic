@@ -462,6 +462,59 @@ export interface TeamCard {
   status: TeamCardStatus;
 }
 
+/* ---------- Site settings (Task 15) ---------- */
+
+/**
+ * Social platforms offered by the footer social-link editor. Values are
+ * icon-registry KEYS (lib/socialIcons.ts) so saved settings render through
+ * the same resolver as every other serialized social link on the site.
+ * Mirrors the server's SOCIAL_PLATFORMS enum.
+ */
+export const SOCIAL_PLATFORMS = [
+  "github",
+  "linkedin",
+  "instagram",
+  "twitter",
+  "x",
+  "facebook",
+  "youtube",
+  "globe",
+  "link",
+] as const;
+export type SocialPlatform = (typeof SOCIAL_PLATFORMS)[number];
+
+/** Human labels for the platform picker in the admin settings editor. */
+export const SOCIAL_PLATFORM_LABELS: Record<SocialPlatform, string> = {
+  github: "GitHub",
+  linkedin: "LinkedIn",
+  instagram: "Instagram",
+  twitter: "Twitter",
+  x: "X (Twitter)",
+  facebook: "Facebook",
+  youtube: "YouTube",
+  globe: "Website",
+  link: "Other link",
+};
+
+/**
+ * SiteSettings — the admin-editable site configuration (footer social
+ * links today; more fields later). The public API returns socials as
+ * RESOLVED links (icon = Lucide component) exactly like every other
+ * public social-link payload; the admin API returns the serialized shape.
+ */
+export interface SiteSettings {
+  /** Footer social links in editor order. Empty = footer falls back to
+   *  its curated placeholder set (pre-settings behavior). */
+  socials: ProfileSocialLink[];
+  updatedAt: string;
+}
+
+/** Admin/API shape — social icons stay registry KEYS over the wire. */
+export interface AdminSiteSettings {
+  socials: SerializedSocialLink[];
+  updatedAt: string;
+}
+
 /* ---------- Gallery ---------- */
 
 /** Album lifecycle — archived albums never appear in public listings. */

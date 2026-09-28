@@ -19,8 +19,8 @@ export function DeveloperCard({ member, className }: DeveloperCardProps) {
   return (
     <article
       className={cn(
-        "group flex h-full flex-col overflow-hidden rounded-xl border border-white/10 bg-navy-900 shadow-sm",
-        "transition-all duration-300 hover:-translate-y-0.5 hover:border-gold-500/30 hover:shadow-lg",
+        "group flex h-full flex-col overflow-hidden rounded-xl border border-navy-800 bg-navy-900 shadow-md shadow-navy-950/10",
+        "transition-all duration-300 hover:-translate-y-0.5 hover:border-gold-500/50 hover:shadow-lg hover:shadow-navy-950/20",
         className,
       )}
     >

@@ -11,6 +11,7 @@ import type {
   AdminMemberListEnvelope,
   AdminPermission,
   AdminProjectListEnvelope,
+  AdminSiteSettings,
   AdminTeamListEnvelope,
   AdminTeamListParams,
   AdminUser,
@@ -26,6 +27,7 @@ import type {
   GalleryAlbumWrite,
   Member,
   Project,
+  SerializedSocialLink,
   SlugAvailability,
   SocietyEvent,
   TeamCardWrite,
@@ -396,6 +398,23 @@ export const adminService = {
       `/admin/team/${encodeURIComponent(id)}`,
       { method: "DELETE" },
     );
+    return response.data;
+  },
+
+  /* --------------------------- Settings (Task 15) -------------------------- */
+
+  /** GET /api/admin/settings — current site settings (admin-only). */
+  async getSiteSettings(): Promise<AdminSiteSettings> {
+    const response = await apiFetch<{ data: AdminSiteSettings }>("/admin/settings");
+    return response.data;
+  },
+
+  /** PUT /api/admin/settings — replace-all the footer social links. */
+  async updateSiteSettings(socials: SerializedSocialLink[]): Promise<AdminSiteSettings> {
+    const response = await apiFetch<{ data: AdminSiteSettings }>("/admin/settings", {
+      method: "PUT",
+      body: { socials },
+    });
     return response.data;
   },
 

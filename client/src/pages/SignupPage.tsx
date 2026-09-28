@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, UserPlus } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { useForm } from "react-hook-form";
 
 import { AuthField, AuthShell } from "@/components/auth/AuthShell";
@@ -81,7 +81,6 @@ export default function SignupPage() {
       eyebrow="Join The Society"
       title="Create your account"
       description="One account for the community — the feed, the member directory, and everything the platform grows into next."
-      icon={UserPlus}
       footer={
         <>
           Already have an account?{" "}

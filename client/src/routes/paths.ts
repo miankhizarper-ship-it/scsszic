@@ -43,5 +43,6 @@ export const ROUTES = {
     feed: "/admin/feed",
     users: "/admin/users",
     audit: "/admin/audit",
+    settings: "/admin/settings",
   },
 } as const;

@@ -7,6 +7,7 @@ import { feedService } from "@/services/feedService";
 import { galleryService } from "@/services/galleryService";
 import { memberService } from "@/services/memberService";
 import { projectService } from "@/services/projectService";
+import { siteSettingsService } from "@/services/siteSettingsService";
 import { teamService } from "@/services/teamService";
 import { watchService } from "@/services/watchService";
 import { fetchCategories } from "@/services/contentApi";
@@ -436,5 +437,22 @@ export function useAddFeedComment(postId: string) {
         (existing) => [...(existing ?? []), comment],
       );
     },
+  });
+}
+
+/* ------------------------- Site settings (Task 15) ----------------------- */
+
+/**
+ * Public site settings (footer social links). Shared app-chrome data —
+ * cached for a long window so every page's footer reads one request.
+ * An empty socials list means "not configured" and the FOOTER falls back
+ * to its curated placeholder set; callers handle that domain logic.
+ */
+export function useSiteSettings() {
+  return useQuery({
+    queryKey: ["settings", "site"],
+    queryFn: () => siteSettingsService.getSiteSettings(),
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
   });
 }

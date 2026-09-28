@@ -89,6 +89,10 @@ import {
   uploadAdminMedia,
 } from "../controllers/admin/adminUploads.controller.js";
 import {
+  getAdminSettings,
+  updateAdminSettings,
+} from "../controllers/admin/adminSettings.controller.js";
+import {
   addAdminCategory,
   deleteAdminCategory,
   listAdminCategories,
@@ -222,6 +226,9 @@ adminRouter.use("/admin/dashboard", requireAdminSection);
 adminRouter.use("/admin/uploads", requireAdminSection);
 adminRouter.use("/admin/users", requireAdminSection);
 adminRouter.use("/admin/audit", requireAdminSection);
+// Site settings (Task 15) — global configuration (footer social links) is
+// an administrator responsibility, exactly like Users/Audit/Uploads.
+adminRouter.use("/admin/settings", requireAdminSection);
 
 // CMS sections — permission-gated (admin always; manage per-user grants).
 adminRouter.use("/admin/events", requireAdminOrPermission("events"));
@@ -338,6 +345,11 @@ adminRouter.patch("/admin/users/:id", updateAdminUser);
 adminRouter.delete("/admin/users/:id", deleteAdminUser);
 
 adminRouter.get("/admin/audit", listAdminAudit);
+
+// Site settings (Task 15) — admin-only gate above. PUT is replace-all: the
+// editor submits the FULL link list (the settings doc is one small record).
+adminRouter.get("/admin/settings", getAdminSettings);
+adminRouter.put("/admin/settings", updateAdminSettings);
 
 // Category vocabulary (Phase 10C) — guarded per section above. The section
 // enum is re-validated inside the controller for defense in depth.

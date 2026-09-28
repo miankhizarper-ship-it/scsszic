@@ -48,6 +48,39 @@ export type SerializedEventSpeaker = Omit<EventSpeaker, "socials"> & {
   socials?: SerializedSocialLink[];
 };
 
+/* ------------------------- Site settings (Task 15) ------------------------ */
+
+/**
+ * Social platforms the footer social-link editor offers. Values are icon
+ * REGISTRY KEYS (client/src/lib/socialIcons.ts), so a saved settings doc
+ * renders through the exact same resolver the alumni/team socials use.
+ */
+export const SOCIAL_PLATFORMS = [
+  "github",
+  "linkedin",
+  "instagram",
+  "twitter",
+  "x",
+  "facebook",
+  "youtube",
+  "globe",
+  "link",
+] as const;
+export type SocialPlatform = (typeof SOCIAL_PLATFORMS)[number];
+
+/**
+ * SiteSettings — the single admin-editable site-configuration document
+ * (collection `site_settings`, id "site"). Task 15 ships the footer social
+ * links; future settings (contact details, announcement banner…) extend
+ * this doc instead of adding collections.
+ */
+export interface SiteSettings {
+  /** Footer social links, in editor order. Empty = footer falls back to
+   *  its curated placeholder set (pre-settings behavior). */
+  socials: SerializedSocialLink[];
+  updatedAt: string;
+}
+
 /**
  * API/database shape of an event — identical to the client `SocietyEvent`
  * except speakers' social icons are registry keys, not components.

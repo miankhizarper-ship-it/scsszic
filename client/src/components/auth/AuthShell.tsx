@@ -2,6 +2,7 @@ import { ArrowRight, ShieldCheck } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { Container } from "@/components/ui/Container";
+import { LogoMark } from "@/components/ui/Logo";
 import { ROUTES } from "@/routes/paths";
 import { cn } from "@/lib/utils";
 
@@ -9,7 +10,6 @@ interface AuthShellProps {
   eyebrow: string;
   title: string;
   description: string;
-  icon: React.ElementType;
   children: React.ReactNode;
   footer?: React.ReactNode;
   /** Wider card for the signup form. */
@@ -75,14 +75,15 @@ export function AuthField({
 
 /**
  * AuthShell — the shared centered-card layout behind /login and /signup.
- * Uses the same surface language as the rest of the site (navy icon chip,
- * gold eyebrow, white card on bg-surface) so auth feels native to SCS.
+ * Uses the same surface language as the rest of the site (navy/gold brand
+ * mark, gold eyebrow, white card on bg-surface) so auth feels native to
+ * SCS. The card is headed by the SCS logo itself (Task 15) — every brand
+ * surface now carries the same mark.
  */
 export function AuthShell({
   eyebrow,
   title,
   description,
-  icon: Icon,
   children,
   footer,
   wide = false,
@@ -99,9 +100,7 @@ export function AuthShell({
           )}
         >
           <div className="text-center">
-            <span className="mx-auto grid size-14 place-items-center rounded-xl border border-gold-500/40 bg-navy-900 text-gold-300 shadow-sm">
-              <Icon size={24} aria-hidden="true" />
-            </span>
+            <LogoMark className="mx-auto size-14 drop-shadow-sm" />
 
             <p className="mt-5 text-xs font-semibold uppercase tracking-[0.22em] text-gold-600">
               {eyebrow}

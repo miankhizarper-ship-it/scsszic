@@ -96,6 +96,39 @@
     color: var(--color-ink);
   }
 
+  /* Theme scrollbars — the page chrome (light surface) gets a slim navy
+     thumb that turns gold on hover; the track stays transparent so the
+     scrollbar melts into whatever surface it sits on. Firefox uses the
+     shorthand (no hover state available); WebKit gets the full treatment.
+     Deep-navy containers still read fine: navy-400 is lighter than both
+     navy-900 and navy-950, and the hover gold works on every surface. */
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--color-navy-400) 85%, transparent)
+      transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 11px;
+    height: 11px;
+  }
+
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: color-mix(in srgb, var(--color-navy-400) 85%, transparent);
+    border-radius: 999px;
+    border: 3px solid transparent;
+    background-clip: padding-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(in srgb, var(--color-gold-500) 90%, transparent);
+  }
+
   :focus-visible {
     outline: 2px solid var(--color-gold-500);
     outline-offset: 2px;

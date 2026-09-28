@@ -1,5 +1,6 @@
 import { Container } from "@/components/ui/Container";
 import { Logo } from "@/components/ui/Logo";
+import { useSiteSettings } from "@/hooks/content";
 import {
   FOOTER_COMMUNITY_LINKS,
   FOOTER_LEGAL_LINKS,
@@ -7,6 +8,7 @@ import {
   SOCIAL_LINKS,
 } from "@/data/navigation";
 import { Link } from "react-router-dom";
+import type { SocialLink } from "@/types";
 
 interface FooterColumnProps {
   heading: string;
@@ -37,10 +39,20 @@ function FooterColumn({ heading, links }: FooterColumnProps) {
 
 /**
  * Footer — premium multi-column footer.
- * Brand + society identity, link columns, social placeholders, legal links.
+ * Brand + society identity, link columns, social links, legal links.
+ *
+ * Social links are ADMIN-MANAGED (Task 15): GET /api/settings feeds the
+ * row, and until the society saves its first link set the curated
+ * placeholder SOCIAL_LINKS render (unchanged pre-settings behavior).
+ * The API never takes the footer down — a failed/missing settings query
+ * just keeps the placeholders.
  */
 export function Footer() {
   const year = new Date().getFullYear();
+  const settingsQuery = useSiteSettings();
+  const configuredLinks = settingsQuery.data?.socials ?? [];
+  const socialLinks: SocialLink[] =
+    configuredLinks.length > 0 ? configuredLinks : SOCIAL_LINKS;
 
   return (
     <footer className="border-t border-white/10 bg-navy-950">
@@ -55,11 +67,12 @@ export function Footer() {
               learning, collaboration, and real-world experiences.
             </p>
             <div className="mt-5 flex items-center gap-2">
-              {SOCIAL_LINKS.map(({ label, href, icon: Icon }) => (
+              {socialLinks.map(({ label, href, icon: Icon }) => (
                 <a
                   key={label}
                   href={href}
                   aria-label={label}
+                  {...(href.startsWith("http") ? { target: "_blank", rel: "noopener noreferrer" } : {})}
                   className="inline-flex size-9 items-center justify-center rounded-lg border border-white/10 text-slate-400 transition-colors hover:border-gold-500/50 hover:text-gold-300"
                 >
                   <Icon size={16} aria-hidden="true" />

@@ -22,6 +22,7 @@ import type {
   GalleryAlbumWrite,
   Member,
   Project,
+  SerializedSocialLink,
   SocietyEvent,
   TeamCardWrite,
   WatchVideo,
@@ -782,5 +783,35 @@ export function useDeleteCategory(section: CategorySection) {
   return useMutation({
     mutationFn: (id: string) => adminService.deleteCategory(section, id),
     onSuccess: invalidate,
+  });
+}
+
+/* --------------------------- Settings (Task 15) -------------------------- */
+
+/** Current site settings for the admin editor (admin-only endpoint). */
+export function useAdminSettings() {
+  return useQuery({
+    queryKey: ["admin", "settings"],
+    queryFn: () => adminService.getSiteSettings(),
+    staleTime: 30_000,
+    retry: 1,
+  });
+}
+
+/**
+ * Replace-all settings save. Invalidates the admin copy AND the public
+ * ["settings", "site"] cache so every open page's footer refetches with
+ * the new social links immediately.
+ */
+export function useUpdateSiteSettings() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (socials: SerializedSocialLink[]) =>
+      adminService.updateSiteSettings(socials),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin", "settings"] });
+      void queryClient.invalidateQueries({ queryKey: ["settings", "site"] });
+      void queryClient.invalidateQueries({ queryKey: ["admin", "audit"] });
+    },
   });
 }
