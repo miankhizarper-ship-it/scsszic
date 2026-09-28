@@ -94,3 +94,39 @@ export async function checkSlugAvailability(
   // Absurdly dense collision space — fall back to a time-unique suffix.
   return { available: false, slug, suggestion: `${slug}-${Date.now().toString(36)}` };
 }
+
+/**
+ * Shared slugify for backend handle generation (Task 16) — the same rules
+ * the client form libraries have always used, so a generated handle looks
+ * exactly like one an admin would have typed: kebab-case, & → "and",
+ * non-alphanumerics collapsed, capped at 80 characters.
+ */
+export function slugifyHandle(value: string): string {
+  return (value ?? "")
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80)
+    .replace(/-+$/g, "");
+}
+
+/**
+ * Auto-generate a unique public handle from a source text (title/name).
+ *
+ * Task 16 removed the slug/username input from every admin form — the
+ * backend is now the sole author of new handles: slugify the source text
+ * and run the same search-first availability check the slug-check endpoint
+ * uses, so a collision becomes a clean `my-title-2` variant instead of a
+ * 409. Non-latin titles slugify to "" and fall back to a time-unique
+ * section-prefixed handle so a create never fails for lack of a handle.
+ */
+export async function generateUniqueHandle(
+  section: SlugCheckSection,
+  sourceText: string,
+): Promise<string> {
+  const base = slugifyHandle(sourceText ?? "");
+  const seed = base || `${section}-${Date.now().toString(36)}`;
+  const availability = await checkSlugAvailability(section, seed);
+  return availability.available ? availability.slug : availability.suggestion;
+}

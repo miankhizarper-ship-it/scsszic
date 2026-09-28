@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/CollectionState";
 import { UploadMediaButton } from "@/components/admin/UploadMediaButton";
-import { SlugField } from "@/components/admin/SlugField";
+import { TagsInput } from "@/components/admin/TagsInput";
 import { CategoryField } from "@/components/admin/CategoryField";
 import {
   useAdminVideo,
@@ -17,7 +17,6 @@ import {
 import { useEvents } from "@/hooks/content";
 import {
   VIDEO_STATUSES,
-  slugifyText,
   toVideoFormValues,
   toVideoPayload,
   videoFormDefaults,
@@ -135,6 +134,12 @@ export default function AdminVideoFormPage() {
     mode: "onTouched",
   });
 
+  // Controlled array field (no attached input) — register it so RHF tracks
+  // it: useWatch stays in sync on setValue and validation runs on submit.
+  useEffect(() => {
+    register("tags");
+  }, [register]);
+
   // Edit mode — hydrate the form once the real video arrives.
   useEffect(() => {
     if (videoQuery.data) {
@@ -142,10 +147,8 @@ export default function AdminVideoFormPage() {
     }
   }, [videoQuery.data, reset]);
 
-  const title = useWatch({ control, name: "title" });
-  const slugValue = useWatch({ control, name: "slug" });
   const categoryValue = useWatch({ control, name: "category" });
-  const slugDirty = Boolean(slugValue && slugValue !== slugifyText(title ?? ""));
+  const tagsValue = useWatch({ control, name: "tags" });
 
   const pending = isSubmitting || createVideo.isPending || updateVideo.isPending;
 
@@ -268,29 +271,11 @@ export default function AdminVideoFormPage() {
               />
             </Field>
 
-            <Field
-              id="video-slug"
-              label="Slug"
-              required
-              error={errors.slug?.message}
-              hint={
-                slugDirty
-                  ? "Custom slug — it becomes the public page URL (/watch/your-slug)."
-                  : "URL handle for the public page. Generate searches existing videos first and picks a free variant."
-              }
-            >
-              <SlugField
-                id="video-slug"
-                value={slugValue}
-                onChange={(next) => setValue("slug", next, { shouldValidate: true })}
-                title={title ?? ""}
-                slugify={slugifyText}
-                section="videos"
-                excludeId={video?.id}
-                urlPrefix="/watch/"
-                inputClass={INPUT_CLASS}
-              />
-            </Field>
+            <p className="rounded-lg border border-dashed border-line bg-surface px-3.5 py-2.5 text-xs leading-relaxed text-muted">
+              <span className="font-semibold text-navy-900">Public URL:</span> generated
+              automatically from the title when you save — duplicates get a numbered
+              variant. Nothing to fill in.
+            </p>
 
             <Field id="video-excerpt" label="Excerpt" required error={errors.excerpt?.message} hint="Short card description shown on the Watch grid.">
               <textarea
@@ -389,13 +374,12 @@ export default function AdminVideoFormPage() {
                   {...register("duration")}
                 />
               </Field>
-              <Field id="video-tags" label="Tags" error={errors.tags?.message} hint="Comma-separated, e.g. AI, Workshop">
-                <input
+              <Field id="video-tags" label="Tags" error={errors.tags?.message}>
+                <TagsInput
                   id="video-tags"
-                  type="text"
-                  aria-invalid={Boolean(errors.tags)}
-                  className={INPUT_CLASS}
-                  {...register("tags")}
+                  tags={tagsValue ?? []}
+                  onChange={(next) => setValue("tags", next, { shouldValidate: true })}
+                  ariaInvalid={Boolean(errors.tags)}
                 />
               </Field>
             </div>

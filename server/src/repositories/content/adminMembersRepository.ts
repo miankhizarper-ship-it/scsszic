@@ -211,7 +211,7 @@ class AdminMembersRepository {
   }
 
   /** Insert a real member document — canonical id + searchText set. */
-  async create(input: AdminMemberCreateInput): Promise<Member> {
+  async create(input: Omit<AdminMemberCreateInput, "username"> & { username: string }): Promise<Member> {
     const _id = generateMemberId();
     const doc: MemberDoc & Document = {
       ...input,

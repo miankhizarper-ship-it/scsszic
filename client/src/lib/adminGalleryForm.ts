@@ -51,13 +51,6 @@ const mediaRef = (label: string) =>
 
 export const galleryFormSchema = z.object({
   title: requiredText("Title", 200),
-  slug: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .min(1, "Slug is required.")
-    .max(80, "Slug must be at most 80 characters.")
-    .regex(/^[a-z0-9][a-z0-9-]*$/, "Use lowercase letters, numbers, and hyphens only."),
   description: requiredText("Description", 20000),
   coverImage: mediaRef("Cover image"),
   coverImageAlt: requiredText("Cover image alt text", 200),
@@ -71,11 +64,14 @@ export const galleryFormSchema = z.object({
   location: optionalText("Location", 200),
   status: z.enum(GALLERY_STATUSES, { message: "Choose a valid status." }),
   tags: z
-    .string()
-    .trim()
-    .max(400, "Tags must be at most 400 characters.")
-    .optional()
-    .or(z.literal("")),
+    .array(
+      z
+        .string()
+        .trim()
+        .min(1, "Tags cannot be empty.")
+        .max(40, "Each tag must be at most 40 characters."),
+    )
+    .max(20, "An album can have at most 20 tags."),
   featured: z.boolean(),
   photos: z
     .array(
@@ -91,22 +87,10 @@ export const galleryFormSchema = z.object({
 
 export type GalleryFormValues = z.infer<typeof galleryFormSchema>;
 
-/** "Campus Connect" → "campus-connect" (same slugify as the other CMS forms). */
-export function slugifyText(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/&/g, "and")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 80)
-    .replace(/-+$/g, "");
-}
-
 /** Fetched album → form values (photos become editable ordered rows). */
 export function toGalleryFormValues(album: GalleryAlbum): GalleryFormValues {
   return {
     title: album.title,
-    slug: album.slug,
     description: album.description,
     coverImage: album.coverImage,
     coverImageAlt: album.coverImageAlt,
@@ -115,7 +99,7 @@ export function toGalleryFormValues(album: GalleryAlbum): GalleryFormValues {
     date: album.date,
     location: album.location ?? "",
     status: album.status,
-    tags: (album.tags ?? []).join(", "),
+    tags: album.tags ?? [],
     featured: Boolean(album.featured),
     photos: (album.photos ?? []).map((photo) => ({
       id: photo.id,
@@ -130,7 +114,6 @@ export function toGalleryFormValues(album: GalleryAlbum): GalleryFormValues {
 export function galleryFormDefaults(): GalleryFormValues {
   return {
     title: "",
-    slug: "",
     description: "",
     coverImage: "",
     coverImageAlt: "",
@@ -139,7 +122,7 @@ export function galleryFormDefaults(): GalleryFormValues {
     date: new Date().toISOString().slice(0, 10),
     location: "",
     status: "published",
-    tags: "",
+    tags: [],
     featured: false,
     photos: [{ src: "", alt: "", caption: "" }],
   };
@@ -147,15 +130,8 @@ export function galleryFormDefaults(): GalleryFormValues {
 
 /** Form values → API payload (exact GalleryAlbum model shape). */
 export function toGalleryPayload(values: GalleryFormValues): Partial<GalleryAlbumWrite> {
-  const splitList = (text: string | undefined) =>
-    (text ?? "")
-      .split(",")
-      .map((entry) => entry.trim())
-      .filter(Boolean);
-
   return {
     title: values.title,
-    slug: values.slug,
     description: values.description,
     coverImage: values.coverImage,
     coverImageAlt: values.coverImageAlt,
@@ -164,7 +140,7 @@ export function toGalleryPayload(values: GalleryFormValues): Partial<GalleryAlbu
     date: values.date,
     ...(values.location ? { location: values.location } : {}),
     status: values.status,
-    tags: splitList(values.tags),
+    tags: values.tags,
     featured: values.featured,
     // The array order IS the display order — reorder is a plain save.
     // Existing ids ride along; new photos get server-generated ids.

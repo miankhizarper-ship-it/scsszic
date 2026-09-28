@@ -6,8 +6,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/CollectionState";
-import { UploadMediaButton } from "@/components/admin/UploadMediaButton";
-import { SlugField } from "@/components/admin/SlugField";
+import { UploadMediaButton, UploadMediaFilesButton } from "@/components/admin/UploadMediaButton";
+import { TagsInput } from "@/components/admin/TagsInput";
 import { CategoryField } from "@/components/admin/CategoryField";
 import {
   useAdminAlbum,
@@ -19,7 +19,6 @@ import {
   GALLERY_STATUSES,
   galleryFormDefaults,
   galleryFormSchema,
-  slugifyText,
   toGalleryFormValues,
   toGalleryPayload,
   type GalleryFormValues,
@@ -28,21 +27,21 @@ import { ApiError } from "@/services/apiClient";
 import { ROUTES } from "@/routes/paths";
 
 /**
- * Admin Gallery album form (Phase 9G) — one reusable form for create AND
- * edit (/admin/gallery/new, /admin/gallery/:id/edit).
+ * Admin Gallery album form (Phase 9G, Task 16 updates) — one reusable form
+ * for create AND edit (/admin/gallery/new, /admin/gallery/:id/edit).
  *
- * Fields mirror the existing GalleryAlbum model exactly (title, slug,
- * description, cover, category, event reference, capture date, location,
- * status, tags, featured, embedded photos) — no invented fields. The photo
- * editor is the model's own embedded-array surface: add a photo reference,
- * edit alt/caption, reorder with move up/down, remove — the array order IS
- * the public display order and is persisted on save (photoCount is
+ * Fields mirror the existing GalleryAlbum model exactly (title, description,
+ * cover, category, event reference, capture date, location, status, tags,
+ * featured, embedded photos) — no invented fields. The slug is gone from the
+ * UI: the server auto-generates it from the title. The photo editor is the
+ * model's own embedded-array surface: multi-upload (Task 16) appends one row
+ * per image, edit alt/caption, reorder with move up/down, remove — the array
+ * order IS the public display order and is persisted on save (photoCount is
  * recomputed server-side).
  *
- * Media references (spec §7): there is NO upload infrastructure — photo
- * src and cover art are references to EXISTING media (local asset path or
- * URL), validated as such and labeled plainly. There is deliberately no
- * upload button. The event reference is picked from the REAL events
+ * Media references (spec §7): photo src and cover art are references to
+ * EXISTING media (local asset path, R2 URL, or external URL) or freshly
+ * uploaded files. The event reference is picked from the REAL events
  * collection through the existing public query; the server re-verifies
  * existence. Double submissions are impossible while a mutation is pending.
  */
@@ -166,6 +165,12 @@ export default function AdminGalleryFormPage() {
     mode: "onTouched",
   });
 
+  // Controlled array field (no attached input) — register it so RHF tracks
+  // it: useWatch stays in sync on setValue and validation runs on submit.
+  useEffect(() => {
+    register("tags");
+  }, [register]);
+
   // The embedded photo rows — add / reorder / remove operate on this array.
   const { fields, append, remove, move } = useFieldArray({
     control,
@@ -179,13 +184,11 @@ export default function AdminGalleryFormPage() {
     }
   }, [albumQuery.data, reset]);
 
-  const title = useWatch({ control, name: "title" });
-  const slugValue = useWatch({ control, name: "slug" });
   const categoryValue = useWatch({ control, name: "category" });
   // One top-level watch for the photo rows (never useWatch inside a loop —
   // the row count changes as photos are added/removed).
   const photosWatch = useWatch({ control, name: "photos" });
-  const slugDirty = Boolean(slugValue && slugValue !== slugifyText(title ?? ""));
+  const tagsValue = useWatch({ control, name: "tags" });
 
   const pending = isSubmitting || createAlbum.isPending || updateAlbum.isPending;
 
@@ -309,27 +312,13 @@ export default function AdminGalleryFormPage() {
             </Field>
 
             <Field
-              id="album-slug"
-              label="Slug"
-              required
-              error={errors.slug?.message}
-              hint={
-                slugDirty
-                  ? "Custom slug — it becomes the public page URL (/gallery/your-slug)."
-                  : "URL handle for the public page. Generate searches existing albums first and picks a free variant."
-              }
+              id="album-slug-note"
+              label="Public URL"
+              hint="Generated from the title when you save — duplicates get a numbered variant."
             >
-              <SlugField
-                id="album-slug"
-                value={slugValue}
-                onChange={(next) => setValue("slug", next, { shouldValidate: true })}
-                title={title ?? ""}
-                slugify={slugifyText}
-                section="gallery"
-                excludeId={album?.id}
-                urlPrefix="/gallery/"
-                inputClass={INPUT_CLASS}
-              />
+              <div className="rounded-lg border border-dashed border-line bg-surface px-3.5 py-2.5 text-sm text-muted">
+                Auto-generated from the title — nothing to fill in.
+              </div>
             </Field>
 
             <Field id="album-description" label="Description" required error={errors.description?.message} hint="The album's story — shown on the public album page.">
@@ -409,13 +398,12 @@ export default function AdminGalleryFormPage() {
             </Field>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field id="album-tags" label="Tags" error={errors.tags?.message} hint="Comma-separated, e.g. Hackathon, 2026">
-                <input
+              <Field id="album-tags" label="Tags" error={errors.tags?.message}>
+                <TagsInput
                   id="album-tags"
-                  type="text"
-                  aria-invalid={Boolean(errors.tags)}
-                  className={INPUT_CLASS}
-                  {...register("tags")}
+                  tags={tagsValue ?? []}
+                  onChange={(next) => setValue("tags", next, { shouldValidate: true })}
+                  ariaInvalid={Boolean(errors.tags)}
                 />
               </Field>
               <div className="flex items-end pb-2">
@@ -474,9 +462,23 @@ export default function AdminGalleryFormPage() {
         <Section
           id="album-photos"
           title="Photos"
-          description="The album's embedded photo rows — the order here is the public display order. Add references to existing media, edit alt/caption, reorder, or remove."
+          description="The album's embedded photo rows — the order here is the public display order. Upload several at once, add references to existing media, edit alt/caption, reorder, or remove."
         >
           <div className="flex flex-col gap-4">
+            <div className="rounded-lg border border-dashed border-line bg-surface p-3">
+              <UploadMediaFilesButton
+                folder="gallery"
+                accept="image/*"
+                label="Upload multiple images"
+                onUploaded={(urls) =>
+                  append(urls.map((url) => ({ src: url, alt: "", caption: "" })))
+                }
+              />
+              <p className="mt-1.5 text-xs text-muted">
+                Every uploaded image becomes a photo row (in selection order) — then
+                fill in its alt text and caption below.
+              </p>
+            </div>
             {fields.map((field, index) => {
               const rowError = errors.photos?.[index];
               return (

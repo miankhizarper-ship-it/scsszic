@@ -26,13 +26,6 @@ const optionalText = (label: string, max: number) =>
     .or(z.literal(""));
 
 export const memberFormSchema = z.object({
-  username: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .min(1, "Username is required.")
-    .max(80, "Username must be at most 80 characters.")
-    .regex(/^[a-z0-9][a-z0-9-]*$/, "Use lowercase letters, numbers, and hyphens only."),
   name: requiredText("Name", 120),
   initials: z
     .string()
@@ -90,17 +83,6 @@ export const memberFormSchema = z.object({
 
 export type MemberFormValues = z.infer<typeof memberFormSchema>;
 
-/** "Kamran Yousafzai" → "kamran-yousafzai" (same slugify as blogs/events). */
-export function slugifyText(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/&/g, "and")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 80)
-    .replace(/-+$/g, "");
-}
-
 /** "Ahmad Shah" → "AS" — up to the first two words' initials. */
 export function initialsFromName(value: string): string {
   return value
@@ -111,10 +93,10 @@ export function initialsFromName(value: string): string {
     .join("");
 }
 
-/** Fetched member → form values (map/arrays become editable text areas). */
+/** Fetched member → form values (map/arrays become editable text areas).
+ *  The username is server-generated (Task 16) and never shown in the form. */
 export function toMemberFormValues(member: Member): MemberFormValues {
   return {
-    username: member.username,
     name: member.name,
     initials: member.initials,
     avatar: member.avatar ?? "",
@@ -142,7 +124,6 @@ export function toMemberFormValues(member: Member): MemberFormValues {
 /** Create defaults — active member, this year's batch. */
 export function memberFormDefaults(): MemberFormValues {
   return {
-    username: "",
     name: "",
     initials: "",
     avatar: "",
@@ -185,7 +166,8 @@ function parseSocialMap(text: string | undefined): Record<string, string> | unde
   return Object.fromEntries(entries);
 }
 
-/** Form values → API payload (exact Member model shape). */
+/** Form values → API payload (exact Member model shape). The username is
+ *  server-generated (Task 16) and never sent from the form. */
 export function toMemberPayload(values: MemberFormValues): Partial<Member> {
   const splitList = (text: string | undefined) =>
     (text ?? "")
@@ -199,7 +181,6 @@ export function toMemberPayload(values: MemberFormValues): Partial<Member> {
   const social = parseSocialMap(values.socialText);
 
   return {
-    username: values.username,
     name: values.name,
     initials: values.initials,
     ...(values.avatar ? { avatar: values.avatar } : {}),

@@ -1,16 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, CalendarPlus, ExternalLink, Plus, Save, X } from "lucide-react";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/CollectionState";
 import { UploadMediaButton } from "@/components/admin/UploadMediaButton";
-import { SlugField } from "@/components/admin/SlugField";
+import { TagsInput } from "@/components/admin/TagsInput";
+import { EventGalleryEditor } from "@/components/admin/EventGalleryEditor";
 import { CategoryField } from "@/components/admin/CategoryField";
 import { useAdminEvent, useCreateEvent, useUpdateEvent } from "@/hooks/admin";
-import { eventFormSchema, slugifyTitle, type EventFormValues } from "@/lib/adminEventForm";
+import { eventFormSchema, type EventFormValues } from "@/lib/adminEventForm";
 import { ApiError } from "@/services/apiClient";
 import { ROUTES } from "@/routes/paths";
 import type { SocietyEvent } from "@/types";
@@ -88,31 +89,10 @@ function Section({
   );
 }
 
-/** Comma-separated tags input → array (model shape). */
-function parseTags(raw: string | undefined): string[] {
-  const value = (raw ?? "").trim();
-  if (!value) return [];
-  return value
-    .split(",")
-    .map((tag) => tag.trim())
-    .filter(Boolean);
-}
-
-/** Newline/comma-separated gallery input → array (model shape). */
-function parseGallery(raw: string | undefined): string[] {
-  const value = (raw ?? "").trim();
-  if (!value) return [];
-  return value
-    .split(/[\n,]/)
-    .map((entry) => entry.trim())
-    .filter(Boolean);
-}
-
-/** Fetched event → form values (arrays become editable text). */
+/** Fetched event → form values (arrays become editable chip lists). */
 function toFormValues(event: SocietyEvent): EventFormValues {
   return {
     title: event.title,
-    slug: event.slug,
     category: event.category,
     status: event.status,
     featured: Boolean(event.featured),
@@ -125,8 +105,8 @@ function toFormValues(event: SocietyEvent): EventFormValues {
     description: event.description,
     coverImage: event.coverImage,
     coverImageAlt: event.coverImageAlt,
-    tags: (event.tags ?? []).join(", "),
-    gallery: (event.gallery ?? []).join("\n"),
+    tags: event.tags ?? [],
+    gallery: event.gallery ?? [],
     registrationEnabled: event.registration?.enabled ?? false,
     registrationLabel: event.registration?.label ?? "",
     registrationExternalUrl: event.registration?.externalUrl ?? "",
@@ -149,7 +129,6 @@ function toFormValues(event: SocietyEvent): EventFormValues {
 
 const CREATE_DEFAULTS: EventFormValues = {
   title: "",
-  slug: "",
   category: "Workshops",
   status: "upcoming",
   featured: false,
@@ -162,8 +141,8 @@ const CREATE_DEFAULTS: EventFormValues = {
   description: "",
   coverImage: "",
   coverImageAlt: "",
-  tags: "",
-  gallery: "",
+  tags: [],
+  gallery: [],
   registrationEnabled: false,
   registrationLabel: "",
   registrationExternalUrl: "",
@@ -200,8 +179,8 @@ export default function AdminEventFormPage() {
     reset,
     setValue,
     watch,
-    setError,
     control,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<EventFormValues>({
     resolver: zodResolver(eventFormSchema),
@@ -209,8 +188,19 @@ export default function AdminEventFormPage() {
     mode: "onTouched",
   });
 
+  // Controlled array fields (no attached input) — register them so RHF
+  // tracks them: useWatch stays in sync on setValue and validation runs.
+  useEffect(() => {
+    register("tags");
+    register("gallery");
+  }, [register]);
+
   const speakersArray = useFieldArray({ control, name: "speakers" });
   const scheduleArray = useFieldArray({ control, name: "schedule" });
+
+  // Chip editors are controlled through watches — the form owns the arrays.
+  const tagsValue = useWatch({ control, name: "tags" });
+  const galleryValue = useWatch({ control, name: "gallery" });
 
   // Edit mode — hydrate the form once the real event arrives.
   useEffect(() => {
@@ -219,14 +209,8 @@ export default function AdminEventFormPage() {
     }
   }, [eventQuery.data, reset]);
 
-  const title = watch("title");
-  const slugValue = watch("slug");
   const categoryValue = watch("category");
   const registrationEnabled = watch("registrationEnabled");
-  const slugDirty = useMemo(
-    () => Boolean(slugValue && slugValue !== slugifyTitle(title ?? "")),
-    [slugValue, title],
-  );
 
   const pending = isSubmitting || createEvent.isPending || updateEvent.isPending;
 
@@ -253,7 +237,6 @@ export default function AdminEventFormPage() {
     setFormError(null);
 
     const payload: Partial<SocietyEvent> = {
-      slug: values.slug,
       title: values.title,
       excerpt: values.excerpt,
       description: values.description,
@@ -267,8 +250,8 @@ export default function AdminEventFormPage() {
       organizer: values.organizer || undefined,
       coverImage: values.coverImage,
       coverImageAlt: values.coverImageAlt,
-      tags: parseTags(values.tags),
-      gallery: parseGallery(values.gallery),
+      tags: values.tags,
+      gallery: values.gallery,
       registration: {
         enabled: values.registrationEnabled,
         ...(values.registrationLabel ? { label: values.registrationLabel } : {}),
@@ -384,29 +367,11 @@ export default function AdminEventFormPage() {
               />
             </Field>
 
-            <Field
-              id="event-slug"
-              label="Slug"
-              required
-              error={errors.slug?.message}
-              hint={
-                slugDirty
-                  ? "Custom slug — it becomes the public page URL (/events/your-slug)."
-                  : "URL handle for the public page. Generate searches existing events first and picks a free variant."
-              }
-            >
-              <SlugField
-                id="event-slug"
-                value={slugValue}
-                onChange={(next) => setValue("slug", next, { shouldValidate: true })}
-                title={title ?? ""}
-                slugify={slugifyTitle}
-                section="events"
-                excludeId={event?.id}
-                urlPrefix="/events/"
-                inputClass={INPUT_CLASS}
-              />
-            </Field>
+            <p className="rounded-lg border border-dashed border-line bg-surface px-3.5 py-2.5 text-xs leading-relaxed text-muted">
+              <span className="font-semibold text-navy-900">Public URL:</span> generated
+              automatically from the title when you save — duplicates get a numbered
+              variant. Nothing to fill in.
+            </p>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field id="event-category" label="Category" required error={errors.category?.message}>
@@ -566,41 +531,29 @@ export default function AdminEventFormPage() {
               </Field>
             </div>
 
-            <Field id="event-tags" label="Tags" error={errors.tags?.message} hint="Comma-separated, e.g. Machine Learning, Python">
-              <input
+            <Field
+              id="event-tags"
+              label="Tags"
+              error={errors.tags?.message}
+            >
+              <TagsInput
                 id="event-tags"
-                type="text"
-                aria-invalid={Boolean(errors.tags)}
-                aria-describedby={errors.tags ? "event-tags-error" : undefined}
-                className={INPUT_CLASS}
-                {...register("tags")}
+                tags={tagsValue ?? []}
+                onChange={(next) => setValue("tags", next, { shouldValidate: true })}
+                ariaInvalid={Boolean(errors.tags)}
               />
             </Field>
 
-            <Field id="event-gallery" label="Gallery images" error={errors.gallery?.message} hint="One image path/URL per line (optional). Upload appends a new line.">
-              <textarea
-                id="event-gallery"
-                rows={3}
-                aria-invalid={Boolean(errors.gallery)}
-                aria-describedby={errors.gallery ? "event-gallery-error" : undefined}
-                className={INPUT_CLASS}
-                {...register("gallery")}
+            <Field
+              id="event-gallery"
+              label="Gallery images & videos"
+              error={errors.gallery?.message}
+              hint="Upload any number of images and clips, or paste paths/URLs. The first item becomes the large tile on the public page."
+            >
+              <EventGalleryEditor
+                items={galleryValue ?? []}
+                onChange={(next) => setValue("gallery", next, { shouldValidate: true })}
               />
-              <div className="mt-2">
-                <UploadMediaButton
-                  folder="events"
-                  accept="image/*"
-                  label="Upload to gallery"
-                  onUploaded={(url) => {
-                    const existing = watch("gallery") ?? "";
-                    setValue(
-                      "gallery",
-                      existing ? `${existing.replace(/\s*$/, "")}\n${url}` : url,
-                      { shouldValidate: true },
-                    );
-                  }}
-                />
-              </div>
             </Field>
           </div>
         </Section>

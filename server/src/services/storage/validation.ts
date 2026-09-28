@@ -41,8 +41,9 @@ export const IMAGE_FOLDERS = [
   "misc",
 ] as const;
 
-/** Folders that additionally accept direct video files. */
-export const VIDEO_FOLDERS = ["videos"] as const;
+/** Folders that additionally accept direct video files (Task 16: events
+ *  joined `videos` so an event's gallery can carry video clips). */
+export const VIDEO_FOLDERS = ["videos", "events"] as const;
 
 export type UploadFolder = (typeof IMAGE_FOLDERS)[number] | (typeof VIDEO_FOLDERS)[number];
 
@@ -132,10 +133,9 @@ export function validateUpload(input: {
   const declared = normalizeDeclaredType(input.declaredContentType);
   if (declared !== sniffed) return { ok: false, reason: "mismatch" };
 
-  const allowlist =
-    input.folder === "videos"
-      ? { ...IMAGE_MIME_TYPES, ...VIDEO_MIME_TYPES }
-      : IMAGE_MIME_TYPES;
+  const allowlist = (VIDEO_FOLDERS as readonly string[]).includes(input.folder)
+    ? { ...IMAGE_MIME_TYPES, ...VIDEO_MIME_TYPES }
+    : IMAGE_MIME_TYPES;
 
   const ext = allowlist[sniffed];
   if (!ext) return { ok: false, reason: "unsupported" };

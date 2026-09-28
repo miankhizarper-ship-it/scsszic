@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/CollectionState";
 import { UploadMediaButton } from "@/components/admin/UploadMediaButton";
-import { SlugField } from "@/components/admin/SlugField";
+import { TagsInput } from "@/components/admin/TagsInput";
 import { CategoryField } from "@/components/admin/CategoryField";
 import {
   useAdminProject,
@@ -19,7 +19,6 @@ import {
   PROJECT_STATUSES,
   projectFormDefaults,
   projectFormSchema,
-  slugifyText,
   toProjectFormValues,
   toProjectPayload,
   type ProjectFormValues,
@@ -135,6 +134,12 @@ export default function AdminProjectFormPage() {
     mode: "onTouched",
   });
 
+  // Controlled array field (no attached input) — register it so RHF tracks
+  // it: useWatch stays in sync on setValue and validation runs on submit.
+  useEffect(() => {
+    register("tags");
+  }, [register]);
+
   // Edit mode — hydrate the form once the real project arrives.
   useEffect(() => {
     if (projectQuery.data) {
@@ -142,11 +147,9 @@ export default function AdminProjectFormPage() {
     }
   }, [projectQuery.data, reset]);
 
-  const title = useWatch({ control, name: "title" });
-  const slugValue = useWatch({ control, name: "slug" });
   const categoryValue = useWatch({ control, name: "category" });
   const rosterText = useWatch({ control, name: "memberUsernamesText" });
-  const slugDirty = Boolean(slugValue && slugValue !== slugifyText(title ?? ""));
+  const tagsValue = useWatch({ control, name: "tags" });
 
   const pending = isSubmitting || createProject.isPending || updateProject.isPending;
 
@@ -282,29 +285,11 @@ export default function AdminProjectFormPage() {
               />
             </Field>
 
-            <Field
-              id="project-slug"
-              label="Slug"
-              required
-              error={errors.slug?.message}
-              hint={
-                slugDirty
-                  ? "Custom slug — it becomes the public page URL (/projects/your-slug)."
-                  : "URL handle for the public page. Generate searches existing projects first and picks a free variant."
-              }
-            >
-              <SlugField
-                id="project-slug"
-                value={slugValue}
-                onChange={(next) => setValue("slug", next, { shouldValidate: true })}
-                title={title ?? ""}
-                slugify={slugifyText}
-                section="projects"
-                excludeId={project?.id}
-                urlPrefix="/projects/"
-                inputClass={INPUT_CLASS}
-              />
-            </Field>
+            <p className="rounded-lg border border-dashed border-line bg-surface px-3.5 py-2.5 text-xs leading-relaxed text-muted">
+              <span className="font-semibold text-navy-900">Public URL:</span> generated
+              automatically from the title when you save — duplicates get a numbered
+              variant. Nothing to fill in.
+            </p>
 
             <Field id="project-tagline" label="Tagline" required error={errors.tagline?.message} hint="One-line pitch shown under the title.">
               <textarea
@@ -497,13 +482,12 @@ export default function AdminProjectFormPage() {
               />
             </Field>
 
-            <Field id="project-tags" label="Tags" error={errors.tags?.message} hint="Comma-separated, e.g. Hackathon, Dashboard">
-              <input
+            <Field id="project-tags" label="Tags" error={errors.tags?.message}>
+              <TagsInput
                 id="project-tags"
-                type="text"
-                aria-invalid={Boolean(errors.tags)}
-                className={INPUT_CLASS}
-                {...register("tags")}
+                tags={tagsValue ?? []}
+                onChange={(next) => setValue("tags", next, { shouldValidate: true })}
+                ariaInvalid={Boolean(errors.tags)}
               />
             </Field>
 

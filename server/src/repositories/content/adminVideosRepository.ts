@@ -234,12 +234,12 @@ class AdminVideosRepository {
   }
 
   /** Insert a real video document — canonical id, server-derived durationMinutes, searchText. */
-  async create(input: AdminVideoCreateInput): Promise<WatchVideo> {
+  async create(input: Omit<AdminVideoCreateInput, "slug"> & { slug: string }): Promise<WatchVideo> {
     const _id = generateVideoId();
     const { set } = buildWriteSets({ ...input });
 
     const doc: VideoDoc & Document = {
-      ...(set as unknown as AdminVideoCreateInput),
+      ...(set as unknown as Omit<AdminVideoCreateInput, "slug"> & { slug: string }),
       featured: input.featured ?? false,
       // The seed's own derivation of the editorial duration string.
       durationMinutes: parseDurationMinutes(input.duration),

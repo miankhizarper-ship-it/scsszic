@@ -41,10 +41,12 @@ const socialLinkSchema = z.object({
   icon: z.string().trim().min(1, "Link icon key is required.").max(40),
 });
 
-/** The full create payload — every Alumnus-model field, nothing more. */
+/** The full create payload — every Alumnus-model field, nothing more.
+ *  `username` is OPTIONAL (Task 16): when absent the controller
+ *  auto-generates a unique handle from the name via generateUniqueHandle(). */
 export const adminAlumniCreateSchema = z
   .object({
-    username: usernameSchema,
+    username: usernameSchema.optional(),
     name: z.string().trim().min(1, "Name is required.").max(120),
     batch: z.string().trim().min(1, "Batch label is required.").max(40),
     batchYear: z.coerce

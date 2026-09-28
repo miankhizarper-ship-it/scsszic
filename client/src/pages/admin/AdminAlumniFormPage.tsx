@@ -7,7 +7,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/CollectionState";
 import { UploadMediaButton } from "@/components/admin/UploadMediaButton";
-import { SlugField } from "@/components/admin/SlugField";
 import {
   useAdminAlumnus,
   useCreateAlumnus,
@@ -18,7 +17,6 @@ import {
   alumniFormDefaults,
   alumniFormSchema,
   initialsFromName,
-  slugifyText,
   toAlumniFormValues,
   toAlumniPayload,
   type AlumniFormValues,
@@ -133,9 +131,7 @@ export default function AdminAlumniFormPage() {
   }, [alumnusQuery.data, reset]);
 
   const name = useWatch({ control, name: "name" });
-  const usernameValue = useWatch({ control, name: "username" });
   const initialsValue = useWatch({ control, name: "initials" });
-  const usernameDirty = Boolean(usernameValue && usernameValue !== slugifyText(name ?? ""));
   const initialsDirty = Boolean(initialsValue && initialsValue !== initialsFromName(name ?? ""));
 
   const pending = isSubmitting || createAlumnus.isPending || updateAlumnus.isPending;
@@ -268,29 +264,11 @@ export default function AdminAlumniFormPage() {
               </Field>
             </div>
 
-            <Field
-              id="alumni-username"
-              label="Username (profile handle)"
-              required
-              error={errors.username?.message}
-              hint={
-                usernameDirty
-                  ? "Custom handle — it becomes the public profile URL (/alumni/your-handle)."
-                  : "URL handle for the public profile. Generate searches existing alumni first and picks a free variant."
-              }
-            >
-              <SlugField
-                id="alumni-username"
-                value={usernameValue}
-                onChange={(next) => setValue("username", next, { shouldValidate: true })}
-                title={name ?? ""}
-                slugify={slugifyText}
-                section="alumni"
-                excludeId={alumnus?.id}
-                urlPrefix="/alumni/"
-                inputClass={INPUT_CLASS}
-              />
-            </Field>
+            <p className="rounded-lg border border-dashed border-line bg-surface px-3.5 py-2.5 text-xs leading-relaxed text-muted">
+              <span className="font-semibold text-navy-900">Profile handle:</span> generated
+              automatically from the name when you save — duplicates get a numbered
+              variant. Nothing to fill in.
+            </p>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field id="alumni-batch-year" label="Batch year" required error={errors.batchYear?.message}>

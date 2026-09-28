@@ -724,13 +724,6 @@ export interface AdminCategoryList {
   categories: AdminCategory[];
 }
 
-/** Payload of GET /api/admin/slug-check (search-first availability check). */
-export interface SlugAvailability {
-  available: boolean;
-  slug: string;
-  suggestion: string;
-}
-
 /** Client-safe account representation from /api/auth/* — never contains
  *  password hashes or session internals (the session is an HTTP-only cookie). */
 export interface AuthUser {

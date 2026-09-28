@@ -13,6 +13,7 @@ import {
 import { isDuplicateKeyError } from "../../db/errors.js";
 import { collections } from "../../db/collections.js";
 import { changedFields, recordAudit } from "../../audit/auditLogger.js";
+import { generateUniqueHandle } from "../../repositories/content/slugAvailabilityRepository.js";
 
 /**
  * Admin Members controllers (Phase 9E) — request/response boundary for
@@ -111,7 +112,12 @@ export const createAdminMember: RequestHandler = withErrorBoundary(
       return;
     }
 
-    if (await adminMembersRepository.usernameExists(parsed.data.username)) {
+    // Task 16 — the admin forms no longer send a username: the backend
+    // derives a unique handle from the name (collisions become -2 variants).
+    const username =
+      parsed.data.username ?? (await generateUniqueHandle("members", parsed.data.name));
+
+    if (await adminMembersRepository.usernameExists(username)) {
       res.status(409).json({
         message: DUPLICATE,
         errors: { username: DUPLICATE_FIELD },
@@ -120,7 +126,7 @@ export const createAdminMember: RequestHandler = withErrorBoundary(
     }
 
     try {
-      const member = await adminMembersRepository.create(parsed.data);
+      const member = await adminMembersRepository.create({ ...parsed.data, username });
       await recordAudit(req, {
         action: "member.created",
         resourceType: "member",

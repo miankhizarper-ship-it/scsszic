@@ -31,13 +31,6 @@ const optionalText = (label: string, max: number) =>
 
 export const feedFormSchema = z
   .object({
-    slug: z
-      .string()
-      .trim()
-      .toLowerCase()
-      .min(1, "Slug is required.")
-      .max(80, "Slug must be at most 80 characters.")
-      .regex(/^[a-z0-9][a-z0-9-]*$/, "Use lowercase letters, numbers, and hyphens only."),
     type: z.enum(FEED_TYPES, { message: "Choose a valid post type." }),
     authorUsername: optionalText("Author username", 80),
     authorName: requiredText("Author name", 120),
@@ -56,11 +49,14 @@ export const feedFormSchema = z
       .min(1, "Publication date is required.")
       .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, "Use a valid date and time."),
     tags: z
-      .string()
-      .trim()
-      .max(400, "Tags must be at most 400 characters.")
-      .optional()
-      .or(z.literal("")),
+      .array(
+        z
+          .string()
+          .trim()
+          .min(1, "Tags cannot be empty.")
+          .max(40, "Each tag must be at most 40 characters."),
+      )
+      .max(20, "A post can have at most 20 tags."),
     likes: z
       .string()
       .trim()
@@ -95,17 +91,6 @@ export const feedFormSchema = z
 
 export type FeedFormValues = z.infer<typeof feedFormSchema>;
 
-/** "Campus Connect v0.3" → "campus-connect-v03" (same slugify as blogs). */
-export function slugifyText(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/&/g, "and")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 80)
-    .replace(/-+$/g, "");
-}
-
 /** ISO timestamp → datetime-local value (UTC pinned, minute precision). */
 function toLocalInput(iso: string): string {
   return iso.slice(0, 16);
@@ -119,7 +104,6 @@ function toIsoTimestamp(local: string): string {
 /** Fetched post → form values. */
 export function toFeedFormValues(post: FeedPost): FeedFormValues {
   return {
-    slug: post.slug,
     type: post.type,
     authorUsername: post.authorUsername ?? "",
     authorName: post.authorName,
@@ -132,7 +116,7 @@ export function toFeedFormValues(post: FeedPost): FeedFormValues {
     image: post.image ?? "",
     imageAlt: post.imageAlt ?? "",
     publishedAtLocal: toLocalInput(post.publishedAt),
-    tags: (post.tags ?? []).join(", "),
+    tags: post.tags ?? [],
     likes: String(post.likes ?? 0),
     comments: String(post.comments ?? 0),
     status: post.status,
@@ -144,7 +128,6 @@ export function feedFormDefaults(): FeedFormValues {
   const now = new Date();
   now.setSeconds(0, 0);
   return {
-    slug: "",
     type: "announcement",
     authorUsername: "",
     authorName: "",
@@ -157,22 +140,17 @@ export function feedFormDefaults(): FeedFormValues {
     image: "",
     imageAlt: "",
     publishedAtLocal: toLocalInput(now.toISOString()),
-    tags: "",
+    tags: [],
     likes: "",
     comments: "",
     status: "published",
   };
 }
 
-/** Form values → API payload (exact FeedPost model shape). */
+/** Form values → API payload (exact FeedPost model shape). The slug is
+ *  server-generated (Task 16) and never sent from the form. */
 export function toFeedPayload(values: FeedFormValues): Partial<FeedPost> {
-  const tags = (values.tags ?? "")
-    .split(",")
-    .map((tag) => tag.trim())
-    .filter(Boolean);
-
   return {
-    slug: values.slug,
     type: values.type,
     ...(values.authorUsername ? { authorUsername: values.authorUsername } : {}),
     authorName: values.authorName,
@@ -185,7 +163,7 @@ export function toFeedPayload(values: FeedFormValues): Partial<FeedPost> {
     ...(values.image ? { image: values.image } : {}),
     ...(values.imageAlt ? { imageAlt: values.imageAlt } : {}),
     publishedAt: toIsoTimestamp(values.publishedAtLocal),
-    tags,
+    tags: values.tags,
     likes: values.likes === "" ? 0 : Number(values.likes),
     comments: values.comments === "" ? 0 : Number(values.comments),
     status: values.status,

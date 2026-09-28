@@ -65,10 +65,12 @@ const tagSchema = z
   .min(1, "Tags cannot be empty.")
   .max(40, "Tags must be at most 40 characters.");
 
-/** The full create payload — every FeedPost-model field, nothing more. */
+/** The full create payload — every FeedPost-model field, nothing more.
+ *  `slug` is OPTIONAL (Task 16): when absent the controller auto-generates
+ *  a unique handle from the title via generateUniqueHandle(). */
 const adminFeedCreateObject = z
   .object({
-    slug: slugSchema,
+    slug: slugSchema.optional(),
     type: z.enum(FEED_TYPES, { message: "Choose a valid post type." }),
     authorUsername: refSlugSchema.optional(),
     authorName: z.string().trim().min(1, "Author name is required.").max(120),

@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { ContentBlockEditor } from "@/components/admin/ContentBlockEditor";
 import { UploadMediaButton } from "@/components/admin/UploadMediaButton";
-import { SlugField } from "@/components/admin/SlugField";
+import { TagsInput } from "@/components/admin/TagsInput";
 import { CategoryField } from "@/components/admin/CategoryField";
 import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/CollectionState";
@@ -26,9 +26,10 @@ import { ROUTES } from "@/routes/paths";
  * Admin Blog form (Phase 9D) — one reusable form for create AND edit
  * (/admin/blogs/new, /admin/blogs/:id/edit).
  *
- * Fields mirror the existing Blog model exactly (title, slug, excerpt,
- * structured content, cover, embedded author snapshot, category, tags,
- * publishedAt, readingTime, featured, status, seo) — no invented fields.
+ * Fields mirror the existing Blog model exactly (title, excerpt, structured
+ * content, cover, embedded author snapshot, category, tags, publishedAt,
+ * readingTime, featured, status, seo) — no invented fields. The slug is
+ * server-generated from the title (Task 16) and never shown in the form.
  * The structured content editor reuses the project's existing block schema;
  * the public renderer keeps rendering the result unchanged. The author
  * picker lists the real distinct contributors (admin facets) and can be
@@ -232,6 +233,12 @@ export default function AdminBlogFormPage() {
     mode: "onTouched",
   });
 
+  // Controlled array field (no attached input) — register it so RHF tracks
+  // it: useWatch stays in sync on setValue and validation runs on submit.
+  useEffect(() => {
+    register("tags");
+  }, [register]);
+
   // Edit mode — hydrate the form once the real blog arrives.
   useEffect(() => {
     if (blogQuery.data) {
@@ -239,11 +246,9 @@ export default function AdminBlogFormPage() {
     }
   }, [blogQuery.data, reset]);
 
-  const title = useWatch({ control, name: "title" });
-  const slugValue = useWatch({ control, name: "slug" });
   const categoryValue = useWatch({ control, name: "category" });
   const status = useWatch({ control, name: "status" });
-  const slugDirty = Boolean(slugValue && slugValue !== slugifyText(title ?? ""));
+  const tagsValue = useWatch({ control, name: "tags" });
 
   const pending = isSubmitting || createBlog.isPending || updateBlog.isPending;
 
@@ -365,29 +370,11 @@ export default function AdminBlogFormPage() {
               />
             </Field>
 
-            <Field
-              id="blog-slug"
-              label="Slug"
-              required
-              error={errors.slug?.message}
-              hint={
-                slugDirty
-                  ? "Custom slug — it becomes the public page URL (/blogs/your-slug)."
-                  : "URL handle for the public page. Generate searches existing articles first and picks a free variant."
-              }
-            >
-              <SlugField
-                id="blog-slug"
-                value={slugValue}
-                onChange={(next) => setValue("slug", next, { shouldValidate: true })}
-                title={title ?? ""}
-                slugify={slugifyText}
-                section="blogs"
-                excludeId={blog?.id}
-                urlPrefix="/blogs/"
-                inputClass={INPUT_CLASS}
-              />
-            </Field>
+            <p className="rounded-lg border border-dashed border-line bg-surface px-3.5 py-2.5 text-xs leading-relaxed text-muted">
+              <span className="font-semibold text-navy-900">Public URL:</span> generated
+              automatically from the title when you save — duplicates get a numbered
+              variant. Nothing to fill in.
+            </p>
 
             <Field id="blog-excerpt" label="Excerpt" required error={errors.excerpt?.message} hint="Short card description shown on listings.">
               <textarea
@@ -509,13 +496,12 @@ export default function AdminBlogFormPage() {
               </Field>
             </div>
 
-            <Field id="blog-tags" label="Tags" error={errors.tags?.message} hint="Comma-separated, e.g. React, Design, CSS">
-              <input
+            <Field id="blog-tags" label="Tags" error={errors.tags?.message}>
+              <TagsInput
                 id="blog-tags"
-                type="text"
-                aria-invalid={Boolean(errors.tags)}
-                className={INPUT_CLASS}
-                {...register("tags")}
+                tags={tagsValue ?? []}
+                onChange={(next) => setValue("tags", next, { shouldValidate: true })}
+                ariaInvalid={Boolean(errors.tags)}
               />
             </Field>
 

@@ -60,21 +60,17 @@ const blockShape = z.object({
 export const blogFormSchema = z
   .object({
     title: requiredText("Title", 200),
-    slug: z
-      .string()
-      .trim()
-      .toLowerCase()
-      .min(1, "Slug is required.")
-      .max(80, "Slug must be at most 80 characters.")
-      .regex(/^[a-z0-9][a-z0-9-]*$/, "Use lowercase letters, numbers, and hyphens only."),
     excerpt: requiredText("Excerpt", 500),
     category: requiredText("Category", 60),
     tags: z
-      .string()
-      .trim()
-      .max(400, "Tags must be at most 400 characters.")
-      .optional()
-      .or(z.literal("")),
+      .array(
+        z
+          .string()
+          .trim()
+          .min(1, "Tags cannot be empty.")
+          .max(40, "Each tag must be at most 40 characters."),
+      )
+      .max(20, "An article can have at most 20 tags."),
     coverImage: requiredText("Cover image", 500),
     coverImageAlt: requiredText("Cover image alt text", 200),
     authorId: z
@@ -191,10 +187,9 @@ export function slugifyText(value: string): string {
 export function toBlogFormValues(blog: Blog): BlogFormValues {
   return {
     title: blog.title,
-    slug: blog.slug,
     excerpt: blog.excerpt,
     category: blog.category,
-    tags: (blog.tags ?? []).join(", "),
+    tags: blog.tags ?? [],
     coverImage: blog.coverImage,
     coverImageAlt: blog.coverImageAlt,
     authorId: blog.author.id,
@@ -251,10 +246,9 @@ function flatBlock(
 export function blogFormDefaults(): BlogFormValues {
   return {
     title: "",
-    slug: "",
     excerpt: "",
     category: "",
-    tags: "",
+    tags: [],
     coverImage: "",
     coverImageAlt: "",
     authorId: "",
@@ -273,10 +267,10 @@ export function blogFormDefaults(): BlogFormValues {
   };
 }
 
-/** Form values → API payload (exact Blog model shape). */
+/** Form values → API payload (exact Blog model shape). The slug is
+ *  server-generated (Task 16) and never sent from the form. */
 export function toBlogPayload(values: BlogFormValues): Partial<Blog> {
   return {
-    slug: values.slug,
     title: values.title,
     excerpt: values.excerpt,
     content: values.content.map(toContentBlock),
@@ -291,10 +285,7 @@ export function toBlogPayload(values: BlogFormValues): Partial<Blog> {
       ...(values.authorBio ? { bio: values.authorBio } : {}),
     },
     category: values.category,
-    tags: (values.tags ?? "")
-      .split(",")
-      .map((tag) => tag.trim())
-      .filter(Boolean),
+    tags: values.tags,
     publishedAt: values.publishedAt,
     readingTime: Number(values.readingTime),
     featured: values.featured,

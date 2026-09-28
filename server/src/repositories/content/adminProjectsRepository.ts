@@ -206,7 +206,7 @@ class AdminProjectsRepository {
   }
 
   /** Insert a real project document — canonical id, searchText, updatedAt default. */
-  async create(input: AdminProjectCreateInput): Promise<Project> {
+  async create(input: Omit<AdminProjectCreateInput, "slug"> & { slug: string }): Promise<Project> {
     const _id = generateProjectId();
     const doc: ProjectDoc & Document = {
       ...input,

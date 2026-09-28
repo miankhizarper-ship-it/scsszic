@@ -56,10 +56,12 @@ const isoDateSchema = z
     return date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d;
   }, "Use a valid calendar date.");
 
-/** The full create payload — every Member-model field, nothing more. */
+/** The full create payload — every Member-model field, nothing more.
+ *  `username` is OPTIONAL (Task 16): when absent the controller
+ *  auto-generates a unique handle from the name via generateUniqueHandle(). */
 export const adminMemberCreateSchema = z
   .object({
-    username: usernameSchema,
+    username: usernameSchema.optional(),
     name: z.string().trim().min(1, "Name is required.").max(120),
     initials: z.string().trim().min(1, "Initials are required.").max(4),
     avatar: z.string().trim().max(500).optional(),

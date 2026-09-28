@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Upload } from "lucide-react";
+import { Images, Upload } from "lucide-react";
 
 import { adminService, type MediaFolder } from "@/services/adminService";
 
@@ -87,6 +87,114 @@ export function UploadMediaButton({
       </button>
       {error && (
         <span role="alert" className="max-w-[16rem] text-xs font-medium text-error">
+          {error}
+        </span>
+      )}
+    </span>
+  );
+}
+
+/**
+ * UploadMediaFilesButton (Task 16) — the MULTI-file variant for gallery
+ * editors. One file-picker session can select any number of images (and,
+ * where the folder allows it, videos); each file is uploaded sequentially
+ * through the same authenticated endpoint and the collected public URLs are
+ * handed over in ONE callback so the parent can append whole batch in order.
+ *
+ * The picker itself is filtered by `accept`, mirroring the server folder
+ * allow-list (the server re-sniffs every file's bytes authoritatively).
+ * Progress renders as "Uploading 3 of 7…" and a batch with failures still
+ * returns the URLs that succeeded, plus a count of what failed.
+ */
+export function UploadMediaFilesButton({
+  folder,
+  accept,
+  onUploaded,
+  label = "Upload images",
+  id,
+  disabled = false,
+}: {
+  folder: MediaFolder;
+  accept: string;
+  /** Receives every successfully uploaded URL, in selection order. */
+  onUploaded: (urls: string[]) => void;
+  label?: string;
+  id?: string;
+  disabled?: boolean;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleFiles(files: FileList | undefined): Promise<void> {
+    if (!files || files.length === 0 || uploading) return;
+    setError(null);
+
+    const list = Array.from(files);
+    const tooLarge = list.filter((file) => file.size > MAX_UPLOAD_BYTES);
+    const uploadable = list.filter((file) => file.size <= MAX_UPLOAD_BYTES);
+
+    const urls: string[] = [];
+    let failed = tooLarge.length;
+
+    if (uploadable.length > 0) {
+      setUploading(true);
+      setProgress({ done: 0, total: uploadable.length });
+      try {
+        for (const [index, file] of uploadable.entries()) {
+          try {
+            const result = await adminService.uploadMedia(file, folder);
+            urls.push(result.url);
+          } catch {
+            failed += 1;
+          }
+          setProgress({ done: index + 1, total: uploadable.length });
+        }
+      } finally {
+        setUploading(false);
+        setProgress(null);
+        if (inputRef.current) inputRef.current.value = "";
+      }
+    } else if (inputRef.current) {
+      inputRef.current.value = "";
+    }
+
+    if (urls.length > 0) onUploaded(urls);
+
+    if (failed > 0) {
+      setError(
+        failed === list.length
+          ? "Upload failed. No files were stored — check the sizes and try again."
+          : `${failed} of ${list.length} files could not be uploaded (size or type). The rest were added.`,
+      );
+    }
+  }
+
+  const busy = uploading && progress !== null;
+
+  return (
+    <span className="inline-flex flex-col items-start gap-1">
+      <input
+        ref={inputRef}
+        id={id}
+        type="file"
+        accept={accept}
+        multiple
+        className="hidden"
+        onChange={(event) => void handleFiles(event.target.files ?? undefined)}
+      />
+      <button
+        type="button"
+        disabled={uploading || disabled}
+        onClick={() => inputRef.current?.click()}
+        className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-line bg-white px-3 py-2 text-xs font-semibold text-navy-900 transition-colors hover:border-navy-300 hover:bg-navy-50 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        <Images size={13} aria-hidden="true" />
+        {busy ? `Uploading ${progress!.done} of ${progress!.total}…` : label}
+      </button>
+      {error && (
+        <span role="alert" className="max-w-[20rem] text-xs font-medium text-error">
           {error}
         </span>
       )}

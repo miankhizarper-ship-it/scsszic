@@ -101,10 +101,12 @@ const durationSchema = z
     return true;
   }, "Seconds (and minutes on h:mm:ss) must be below 60.");
 
-/** The full create payload — every WatchVideo-model field, nothing more. */
+/** The full create payload — every WatchVideo-model field, nothing more.
+ *  `slug` is OPTIONAL (Task 16): when absent the controller auto-generates
+ *  a unique handle from the title via generateUniqueHandle(). */
 export const adminVideoCreateSchema = z
   .object({
-    slug: slugSchema,
+    slug: slugSchema.optional(),
     title: z.string().trim().min(1, "Title is required.").max(200),
     excerpt: z.string().trim().min(1, "Excerpt is required.").max(500),
     description: z.string().trim().min(1, "Description is required.").max(20_000),

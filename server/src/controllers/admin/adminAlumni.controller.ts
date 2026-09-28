@@ -11,6 +11,7 @@ import {
 } from "../../http/alumniSchemas.js";
 import { isDuplicateKeyError } from "../../db/errors.js";
 import { changedFields, recordAudit } from "../../audit/auditLogger.js";
+import { generateUniqueHandle } from "../../repositories/content/slugAvailabilityRepository.js";
 
 /**
  * Admin Alumni controllers (Phase 9E) — request/response boundary for
@@ -81,7 +82,12 @@ export const createAdminAlumnus: RequestHandler = withErrorBoundary(
       return;
     }
 
-    if (await adminAlumniRepository.usernameExists(parsed.data.username)) {
+    // Task 16 — the admin forms no longer send a username: the backend
+    // derives a unique handle from the name (collisions become -2 variants).
+    const username =
+      parsed.data.username ?? (await generateUniqueHandle("alumni", parsed.data.name));
+
+    if (await adminAlumniRepository.usernameExists(username)) {
       res.status(409).json({
         message: DUPLICATE,
         errors: { username: DUPLICATE_FIELD },
@@ -90,7 +96,7 @@ export const createAdminAlumnus: RequestHandler = withErrorBoundary(
     }
 
     try {
-      const alumnus = await adminAlumniRepository.create(parsed.data);
+      const alumnus = await adminAlumniRepository.create({ ...parsed.data, username });
       await recordAudit(req, {
         action: "alumni.created",
         resourceType: "alumnus",

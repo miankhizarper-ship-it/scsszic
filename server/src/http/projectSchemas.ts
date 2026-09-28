@@ -74,10 +74,12 @@ const techSchema = z
   .min(1, "Technologies cannot be empty.")
   .max(60, "Technologies must be at most 60 characters.");
 
-/** The full create payload — every Project-model field, nothing more. */
+/** The full create payload — every Project-model field, nothing more.
+ *  `slug` is OPTIONAL (Task 16): when absent the controller auto-generates
+ *  a unique handle from the title via generateUniqueHandle(). */
 export const adminProjectCreateSchema = z
   .object({
-    slug: slugSchema,
+    slug: slugSchema.optional(),
     title: z.string().trim().min(1, "Title is required.").max(200),
     tagline: z.string().trim().min(1, "Tagline is required.").max(300),
     description: z.string().trim().min(1, "Description is required.").max(20_000),

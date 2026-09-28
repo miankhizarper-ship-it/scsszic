@@ -39,13 +39,6 @@ const optionalText = (label: string, max: number) =>
     .or(z.literal(""));
 
 export const alumniFormSchema = z.object({
-  username: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .min(1, "Username is required.")
-    .max(80, "Username must be at most 80 characters.")
-    .regex(/^[a-z0-9][a-z0-9-]*$/, "Use lowercase letters, numbers, and hyphens only."),
   name: requiredText("Name", 120),
   batch: requiredText("Batch label", 40),
   /** String in the form (native number input), converted on submit. */
@@ -93,17 +86,6 @@ export const alumniFormSchema = z.object({
 
 export type AlumniFormValues = z.infer<typeof alumniFormSchema>;
 
-/** "Kamran Yousafzai" → "kamran-yousafzai" (same slugify as blogs/events). */
-export function slugifyText(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/&/g, "and")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 80)
-    .replace(/-+$/g, "");
-}
-
 /** "Kamran Yousafzai" → "KY" — up to the first two words' initials. */
 export function initialsFromName(value: string): string {
   return value
@@ -114,10 +96,10 @@ export function initialsFromName(value: string): string {
     .join("");
 }
 
-/** Fetched alumnus → form values (arrays become editable text areas). */
+/** Fetched alumnus → form values (arrays become editable text areas).
+ *  The username is server-generated (Task 16) and never shown in the form. */
 export function toAlumniFormValues(alumnus: AlumnusWrite): AlumniFormValues {
   return {
-    username: alumnus.username,
     name: alumnus.name,
     batch: alumnus.batch,
     batchYear: String(alumnus.batchYear),
@@ -142,7 +124,6 @@ export function toAlumniFormValues(alumnus: AlumnusWrite): AlumniFormValues {
 /** Create defaults — one empty social row so the pattern is visible. */
 export function alumniFormDefaults(): AlumniFormValues {
   return {
-    username: "",
     name: "",
     batch: "",
     batchYear: String(new Date().getFullYear()),
@@ -180,7 +161,6 @@ export function toAlumniPayload(values: AlumniFormValues): Partial<AlumnusWrite>
     .filter((link) => link.label && link.href && link.icon);
 
   return {
-    username: values.username,
     name: values.name,
     batch: values.batch,
     batchYear: Number(values.batchYear),

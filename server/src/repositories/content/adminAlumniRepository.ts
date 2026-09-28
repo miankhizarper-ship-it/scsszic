@@ -173,7 +173,7 @@ class AdminAlumniRepository {
   }
 
   /** Insert a real alumnus document — canonical id + searchText set. */
-  async create(input: AdminAlumniCreateInput): Promise<SerializedAlumnus> {
+  async create(input: Omit<AdminAlumniCreateInput, "username"> & { username: string }): Promise<SerializedAlumnus> {
     const _id = generateAlumniId();
     const doc: AlumnusDoc & Document = {
       ...input,

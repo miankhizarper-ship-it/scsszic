@@ -12,6 +12,7 @@ import {
 } from "../../http/eventSchemas.js";
 import { isDuplicateKeyError } from "../../db/errors.js";
 import { changedFields, recordAudit } from "../../audit/auditLogger.js";
+import { generateUniqueHandle } from "../../repositories/content/slugAvailabilityRepository.js";
 
 /**
  * Admin Events controllers (Phase 9C) — request/response boundary for
@@ -76,7 +77,11 @@ export const createAdminEvent: RequestHandler = withErrorBoundary(
       return;
     }
 
-    if (await adminEventsRepository.slugExists(parsed.data.slug)) {
+    // Task 16 — the admin forms no longer send a slug: the backend derives
+    // a unique handle from the title (collisions become clean -2 variants).
+    const slug = parsed.data.slug ?? (await generateUniqueHandle("events", parsed.data.title));
+
+    if (await adminEventsRepository.slugExists(slug)) {
       res.status(409).json({
         message: "An event with this slug already exists.",
         errors: { slug: "This slug is already taken — choose another." },
@@ -85,7 +90,7 @@ export const createAdminEvent: RequestHandler = withErrorBoundary(
     }
 
     try {
-      const event = await adminEventsRepository.create(parsed.data);
+      const event = await adminEventsRepository.create({ ...parsed.data, slug });
       await recordAudit(req, {
         action: "event.created",
         resourceType: "event",

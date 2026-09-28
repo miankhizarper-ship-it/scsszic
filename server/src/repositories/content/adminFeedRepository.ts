@@ -226,7 +226,7 @@ class AdminFeedRepository {
   }
 
   /** Insert a real post document — canonical id, searchText, social defaults. */
-  async create(input: AdminFeedCreateInput): Promise<FeedPost> {
+  async create(input: Omit<AdminFeedCreateInput, "slug"> & { slug: string }): Promise<FeedPost> {
     const _id = generateFeedId();
     const doc: FeedPostDoc & Document = {
       ...input,

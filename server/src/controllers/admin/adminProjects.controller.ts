@@ -12,6 +12,7 @@ import {
 } from "../../http/projectSchemas.js";
 import { isDuplicateKeyError } from "../../db/errors.js";
 import { changedFields, recordAudit } from "../../audit/auditLogger.js";
+import { generateUniqueHandle } from "../../repositories/content/slugAvailabilityRepository.js";
 import { collections } from "../../db/collections.js";
 
 /**
@@ -150,7 +151,11 @@ export const createAdminProject: RequestHandler = withErrorBoundary(
       return;
     }
 
-    if (await adminProjectsRepository.slugExists(parsed.data.slug)) {
+    // Task 16 — the admin forms no longer send a slug: the backend derives
+    // a unique handle from the title (collisions become clean -2 variants).
+    const slug = parsed.data.slug ?? (await generateUniqueHandle("projects", parsed.data.title));
+
+    if (await adminProjectsRepository.slugExists(slug)) {
       res.status(409).json({
         message: DUPLICATE,
         errors: { slug: DUPLICATE_FIELD },
@@ -159,7 +164,7 @@ export const createAdminProject: RequestHandler = withErrorBoundary(
     }
 
     try {
-      const project = await adminProjectsRepository.create(parsed.data);
+      const project = await adminProjectsRepository.create({ ...parsed.data, slug });
       await recordAudit(req, {
         action: "project.created",
         resourceType: "project",

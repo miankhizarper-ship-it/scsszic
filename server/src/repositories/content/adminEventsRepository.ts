@@ -163,7 +163,7 @@ class AdminEventsRepository {
   }
 
   /** Insert a real event document — canonical id, createdAt, searchText set. */
-  async create(input: AdminEventCreateInput): Promise<SerializedEvent> {
+  async create(input: Omit<AdminEventCreateInput, "slug"> & { slug: string }): Promise<SerializedEvent> {
     const _id = generateEventId();
     const now = new Date().toISOString();
     const doc: EventDoc & Document = {

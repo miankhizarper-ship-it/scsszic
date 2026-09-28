@@ -65,13 +65,6 @@ const optionalTime = z
 export const eventFormSchema = z
   .object({
     title: requiredText("Title", 200),
-    slug: z
-      .string()
-      .trim()
-      .toLowerCase()
-      .min(1, "Slug is required.")
-      .max(80, "Slug must be at most 80 characters.")
-      .regex(/^[a-z0-9][a-z0-9-]*$/, "Use lowercase letters, numbers, and hyphens only."),
     category: requiredText("Category", 60),
     status: z.enum(EVENT_STATUSES, { message: "Choose a valid status." }),
     featured: z.boolean(),
@@ -85,17 +78,23 @@ export const eventFormSchema = z
     coverImage: requiredText("Cover image", 500),
     coverImageAlt: requiredText("Cover image alt text", 200),
     tags: z
-      .string()
-      .trim()
-      .max(400, "Tags must be at most 400 characters.")
-      .optional()
-      .or(z.literal("")),
+      .array(
+        z
+          .string()
+          .trim()
+          .min(1, "Tags cannot be empty.")
+          .max(40, "Each tag must be at most 40 characters."),
+      )
+      .max(20, "An event can have at most 20 tags."),
     gallery: z
-      .string()
-      .trim()
-      .max(4000, "Gallery entries must be at most 4000 characters.")
-      .optional()
-      .or(z.literal("")),
+      .array(
+        z
+          .string()
+          .trim()
+          .min(1, "Gallery entries cannot be empty.")
+          .max(500, "Gallery entries must be at most 500 characters."),
+      )
+      .max(50, "An event gallery holds at most 50 items."),
     registrationEnabled: z.boolean(),
     registrationLabel: optionalText("Label", 60),
     registrationExternalUrl: optionalText("Registration URL", 500),
@@ -137,14 +136,3 @@ export const eventFormSchema = z
   });
 
 export type EventFormValues = z.infer<typeof eventFormSchema>;
-
-/** "10:00 AM, Machine Learning" → kebab-case slug from the title. */
-export function slugifyTitle(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/&/g, "and")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 80)
-    .replace(/-+$/g, "");
-}

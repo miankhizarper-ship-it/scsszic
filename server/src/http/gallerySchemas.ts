@@ -105,10 +105,12 @@ export const galleryPhotoSchema = z
   })
   .strict();
 
-/** The full create payload — every GalleryAlbum-model field, nothing more. */
+/** The full create payload — every GalleryAlbum-model field, nothing more.
+ *  `slug` is OPTIONAL (Task 16): when absent the controller auto-generates
+ *  a unique handle from the title via generateUniqueHandle(). */
 export const adminGalleryCreateSchema = z
   .object({
-    slug: slugSchema,
+    slug: slugSchema.optional(),
     title: z.string().trim().min(1, "Title is required.").max(200),
     description: z.string().trim().min(1, "Description is required.").max(20_000),
     coverImage: mediaRefSchema,

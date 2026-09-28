@@ -97,10 +97,12 @@ const tagSchema = z
   .min(1, "Tags cannot be empty.")
   .max(40, "Tags must be at most 40 characters.");
 
-/** The full create payload — every Event-model field, nothing more. */
+/** The full create payload — every Event-model field, nothing more.
+ *  `slug` is OPTIONAL (Task 16): when absent the controller auto-generates
+ *  a unique handle from the title via generateUniqueHandle(). */
 export const adminEventCreateSchema = z
   .object({
-    slug: slugSchema,
+    slug: slugSchema.optional(),
     title: z.string().trim().min(1, "Title is required.").max(200),
     excerpt: z.string().trim().min(1, "Excerpt is required.").max(500),
     description: z.string().trim().min(1, "Description is required.").max(20_000),

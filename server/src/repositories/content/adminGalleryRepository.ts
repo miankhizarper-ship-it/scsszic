@@ -253,14 +253,14 @@ class AdminGalleryRepository {
   }
 
   /** Insert a real album document — canonical id, photo ids, photoCount, searchText. */
-  async create(input: AdminGalleryCreateInput): Promise<GalleryAlbum> {
+  async create(input: Omit<AdminGalleryCreateInput, "slug"> & { slug: string }): Promise<GalleryAlbum> {
     const _id = generateAlbumId();
     const photos = withPhotoIds(input.photos);
     const { set, unset } = buildWriteSets({ ...input });
     void unset;
 
     const doc: GalleryAlbumDoc & Document = {
-      ...(set as unknown as AdminGalleryCreateInput),
+      ...(set as unknown as Omit<AdminGalleryCreateInput, "slug"> & { slug: string }),
       photos,
       // The model's own denormalized invariant: photoCount === photos.length.
       photoCount: photos.length,

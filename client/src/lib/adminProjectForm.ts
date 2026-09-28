@@ -28,13 +28,6 @@ const optionalText = (label: string, max: number) =>
 
 export const projectFormSchema = z.object({
   title: requiredText("Title", 200),
-  slug: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .min(1, "Slug is required.")
-    .max(80, "Slug must be at most 80 characters.")
-    .regex(/^[a-z0-9][a-z0-9-]*$/, "Use lowercase letters, numbers, and hyphens only."),
   tagline: requiredText("Tagline", 300),
   description: requiredText("Description", 20000),
   coverImage: requiredText("Cover image", 500),
@@ -60,11 +53,14 @@ export const projectFormSchema = z.object({
     .min(1, "Start date is required.")
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Use a valid date (YYYY-MM-DD)."),
   tags: z
-    .string()
-    .trim()
-    .max(400, "Tags must be at most 400 characters.")
-    .optional()
-    .or(z.literal("")),
+    .array(
+      z
+        .string()
+        .trim()
+        .min(1, "Tags cannot be empty.")
+        .max(40, "Each tag must be at most 40 characters."),
+    )
+    .max(20, "A project can have at most 20 tags."),
   repositoryUrl: optionalText("Repository URL", 500),
   liveUrl: optionalText("Live demo URL", 500),
   featured: z.boolean(),
@@ -72,22 +68,10 @@ export const projectFormSchema = z.object({
 
 export type ProjectFormValues = z.infer<typeof projectFormSchema>;
 
-/** "Campus Connect" → "campus-connect" (same slugify as blogs/events). */
-export function slugifyText(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/&/g, "and")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 80)
-    .replace(/-+$/g, "");
-}
-
 /** Fetched project → form values (roster becomes an editable text field). */
 export function toProjectFormValues(project: Project): ProjectFormValues {
   return {
     title: project.title,
-    slug: project.slug,
     tagline: project.tagline,
     description: project.description,
     coverImage: project.coverImage,
@@ -99,7 +83,7 @@ export function toProjectFormValues(project: Project): ProjectFormValues {
     memberUsernamesText: (project.memberUsernames ?? []).join(", "),
     eventSlug: project.eventSlug ?? "",
     startedAt: project.startedAt,
-    tags: (project.tags ?? []).join(", "),
+    tags: project.tags ?? [],
     repositoryUrl: project.repositoryUrl ?? "",
     liveUrl: project.liveUrl ?? "",
     featured: Boolean(project.featured),
@@ -110,7 +94,6 @@ export function toProjectFormValues(project: Project): ProjectFormValues {
 export function projectFormDefaults(): ProjectFormValues {
   return {
     title: "",
-    slug: "",
     tagline: "",
     description: "",
     coverImage: "",
@@ -122,14 +105,15 @@ export function projectFormDefaults(): ProjectFormValues {
     memberUsernamesText: "",
     eventSlug: "",
     startedAt: new Date().toISOString().slice(0, 10),
-    tags: "",
+    tags: [],
     repositoryUrl: "",
     liveUrl: "",
     featured: false,
   };
 }
 
-/** Form values → API payload (exact Project model shape). */
+/** Form values → API payload (exact Project model shape). The slug is
+ *  server-generated (Task 16) and never sent from the form. */
 export function toProjectPayload(values: ProjectFormValues): Partial<Project> {
   const splitList = (text: string | undefined) =>
     (text ?? "")
@@ -138,7 +122,6 @@ export function toProjectPayload(values: ProjectFormValues): Partial<Project> {
       .filter(Boolean);
 
   const technologies = splitList(values.technologies);
-  const tags = splitList(values.tags);
   // The owner always sits on the roster too (the seed data's convention).
   const roster = splitList(values.memberUsernamesText);
   const memberUsernames = roster.includes(values.ownerUsername)
@@ -147,7 +130,6 @@ export function toProjectPayload(values: ProjectFormValues): Partial<Project> {
 
   return {
     title: values.title,
-    slug: values.slug,
     tagline: values.tagline,
     description: values.description,
     coverImage: values.coverImage,
@@ -159,7 +141,7 @@ export function toProjectPayload(values: ProjectFormValues): Partial<Project> {
     memberUsernames,
     ...(values.eventSlug ? { eventSlug: values.eventSlug } : {}),
     startedAt: values.startedAt,
-    tags,
+    tags: values.tags,
     ...(values.repositoryUrl ? { repositoryUrl: values.repositoryUrl } : {}),
     ...(values.liveUrl ? { liveUrl: values.liveUrl } : {}),
     featured: values.featured,

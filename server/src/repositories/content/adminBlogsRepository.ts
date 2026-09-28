@@ -223,7 +223,7 @@ class AdminBlogsRepository {
   }
 
   /** Insert a real blog document — canonical id, searchText set, updatedAt default. */
-  async create(input: AdminBlogCreateInput): Promise<Blog> {
+  async create(input: Omit<AdminBlogCreateInput, "slug"> & { slug: string }): Promise<Blog> {
     const _id = generateBlogId();
     const doc: BlogDoc & Document = {
       ...input,

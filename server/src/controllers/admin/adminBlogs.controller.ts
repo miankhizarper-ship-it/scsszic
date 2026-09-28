@@ -12,6 +12,7 @@ import {
 } from "../../http/blogSchemas.js";
 import { isDuplicateKeyError } from "../../db/errors.js";
 import { changedFields, recordAudit } from "../../audit/auditLogger.js";
+import { generateUniqueHandle } from "../../repositories/content/slugAvailabilityRepository.js";
 
 /**
  * Admin Blogs controllers (Phase 9D) — request/response boundary for
@@ -78,7 +79,11 @@ export const createAdminBlog: RequestHandler = withErrorBoundary(
       return;
     }
 
-    if (await adminBlogsRepository.slugExists(parsed.data.slug)) {
+    // Task 16 — the admin forms no longer send a slug: the backend derives
+    // a unique handle from the title (collisions become clean -2 variants).
+    const slug = parsed.data.slug ?? (await generateUniqueHandle("blogs", parsed.data.title));
+
+    if (await adminBlogsRepository.slugExists(slug)) {
       res.status(409).json({
         message: "A blog with this slug already exists.",
         errors: { slug: "This slug is already taken — choose another." },
@@ -87,7 +92,7 @@ export const createAdminBlog: RequestHandler = withErrorBoundary(
     }
 
     try {
-      const blog = await adminBlogsRepository.create(parsed.data);
+      const blog = await adminBlogsRepository.create({ ...parsed.data, slug });
       await recordAudit(req, {
         action: "blog.created",
         resourceType: "blog",

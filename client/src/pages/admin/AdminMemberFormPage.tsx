@@ -7,7 +7,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/CollectionState";
 import { UploadMediaButton } from "@/components/admin/UploadMediaButton";
-import { SlugField } from "@/components/admin/SlugField";
 import {
   useAdminMember,
   useCreateMember,
@@ -18,7 +17,6 @@ import {
   initialsFromName,
   memberFormDefaults,
   memberFormSchema,
-  slugifyText,
   toMemberFormValues,
   toMemberPayload,
   type MemberFormValues,
@@ -132,11 +130,9 @@ export default function AdminMemberFormPage() {
   }, [memberQuery.data, reset]);
 
   const name = useWatch({ control, name: "name" });
-  const usernameValue = useWatch({ control, name: "username" });
   const initialsValue = useWatch({ control, name: "initials" });
   const batchYear = useWatch({ control, name: "batchYear" });
   const batch = useWatch({ control, name: "batch" });
-  const usernameDirty = Boolean(usernameValue && usernameValue !== slugifyText(name ?? ""));
   const initialsDirty = Boolean(initialsValue && initialsValue !== initialsFromName(name ?? ""));
   const batchDirty = Boolean(batch && batch !== `Batch ${batchYear}`);
 
@@ -288,29 +284,11 @@ export default function AdminMemberFormPage() {
               </Field>
             </div>
 
-            <Field
-              id="member-username"
-              label="Username (profile handle)"
-              required
-              error={errors.username?.message}
-              hint={
-                usernameDirty
-                  ? "Custom handle — it becomes the public profile URL (/profile/your-handle)."
-                  : "URL handle for the public profile. Generate searches existing members first and picks a free variant."
-              }
-            >
-              <SlugField
-                id="member-username"
-                value={usernameValue}
-                onChange={(next) => setValue("username", next, { shouldValidate: true })}
-                title={name ?? ""}
-                slugify={slugifyText}
-                section="members"
-                excludeId={member?.id}
-                urlPrefix="/profile/"
-                inputClass={INPUT_CLASS}
-              />
-            </Field>
+            <p className="rounded-lg border border-dashed border-line bg-surface px-3.5 py-2.5 text-xs leading-relaxed text-muted">
+              <span className="font-semibold text-navy-900">Profile handle:</span> generated
+              automatically from the name when you save — duplicates get a numbered
+              variant. Nothing to fill in.
+            </p>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field id="member-role" label="Role" required error={errors.role?.message} hint='Society role for active members ("President"), job role for alumni.'>

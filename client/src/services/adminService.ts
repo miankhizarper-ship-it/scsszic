@@ -9,7 +9,6 @@ import type {
   AdminFeedListEnvelope,
   AdminGalleryListEnvelope,
   AdminMemberListEnvelope,
-  AdminPermission,
   AdminProjectListEnvelope,
   AdminSiteSettings,
   AdminTeamListEnvelope,
@@ -28,7 +27,6 @@ import type {
   Member,
   Project,
   SerializedSocialLink,
-  SlugAvailability,
   SocietyEvent,
   TeamCardWrite,
   WatchVideo,
@@ -869,24 +867,7 @@ export const adminService = {
     });
   },
 
-  /* ------------------- Slug availability + categories (10C) ---------------- */
-
-  /**
-   * GET /api/admin/slug-check — search-first availability check for the CMS
-   * forms. The server probes the section's live collection and, when the
-   * slug is taken, returns the first free `slug-2`-style suggestion.
-   * `excludeId` lets edit forms skip their own document.
-   */
-  async checkSlug(
-    section: AdminPermission,
-    slug: string,
-    excludeId?: string,
-  ): Promise<SlugAvailability> {
-    const response = await apiFetch<{ data: SlugAvailability }>("/admin/slug-check", {
-      params: { section, slug, excludeId },
-    });
-    return response.data;
-  },
+  /* ------------------------ Categories (10C) ------------------------ */
 
   /** GET /api/admin/categories/:section — ordered managed vocabulary. */
   async listCategories(section: CategorySection): Promise<AdminCategoryList> {

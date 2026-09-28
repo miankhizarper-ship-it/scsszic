@@ -12,6 +12,7 @@ import {
 } from "../../http/gallerySchemas.js";
 import { isDuplicateKeyError } from "../../db/errors.js";
 import { changedFields, recordAudit } from "../../audit/auditLogger.js";
+import { generateUniqueHandle } from "../../repositories/content/slugAvailabilityRepository.js";
 import { collections } from "../../db/collections.js";
 
 /**
@@ -123,7 +124,11 @@ export const createAdminAlbum: RequestHandler = withErrorBoundary(
       return;
     }
 
-    if (await adminGalleryRepository.slugExists(parsed.data.slug)) {
+    // Task 16 — the admin forms no longer send a slug: the backend derives
+    // a unique handle from the title (collisions become clean -2 variants).
+    const slug = parsed.data.slug ?? (await generateUniqueHandle("gallery", parsed.data.title));
+
+    if (await adminGalleryRepository.slugExists(slug)) {
       res.status(409).json({
         message: DUPLICATE,
         errors: { slug: DUPLICATE_FIELD },
@@ -132,7 +137,7 @@ export const createAdminAlbum: RequestHandler = withErrorBoundary(
     }
 
     try {
-      const album = await adminGalleryRepository.create(parsed.data);
+      const album = await adminGalleryRepository.create({ ...parsed.data, slug });
       await recordAudit(req, {
         action: "gallery.created",
         resourceType: "album",

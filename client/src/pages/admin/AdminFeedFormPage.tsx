@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/CollectionState";
 import { UploadMediaButton } from "@/components/admin/UploadMediaButton";
-import { SlugField } from "@/components/admin/SlugField";
+import { TagsInput } from "@/components/admin/TagsInput";
 import {
   useAdminFeedPost,
   useCreateFeedPost,
@@ -19,7 +19,6 @@ import {
   FEED_TYPES,
   feedFormDefaults,
   feedFormSchema,
-  slugifyText,
   toFeedFormValues,
   toFeedPayload,
   type FeedFormValues,
@@ -143,6 +142,12 @@ export default function AdminFeedFormPage() {
     mode: "onTouched",
   });
 
+  // Controlled array field (no attached input) — register it so RHF tracks
+  // it: useWatch stays in sync on setValue and validation runs on submit.
+  useEffect(() => {
+    register("tags");
+  }, [register]);
+
   // Edit mode — hydrate the form once the real post arrives.
   useEffect(() => {
     if (postQuery.data) {
@@ -150,10 +155,8 @@ export default function AdminFeedFormPage() {
     }
   }, [postQuery.data, reset]);
 
-  const title = useWatch({ control, name: "title" });
-  const slugValue = useWatch({ control, name: "slug" });
   const type = useWatch({ control, name: "type" });
-  const slugDirty = Boolean(slugValue && slugValue !== slugifyText(title ?? ""));
+  const tagsValue = useWatch({ control, name: "tags" });
 
   const pending = isSubmitting || createFeedPost.isPending || updateFeedPost.isPending;
 
@@ -291,29 +294,11 @@ export default function AdminFeedFormPage() {
               />
             </Field>
 
-            <Field
-              id="feed-slug"
-              label="Slug"
-              required
-              error={errors.slug?.message}
-              hint={
-                slugDirty
-                  ? "Custom slug — feed posts are listed by it internally."
-                  : "URL-style handle for the post. Generate searches existing posts first and picks a free variant."
-              }
-            >
-              <SlugField
-                id="feed-slug"
-                value={slugValue}
-                onChange={(next) => setValue("slug", next, { shouldValidate: true })}
-                title={title ?? ""}
-                slugify={slugifyText}
-                section="feed"
-                excludeId={post?.id}
-                urlPrefix="/feed/"
-                inputClass={INPUT_CLASS}
-              />
-            </Field>
+            <p className="rounded-lg border border-dashed border-line bg-surface px-3.5 py-2.5 text-xs leading-relaxed text-muted">
+              <span className="font-semibold text-navy-900">Post handle:</span> generated
+              automatically from the title when you save — duplicates get a numbered
+              variant. Nothing to fill in.
+            </p>
 
             <Field id="feed-excerpt" label="Excerpt" required error={errors.excerpt?.message} hint="Short card description shown on the feed.">
               <textarea
@@ -538,13 +523,12 @@ export default function AdminFeedFormPage() {
               </Field>
             </div>
 
-            <Field id="feed-tags" label="Tags" error={errors.tags?.message} hint="Comma-separated, e.g. Hackathon, Community">
-              <input
+            <Field id="feed-tags" label="Tags" error={errors.tags?.message}>
+              <TagsInput
                 id="feed-tags"
-                type="text"
-                aria-invalid={Boolean(errors.tags)}
-                className={INPUT_CLASS}
-                {...register("tags")}
+                tags={tagsValue ?? []}
+                onChange={(next) => setValue("tags", next, { shouldValidate: true })}
+                ariaInvalid={Boolean(errors.tags)}
               />
             </Field>
           </div>

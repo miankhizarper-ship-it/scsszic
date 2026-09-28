@@ -52,13 +52,6 @@ const mediaRef = (label: string) =>
 
 export const videoFormSchema = z.object({
   title: requiredText("Title", 200),
-  slug: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .min(1, "Slug is required.")
-    .max(80, "Slug must be at most 80 characters.")
-    .regex(/^[a-z0-9][a-z0-9-]*$/, "Use lowercase letters, numbers, and hyphens only."),
   excerpt: requiredText("Excerpt", 500),
   description: requiredText("Description", 20000),
   thumbnail: mediaRef("Thumbnail"),
@@ -75,11 +68,14 @@ export const videoFormSchema = z.object({
     .regex(/^\d{1,3}:\d{1,2}(:\d{1,2})?$/, 'Use the "m:ss" or "h:mm:ss" format, e.g. 42:18.'),
   category: requiredText("Category", 60),
   tags: z
-    .string()
-    .trim()
-    .max(400, "Tags must be at most 400 characters.")
-    .optional()
-    .or(z.literal("")),
+    .array(
+      z
+        .string()
+        .trim()
+        .min(1, "Tags cannot be empty.")
+        .max(40, "Each tag must be at most 40 characters."),
+    )
+    .max(20, "A video can have at most 20 tags."),
   speaker: optionalText("Speaker", 120),
   eventSlug: optionalText("Event", 80),
   publishedAt: z
@@ -93,22 +89,10 @@ export const videoFormSchema = z.object({
 
 export type VideoFormValues = z.infer<typeof videoFormSchema>;
 
-/** "Campus Connect" → "campus-connect" (same slugify as the other CMS forms). */
-export function slugifyText(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/&/g, "and")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 80)
-    .replace(/-+$/g, "");
-}
-
 /** Fetched video → form values (optional fields become "" when absent). */
 export function toVideoFormValues(video: WatchVideo): VideoFormValues {
   return {
     title: video.title,
-    slug: video.slug,
     excerpt: video.excerpt,
     description: video.description,
     thumbnail: video.thumbnail,
@@ -117,7 +101,7 @@ export function toVideoFormValues(video: WatchVideo): VideoFormValues {
     embedUrl: video.embedUrl ?? "",
     duration: video.duration,
     category: video.category,
-    tags: (video.tags ?? []).join(", "),
+    tags: video.tags ?? [],
     speaker: video.speaker ?? "",
     eventSlug: video.eventSlug ?? "",
     publishedAt: video.publishedAt,
@@ -130,7 +114,6 @@ export function toVideoFormValues(video: WatchVideo): VideoFormValues {
 export function videoFormDefaults(): VideoFormValues {
   return {
     title: "",
-    slug: "",
     excerpt: "",
     description: "",
     thumbnail: "",
@@ -139,7 +122,7 @@ export function videoFormDefaults(): VideoFormValues {
     embedUrl: "",
     duration: "",
     category: "",
-    tags: "",
+    tags: [],
     speaker: "",
     eventSlug: "",
     publishedAt: new Date().toISOString().slice(0, 10),
@@ -148,17 +131,11 @@ export function videoFormDefaults(): VideoFormValues {
   };
 }
 
-/** Form values → API payload (exact WatchVideo model shape). */
+/** Form values → API payload (exact WatchVideo model shape). The slug is
+ *  server-generated (Task 16) and never sent from the form. */
 export function toVideoPayload(values: VideoFormValues): Partial<WatchVideo> {
-  const splitList = (text: string | undefined) =>
-    (text ?? "")
-      .split(",")
-      .map((entry) => entry.trim())
-      .filter(Boolean);
-
   return {
     title: values.title,
-    slug: values.slug,
     excerpt: values.excerpt,
     description: values.description,
     thumbnail: values.thumbnail,
@@ -167,7 +144,7 @@ export function toVideoPayload(values: VideoFormValues): Partial<WatchVideo> {
     ...(values.embedUrl ? { embedUrl: values.embedUrl } : {}),
     duration: values.duration,
     category: values.category,
-    tags: splitList(values.tags),
+    tags: values.tags,
     ...(values.speaker ? { speaker: values.speaker } : {}),
     ...(values.eventSlug ? { eventSlug: values.eventSlug } : {}),
     publishedAt: values.publishedAt,

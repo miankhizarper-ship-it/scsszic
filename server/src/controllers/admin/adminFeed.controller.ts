@@ -13,6 +13,7 @@ import {
 } from "../../http/feedSchemas.js";
 import { isDuplicateKeyError } from "../../db/errors.js";
 import { changedFields, recordAudit } from "../../audit/auditLogger.js";
+import { generateUniqueHandle } from "../../repositories/content/slugAvailabilityRepository.js";
 import { collections } from "../../db/collections.js";
 import type { Collection } from "mongodb";
 
@@ -166,7 +167,11 @@ export const createAdminFeedPost: RequestHandler = withErrorBoundary(
       return;
     }
 
-    if (await adminFeedRepository.slugExists(parsed.data.slug)) {
+    // Task 16 — the admin forms no longer send a slug: the backend derives
+    // a unique handle from the title (collisions become clean -2 variants).
+    const slug = parsed.data.slug ?? (await generateUniqueHandle("feed", parsed.data.title));
+
+    if (await adminFeedRepository.slugExists(slug)) {
       res.status(409).json({
         message: DUPLICATE,
         errors: { slug: DUPLICATE_FIELD },
@@ -175,7 +180,7 @@ export const createAdminFeedPost: RequestHandler = withErrorBoundary(
     }
 
     try {
-      const post = await adminFeedRepository.create(parsed.data);
+      const post = await adminFeedRepository.create({ ...parsed.data, slug });
       await recordAudit(req, {
         action: "feed.created",
         resourceType: "post",
