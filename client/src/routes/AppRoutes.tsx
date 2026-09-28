@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 
 import { RootLayout } from "@/components/layout/RootLayout";
 import { GuestRoute, ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -33,7 +33,8 @@ import AdminAlumniPage from "@/pages/admin/AdminAlumniPage";
 import AdminAlumniFormPage from "@/pages/admin/AdminAlumniFormPage";
 import AdminMembersPage from "@/pages/admin/AdminMembersPage";
 import AdminMemberFormPage from "@/pages/admin/AdminMemberFormPage";
-import AdminTeamPage from "@/pages/admin/AdminTeamPage";
+import AdminHomePage from "@/pages/admin/AdminHomePage";
+import AdminAboutPage from "@/pages/admin/AdminAboutPage";
 import AdminTeamFormPage from "@/pages/admin/AdminTeamFormPage";
 import AdminProjectsPage from "@/pages/admin/AdminProjectsPage";
 import AdminProjectFormPage from "@/pages/admin/AdminProjectFormPage";
@@ -285,28 +286,92 @@ export const appRouter = createBrowserRouter([
         ),
       },
       {
-        path: "team",
+        /*
+         * Task 14 — the people cards are managed from PAGE-scoped sections:
+         * /admin/home-page (Leadership / Members spotlight / Developers tabs)
+         * and /admin/about-page (the About leadership strip, same shared
+         * "leaders" data). The route gate is any-of [team, members] — the
+         * page itself only renders the tabs the account may use, and every
+         * API call is still authorized server-side per section.
+         */
+        path: "home-page",
         element: (
-          <AdminPermissionRoute permission="team" label="Team">
-            <AdminTeamPage />
+          <AdminPermissionRoute permission={["team", "members"]} label="Home Page">
+            <AdminHomePage />
           </AdminPermissionRoute>
         ),
+      },
+      {
+        path: "home-page/leaders/new",
+        element: (
+          <AdminPermissionRoute permission="team" label="Home Page">
+            <AdminTeamFormPage />
+          </AdminPermissionRoute>
+        ),
+      },
+      {
+        path: "home-page/leaders/:id/edit",
+        element: (
+          <AdminPermissionRoute permission="team" label="Home Page">
+            <AdminTeamFormPage />
+          </AdminPermissionRoute>
+        ),
+      },
+      {
+        path: "home-page/developers/new",
+        element: (
+          <AdminPermissionRoute permission="team" label="Home Page">
+            <AdminTeamFormPage />
+          </AdminPermissionRoute>
+        ),
+      },
+      {
+        path: "home-page/developers/:id/edit",
+        element: (
+          <AdminPermissionRoute permission="team" label="Home Page">
+            <AdminTeamFormPage />
+          </AdminPermissionRoute>
+        ),
+      },
+      {
+        path: "about-page",
+        element: (
+          <AdminPermissionRoute permission="team" label="About Page">
+            <AdminAboutPage />
+          </AdminPermissionRoute>
+        ),
+      },
+      {
+        path: "about-page/leaders/new",
+        element: (
+          <AdminPermissionRoute permission="team" label="About Page">
+            <AdminTeamFormPage />
+          </AdminPermissionRoute>
+        ),
+      },
+      {
+        path: "about-page/leaders/:id/edit",
+        element: (
+          <AdminPermissionRoute permission="team" label="About Page">
+            <AdminTeamFormPage />
+          </AdminPermissionRoute>
+        ),
+      },
+      /*
+       * Legacy /admin/team/* URLs (Phase 12) — the standalone Team CMS was
+       * folded into the Home/About page managers; stale links redirect.
+       */
+      {
+        path: "team",
+        element: <Navigate replace to={ROUTES.admin.homePage} />,
       },
       {
         path: "team/new",
-        element: (
-          <AdminPermissionRoute permission="team" label="Team">
-            <AdminTeamFormPage />
-          </AdminPermissionRoute>
-        ),
+        element: <Navigate replace to={ROUTES.admin.homePage} />,
       },
       {
         path: "team/:id/edit",
-        element: (
-          <AdminPermissionRoute permission="team" label="Team">
-            <AdminTeamFormPage />
-          </AdminPermissionRoute>
-        ),
+        element: <Navigate replace to={ROUTES.admin.homePage} />,
       },
       {
         path: "projects",

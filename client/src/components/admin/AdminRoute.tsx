@@ -120,20 +120,24 @@ export function AdminOnlyRoute({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * AdminPermissionRoute (Phase 10B) — direct-URL protection for one CMS
- * section inside the admin shell. A manage user WITHOUT the matching
- * permission who types /admin/<section> (or a form route under it) lands on
- * the same explicit access-denied panel instead of a broken page; admins
- * always pass. Like every client-side guard this is routing UX — the API
- * rejects unauthorized section access independently (403 from
- * requireAdminOrPermission) with or without this component.
+ * AdminPermissionRoute (Phase 10B, extended Task 14) — direct-URL protection
+ * for a CMS section inside the admin shell. A manage user WITHOUT the
+ * matching permission who types /admin/<section> (or a form route under it)
+ * lands on the same explicit access-denied panel instead of a broken page;
+ * admins always pass. `permission` accepts a single permission OR an array
+ * meaning ANY-OF (the Home Page manager mixes Team + Members content — an
+ * account granted either permission may enter, and the page itself only
+ * renders the tabs the account can actually use). Like every client-side
+ * guard this is routing UX — the API rejects unauthorized section access
+ * independently (403 from requireAdminOrPermission) with or without this
+ * component.
  */
 export function AdminPermissionRoute({
   permission,
   label,
   children,
 }: {
-  permission: AdminPermission;
+  permission: AdminPermission | AdminPermission[];
   label: string;
   children: React.ReactNode;
 }) {
@@ -154,9 +158,11 @@ export function AdminPermissionRoute({
     );
   }
 
+  const required = Array.isArray(permission) ? permission : [permission];
+  const granted = user?.permissions ?? [];
   const allowed =
     user?.role === "admin" ||
-    (user?.role === "manage" && (user.permissions ?? []).includes(permission));
+    (user?.role === "manage" && required.some((one) => granted.includes(one)));
 
   if (!allowed) {
     return (

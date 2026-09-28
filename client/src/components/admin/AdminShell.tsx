@@ -2,8 +2,7 @@ import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { ArrowLeft, LogOut, Menu, PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
 
-import { adminNavItemsFor } from "@/components/admin/adminNav";
-import { Badge } from "@/components/ui/Badge";
+import { adminNavItemsFor, ADMIN_NAV_GROUPS, type AdminNavItem } from "@/components/admin/adminNav";
 import { Logo } from "@/components/ui/Logo";
 import { useAuth } from "@/context/AuthProvider";
 import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
@@ -11,23 +10,31 @@ import { cn } from "@/lib/utils";
 import { ROUTES } from "@/routes/paths";
 
 /**
- * AdminShell — full-page layout for the /admin area (Phase 10C chrome).
+ * AdminShell — full-page layout for the /admin area (Phase 10C chrome,
+ * restyled Task 14).
  *
  * The admin panel is completely self-contained: the public site top nav and
  * footer never render here (the /admin route tree sits outside the public
  * RootLayout), so the sidebar IS the navigation.
  *
+ * Theme — one navy-950 surface everywhere the chrome appears: desktop
+ * sidebar, collapsed icon rail, mobile header, and the mobile drawer all
+ * share the same header treatment (logo mark only — no wordmark, no text),
+ * gold hairline accents, grouped navigation, and hidden scrollbars (the
+ * list scrolls by wheel/touch; the bar itself never renders).
+ *
  * Desktop (≥lg): fixed navy sidebar with a collapse toggle — expanded shows
- * the familiar labelled navigation; collapsed shrinks to an icon-only rail
- * with tooltips, persisting the choice in localStorage. The identity panel
- * and actions adapt to both widths.
- * Mobile (<lg): compact sticky header (hamburger + compact brand + identity)
- * opening a slide-in drawer with the same navigation and actions.
+ * ONLY the logo mark at the top (no text); collapsed shrinks to an icon-only
+ * rail that hides the logo entirely, with tooltips, persisting the choice in
+ * localStorage. The identity panel and actions adapt to both widths.
+ * Mobile (<lg): compact sticky header (hamburger + logo mark + identity)
+ * opening a slide-in drawer with the same grouped navigation and actions.
  *
  * Phase 10B: navigation derives from the signed-in account — admins see every
- * section; manage users see the Dashboard plus ONLY their granted CMS
- * sections (Users/Audit are never shown to them). This filtering is routing
- * UX; the server independently authorizes every /api/admin/* request.
+ * section; manage users see the Dashboard plus ONLY sections where they hold
+ * at least one required permission (Users/Audit are never shown to them).
+ * This filtering is routing UX; the server independently authorizes every
+ * /api/admin/* request.
  */
 
 const SIDEBAR_COLLAPSED_KEY = "scs.admin.sidebarCollapsed";
@@ -110,17 +117,17 @@ export function AdminShell() {
           collapsed ? "w-[76px]" : "w-72",
         )}
       >
+        {/* Brand header — logo mark ONLY when expanded, nothing when collapsed. */}
         <div
           className={cn(
-            "flex items-center border-b border-white/10 py-4",
-            collapsed ? "flex-col gap-2 px-2" : "gap-2.5 px-5",
+            "relative flex shrink-0 items-center border-b border-white/10 py-4",
+            collapsed ? "justify-center px-2" : "gap-2 px-5",
           )}
         >
-          <Logo variant="light" showWordmark={!collapsed} />
           {collapsed ? (
-            <span className="sr-only">{roleLabel}</span>
+            <span className="sr-only">Admin panel</span>
           ) : (
-            <Badge variant="onDark">{roleLabel}</Badge>
+            <Logo variant="light" showWordmark={false} />
           )}
           <button
             type="button"
@@ -129,8 +136,8 @@ export function AdminShell() {
             aria-expanded={!collapsed}
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             className={cn(
-              "grid size-9 place-items-center rounded-lg text-slate-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500",
-              collapsed ? "mt-2" : "ml-auto",
+              "grid size-9 shrink-0 place-items-center rounded-lg text-slate-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500",
+              collapsed ? "" : "ml-auto",
             )}
           >
             {collapsed ? (
@@ -140,10 +147,12 @@ export function AdminShell() {
             )}
           </button>
         </div>
+        {/* Gold hairline accent under the brand header — the sidebar signature. */}
+        <div aria-hidden="true" className="gold-hairline h-px shrink-0 opacity-70" />
 
         <AdminNav collapsed={collapsed} />
 
-        <div className={cn("border-t border-white/10", collapsed ? "px-2 py-4" : "p-4")}>
+        <div className={cn("shrink-0 border-t border-white/10", collapsed ? "px-2 py-4" : "p-4")}>
           {collapsed ? (
             <>
               <span
@@ -167,33 +176,35 @@ export function AdminShell() {
         </div>
       </aside>
 
-      {/* ---------- Mobile header ---------- */}
-      <header className="sticky top-0 z-40 flex items-center justify-between gap-3 bg-navy-950 px-4 py-3 lg:hidden">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setDrawerOpen(true)}
-            aria-label="Open admin menu"
-            aria-expanded={drawerOpen}
-            className="grid size-10 place-items-center rounded-lg text-white transition-colors hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500"
-          >
-            <Menu size={20} aria-hidden="true" />
-          </button>
-          <Logo variant="light" showWordmark={false} />
-          <span className="font-display text-sm font-bold text-white">Admin</span>
+      {/* ---------- Mobile header (same theme as the sidebar) ---------- */}
+      <header className="sticky top-0 z-40 bg-navy-950 lg:hidden">
+        <div className="flex items-center justify-between gap-3 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setDrawerOpen(true)}
+              aria-label="Open admin menu"
+              aria-expanded={drawerOpen}
+              className="grid size-10 place-items-center rounded-lg text-white transition-colors hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500"
+            >
+              <Menu size={20} aria-hidden="true" />
+            </button>
+            <Logo variant="light" showWordmark={false} />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="hidden text-xs text-slate-300 sm:inline">{user?.displayName}</span>
+            <span
+              aria-hidden="true"
+              className="grid size-8 place-items-center rounded-full bg-navy-800 font-display text-[10px] font-bold text-gold-300"
+            >
+              {initials}
+            </span>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="hidden text-xs text-slate-300 sm:inline">{user?.displayName}</span>
-          <span
-            aria-hidden="true"
-            className="grid size-8 place-items-center rounded-full bg-navy-800 font-display text-[10px] font-bold text-gold-300"
-          >
-            {initials}
-          </span>
-        </div>
+        <div aria-hidden="true" className="gold-hairline h-px opacity-70" />
       </header>
 
-      {/* ---------- Mobile drawer ---------- */}
+      {/* ---------- Mobile drawer (same theme as the desktop sidebar) ---------- */}
       {drawerOpen && (
         <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Admin navigation">
           <button
@@ -204,7 +215,7 @@ export function AdminShell() {
           />
           <div className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col bg-navy-950 shadow-xl">
             <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-              <Logo variant="light" />
+              <Logo variant="light" showWordmark={false} />
               <button
                 type="button"
                 onClick={() => setDrawerOpen(false)}
@@ -214,6 +225,7 @@ export function AdminShell() {
                 <X size={20} aria-hidden="true" />
               </button>
             </div>
+            <div aria-hidden="true" className="gold-hairline h-px shrink-0 opacity-70" />
             <AdminNav collapsed={false} onNavigate={() => setDrawerOpen(false)} />
             <div className="border-t border-white/10 p-4">
               <AdminIdentity
@@ -239,43 +251,84 @@ export function AdminShell() {
 }
 
 /**
- * Sidebar/drawer navigation — filtered by the signed-in account's grants.
- * Collapsed mode renders icon-only links with a title tooltip; expanded
- * mode is the labelled list. No phase badges — the sidebar is purely
- * functional navigation (Phase 10C cleanup).
+ * Sidebar/drawer navigation — filtered by the signed-in account's grants and
+ * rendered in ordered clusters (Pages / Content / Administration) with micro
+ * labels. Collapsed mode renders icon-only links with a tooltip and renders
+ * cluster boundaries as thin dividers. Scrollbars are hidden — the list
+ * scrolls by wheel/touch/keyboard without the visual noise.
  */
 function AdminNav({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
   const { user } = useAuth();
   const items = adminNavItemsFor(user);
+
   return (
     <nav
       aria-label="Admin sections"
-      className={cn("flex flex-1 flex-col gap-1 overflow-y-auto py-4", collapsed ? "px-2" : "px-3")}
+      className={cn("no-scrollbar flex flex-1 flex-col overflow-y-auto py-2", collapsed ? "px-2" : "px-3")}
     >
-      {items.map((item) => (
-        <NavLink
-          key={item.to}
-          to={item.to}
-          end={item.to === ROUTES.admin.home}
-          onClick={onNavigate}
-          title={collapsed ? item.label : undefined}
-          aria-label={collapsed ? item.label : undefined}
-          className={({ isActive }) =>
-            cn(
-              "flex items-center gap-3 rounded-lg text-sm font-medium transition-colors",
-              "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500",
-              collapsed ? "h-11 justify-center px-0" : "px-3 py-2.5",
-              isActive
-                ? "bg-white/10 text-gold-300"
-                : "text-slate-300 hover:bg-white/5 hover:text-white",
-            )
-          }
-        >
-          <item.icon size={18} aria-hidden="true" className="shrink-0" />
-          {!collapsed && <span className="flex-1">{item.label}</span>}
-        </NavLink>
-      ))}
+      {ADMIN_NAV_GROUPS.map((group) => {
+        const groupItems = items.filter((item) => item.section === group.id);
+        if (groupItems.length === 0) return null;
+
+        return (
+          <div key={group.id} className={cn(collapsed ? "py-2" : "pt-3")}>
+            {!collapsed &&
+              (group.label ? (
+                <p className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  {group.label}
+                </p>
+              ) : (
+                <span className="sr-only">Overview</span>
+              ))}
+            {collapsed && <div aria-hidden="true" className="mx-2 mb-2 h-px bg-white/10" />}
+
+            <div className="flex flex-col gap-1">
+              {groupItems.map((item) => (
+                <AdminNavItemLink
+                  key={item.to}
+                  item={item}
+                  collapsed={collapsed}
+                  onNavigate={onNavigate}
+                />
+              ))}
+            </div>
+          </div>
+        );
+      })}
     </nav>
+  );
+}
+
+function AdminNavItemLink({
+  item,
+  collapsed,
+  onNavigate,
+}: {
+  item: AdminNavItem;
+  collapsed: boolean;
+  onNavigate?: () => void;
+}) {
+  return (
+    <NavLink
+      to={item.to}
+      end={item.to === ROUTES.admin.home}
+      onClick={onNavigate}
+      title={collapsed ? item.label : undefined}
+      aria-label={collapsed ? item.label : undefined}
+      className={({ isActive }) =>
+        cn(
+          "flex items-center gap-3 rounded-lg text-sm font-medium transition-colors",
+          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500",
+          collapsed ? "h-11 justify-center px-0" : "px-3 py-2.5",
+          isActive
+            ? "bg-gold-500/15 text-gold-300"
+            : "text-slate-300 hover:bg-white/5 hover:text-white",
+        )
+      }
+    >
+      <item.icon size={18} aria-hidden="true" className="shrink-0" />
+      {!collapsed && <span className="flex-1">{item.label}</span>}
+    </NavLink>
   );
 }
 
@@ -291,7 +344,7 @@ function AdminIdentity({
   roleLabel: string;
 }) {
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
       <span
         aria-hidden="true"
         className="grid size-9 shrink-0 place-items-center rounded-full bg-navy-800 font-display text-xs font-bold text-gold-300"
@@ -302,7 +355,9 @@ function AdminIdentity({
         <p className="truncate text-sm font-semibold text-white">{name}</p>
         <p className="truncate text-xs text-slate-400">@{username}</p>
       </div>
-      <Badge variant="onDark">{roleLabel}</Badge>
+      <span className="shrink-0 rounded-full border border-gold-500/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-gold-300">
+        {roleLabel}
+      </span>
     </div>
   );
 }

@@ -398,3 +398,36 @@ card from every public surface without deleting it.
   shipped site carries zero fictional people while QA keeps its
   deterministic 8-profile baseline. Production databases are never
   seeded — real alumni come from the admin CMS.
+
+---
+
+## 13. Admin restyle & page-scoped managers (Task 14)
+
+The admin panel's people-card management moved from a standalone "Team"
+section into PAGE-scoped managers, and the sidebar chrome was restyled:
+
+- **Admin → Home Page** (`/admin/home-page`) — one page with three tabs:
+  *Leadership* (team cards, group "leaders"), *Members spotlight* (star
+  toggle pins a directory member to the home spotlight — featured members
+  surface first, up to 4 cards), and *Developers* (group "developers").
+- **Admin → About Page** (`/admin/about-page`) — manages the leadership
+  strip shown on the About page. It reads the SAME "leaders" cards as the
+  home Leadership section (one dataset, two surfaces; a notice on the page
+  says exactly that).
+- Create/edit forms live under the page they came from
+  (`/admin/home-page/leaders/new`, `/admin/about-page/leaders/:id/edit`,
+  …) with the card group LOCKED to that page; the old `/admin/team/*`
+  URLs redirect to `/admin/home-page`.
+- Permissions: the Home Page manager admits any-of `team`/`members` (tabs
+  the account lacks are hidden); the About Page manager needs `team`.
+  The permission label in the Users editor now reads "Team cards".
+  Server endpoints and enforcement are unchanged from Phase 12.
+- Sidebar restyle: the brand header shows the logo mark ONLY (no text);
+  when the sidebar is collapsed the logo is hidden entirely. Scrollbars
+  are hidden (`.no-scrollbar`), navigation is grouped into Pages /
+  Content / Administration with micro labels, the active item carries a
+  gold tint, and the mobile header + drawer share the same navy theme.
+- Form fix: initials now auto-derive from the name while the field is
+  untouched (previously the fallback ran only after validation, so saving
+  a new card without typing initials failed client-side validation).
+

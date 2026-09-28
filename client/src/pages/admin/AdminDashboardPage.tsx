@@ -29,9 +29,11 @@ import type {
  */
 
 /** Section quick links — every entry except the Dashboard itself (same set the
- *  old phase flag produced; Users/Audit are admin-only surfaces, kept here). */
+ *  old phase flag produced; Users/Audit are admin-only surfaces, kept here).
+ *  Task 14: multi-permission sections (Home Page) are included too. */
 const SECTION_ITEMS = ADMIN_NAV_ITEMS.filter(
-  (item) => item.permission !== undefined || item.adminOnly === true,
+  (item) =>
+    item.permission !== undefined || item.permissions !== undefined || item.adminOnly === true,
 );
 
 const SECTION_ROUTE: Record<AdminContentSection, string> = {
@@ -231,7 +233,9 @@ function DashboardSkeleton() {
  */
 function ManageDashboardPage() {
   const { user } = useAuth();
-  const sections = adminNavItemsFor(user).filter((item) => item.permission !== undefined);
+  const sections = adminNavItemsFor(user).filter(
+    (item) => item.permission !== undefined || item.permissions !== undefined,
+  );
   const memberSince = user ? formatCardDate(user.createdAt) : "—";
 
   return (

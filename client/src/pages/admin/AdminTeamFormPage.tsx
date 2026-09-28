@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Save, Trash2, UserPlus } from "lucide-react";
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -22,17 +22,57 @@ import {
 } from "@/lib/adminTeamForm";
 import { initialsFromName } from "@/lib/adminAlumniForm";
 import { ApiError } from "@/services/apiClient";
+import { cn } from "@/lib/utils";
 import { ROUTES } from "@/routes/paths";
+import type { TeamGroup } from "@/types";
 
 /**
- * Admin Team form (Phase 12) — one reusable form for create AND edit
- * (/admin/team/new, /admin/team/:id/edit), for BOTH card groups.
+ * Admin Team form (Phase 12, context-aware since Task 14) — one reusable
+ * form for create AND edit, mounted from context-aware routes:
  *
- * Fields mirror the TeamCard model exactly (group, name, position,
- * description, initials, image, imageAlt, order, status, socials) — no
- * invented fields. Published cards are public immediately; archived cards
- * stay in the CMS but leave every public surface.
+ *   /admin/home-page/leaders/new | :id/edit   → group LOCKED to leaders,
+ *   /admin/home-page/developers/…             → group LOCKED to developers,
+ *   /admin/about-page/leaders/…               → group LOCKED to leaders.
+ *
+ * The route prefix decides where "Back" and the post-save redirect land, so
+ * the Home Page and About Page managers feel like self-contained sections.
+ * A locked group renders as a disabled select (the URL is the source of
+ * truth), and an edit route whose fixed group mismatches the card's actual
+ * group is refused with a link to the card's REAL edit page — never a silent
+ * group re-assignment on save.
  */
+
+interface TeamFormContext {
+  /** Fixed group for this route — null only for the legacy fallback. */
+  lockedGroup: TeamGroup | null;
+  returnTo: string;
+  backLabel: string;
+}
+
+function resolveTeamFormContext(pathname: string): TeamFormContext {
+  if (pathname.startsWith(`${ROUTES.admin.homePage}/developers`)) {
+    return {
+      lockedGroup: "developers",
+      returnTo: `${ROUTES.admin.homePage}?tab=developers`,
+      backLabel: "Back to Home Page",
+    };
+  }
+  if (pathname.startsWith(`${ROUTES.admin.homePage}/leaders`)) {
+    return {
+      lockedGroup: "leaders",
+      returnTo: `${ROUTES.admin.homePage}?tab=leaders`,
+      backLabel: "Back to Home Page",
+    };
+  }
+  if (pathname.startsWith(`${ROUTES.admin.aboutPage}/leaders`)) {
+    return {
+      lockedGroup: "leaders",
+      returnTo: ROUTES.admin.aboutPage,
+      backLabel: "Back to About Page",
+    };
+  }
+  return { lockedGroup: null, returnTo: ROUTES.admin.team, backLabel: "Back to team" };
+}
 
 const INPUT_CLASS =
   "w-full rounded-lg border bg-white px-3.5 py-2.5 text-sm text-ink shadow-sm transition-colors placeholder:text-muted focus:outline-2 focus:outline-offset-1 focus:outline-gold-500 aria-[invalid=true]:border-error aria-[invalid=true]:focus:outline-error";
@@ -98,7 +138,12 @@ export default function AdminTeamFormPage() {
   const { id } = useParams();
   const isEdit = Boolean(id);
   const navigate = useNavigate();
+  const location = useLocation();
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Route context is stable per mount — compute it once.
+  const context = useMemo(() => resolveTeamFormContext(location.pathname), [location.pathname]);
+  const { lockedGroup } = context;
 
   const cardQuery = useAdminTeamCard(id);
   const createCard = useCreateTeamCard();
@@ -114,7 +159,7 @@ export default function AdminTeamFormPage() {
     formState: { errors, isSubmitting },
   } = useForm<TeamFormValues>({
     resolver: zodResolver(teamFormSchema),
-    defaultValues: teamFormDefaults(),
+    defaultValues: teamFormDefaults(lockedGroup ?? "leaders"),
     mode: "onTouched",
   });
 
@@ -131,6 +176,18 @@ export default function AdminTeamFormPage() {
   const name = useWatch({ control, name: "name" });
   const initialsValue = useWatch({ control, name: "initials" });
   const initialsDirty = Boolean(initialsValue && initialsValue !== initialsFromName(name ?? ""));
+
+  // Auto-derive initials while the field still matches the name — the hint
+  // promises "auto-matches the name", so the value must actually track it
+  // (previously the fallback only ran in the payload, after validation had
+  // already rejected the empty field).
+  useEffect(() => {
+    if (initialsDirty) return;
+    const auto = initialsFromName(name ?? "");
+    if (auto && auto !== initialsValue) {
+      setValue("initials", auto, { shouldValidate: false });
+    }
+  }, [name, initialsDirty, initialsValue, setValue]);
 
   const pending = isSubmitting || createCard.isPending || updateCard.isPending;
 
@@ -160,7 +217,7 @@ export default function AdminTeamFormPage() {
       } else {
         await createCard.mutateAsync(toTeamPayload(values));
       }
-      navigate(ROUTES.admin.team);
+      navigate(context.returnTo);
     } catch (error) {
       applyServerErrors(error);
     }
@@ -168,19 +225,42 @@ export default function AdminTeamFormPage() {
 
   /* ------------------------------ states ------------------------------ */
 
+  // A locked-group edit route that points at a card of the OTHER group is a
+  // stale link — refuse it instead of silently re-assigning the group on save.
+  if (isEdit && cardQuery.data && lockedGroup && cardQuery.data.group !== lockedGroup) {
+    const card = cardQuery.data;
+    const correctHref =
+      card.group === "leaders"
+        ? `${ROUTES.admin.homePage}/leaders/${card.id}/edit`
+        : `${ROUTES.admin.homePage}/developers/${card.id}/edit`;
+    return (
+      <div className="mx-auto w-full max-w-3xl">
+        <ErrorState
+          title="This card belongs to another group"
+          description={`"${card.name}" is a ${TEAM_GROUP_LABELS[card.group]} card, but this form is fixed to ${TEAM_GROUP_LABELS[lockedGroup]}. Open the card's own edit page to change it.`}
+        />
+        <div className="mt-4 flex justify-center">
+          <Button to={correctHref} variant="navy" size="sm">
+            Edit as {TEAM_GROUP_LABELS[card.group]} card
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   if (isEdit) {
     if (cardQuery.isError) {
       return (
         <div className="mx-auto w-full max-w-3xl">
           <ErrorState
             title="Couldn't load this card"
-            description="The team card may not exist anymore, or the API is unreachable. Head back to the team list and try again."
+            description="The card may not exist anymore, or the API is unreachable. Head back to the list and try again."
             onRetry={() => void cardQuery.refetch()}
           />
           <div className="mt-4 flex justify-center">
-            <Button to={ROUTES.admin.team} variant="outline" size="sm">
+            <Button to={context.returnTo} variant="outline" size="sm">
               <ArrowLeft size={14} aria-hidden="true" />
-              Back to team
+              {context.backLabel}
             </Button>
           </div>
         </div>
@@ -211,12 +291,20 @@ export default function AdminTeamFormPage() {
             Administration
           </p>
           <h1 className="mt-1 font-display text-2xl font-bold text-navy-900 sm:text-3xl">
-            {isEdit ? "Edit Team Card" : "New Team Card"}
+            {isEdit
+              ? `Edit ${lockedGroup ? TEAM_GROUP_LABELS[lockedGroup].replace(/s$/, "") : "Team"} Card`
+              : lockedGroup === "developers"
+                ? "New Developer Card"
+                : lockedGroup === "leaders"
+                  ? "New Leader Card"
+                  : "New Team Card"}
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
             {isEdit
               ? "Update this card — published cards appear on the site immediately; archived cards are hidden from every public surface."
-              : "Add a card to the Leadership or Developers group. Published cards appear on the home page (and the About leadership strip) as soon as they are saved."}
+              : lockedGroup
+                ? `Add a card to the ${TEAM_GROUP_LABELS[lockedGroup]} group. Published cards appear on the site as soon as they are saved.`
+                : "Add a card to the Leadership or Developers group. Published cards appear on the home page (and the About leadership strip) as soon as they are saved."}
           </p>
         </div>
       </div>
@@ -226,11 +314,18 @@ export default function AdminTeamFormPage() {
         <Section id="team-basics" title="Basics" description="Which group the card belongs to, and the person's identity.">
           <div className="grid grid-cols-1 gap-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <Field id="team-group" label="Group" required error={errors.group?.message} hint="Where the card appears.">
+              <Field
+                id="team-group"
+                label="Group"
+                required
+                error={errors.group?.message}
+                hint={lockedGroup ? "Fixed by the page you came from." : "Where the card appears."}
+              >
                 <select
                   id="team-group"
                   aria-invalid={Boolean(errors.group)}
-                  className={INPUT_CLASS}
+                  className={cn(INPUT_CLASS, lockedGroup && "cursor-not-allowed bg-surface text-muted")}
+                  disabled={Boolean(lockedGroup)}
                   {...register("group")}
                 >
                   {Object.entries(TEAM_GROUP_LABELS).map(([value, label]) => (
@@ -468,7 +563,7 @@ export default function AdminTeamFormPage() {
         )}
 
         <div className="sticky bottom-0 -mx-1 flex flex-col-reverse gap-2 border-t border-line bg-surface/95 px-1 py-3 backdrop-blur sm:flex-row sm:items-center sm:justify-end">
-          <Button to={ROUTES.admin.team} variant="ghost" size="md" disabled={pending}>
+          <Button to={context.returnTo} variant="ghost" size="md" disabled={pending}>
             Cancel
           </Button>
           <Button type="submit" variant="navy" size="md" disabled={pending} aria-busy={pending}>

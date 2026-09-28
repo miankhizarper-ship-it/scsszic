@@ -30,6 +30,8 @@ export const ROUTES = {
   /* ---------- Admin (Phase 9) ---------- */
   admin: {
     home: "/admin",
+    homePage: "/admin/home-page",
+    aboutPage: "/admin/about-page",
     events: "/admin/events",
     blogs: "/admin/blogs",
     alumni: "/admin/alumni",

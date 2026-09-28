@@ -121,6 +121,16 @@
    Shared decorative utilities
    -------------------------------------------------------------------------- */
 
+/* Scrollbar-free scrolling (admin sidebar nav, drawers, horizontal chip rows).
+   Content stays scrollable via wheel/touch/keyboard — only the bar is hidden. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* Subtle technical grid — dark surfaces (hero, CTA, navy bands) */
 .bg-grid-dark {
   background-image: linear-gradient(

@@ -645,7 +645,7 @@ export const ADMIN_PERMISSION_LABELS: Record<AdminPermission, string> = {
   feed: "Feed",
   gallery: "Gallery",
   videos: "Videos",
-  team: "Team",
+  team: "Team cards",
 };
 
 /* ---------- Category vocabulary + slug availability (Phase 10C) ---------- */
