@@ -86,7 +86,7 @@ export default function LoginPage() {
             id="identifier"
             type="text"
             autoComplete="username"
-            placeholder="e.g. ayesha-noor or you@example.com"
+            placeholder="your-username or you@example.com"
             aria-invalid={Boolean(errors.identifier)}
             aria-describedby={errors.identifier ? "identifier-error" : undefined}
             className="h-11 w-full rounded-lg border bg-white px-3.5 text-base text-ink shadow-sm transition-colors placeholder:text-muted focus:outline-2 focus:outline-offset-1 focus:outline-gold-500 sm:text-sm aria-[invalid=true]:border-error aria-[invalid=true]:focus:outline-error"

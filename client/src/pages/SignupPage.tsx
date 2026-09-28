@@ -104,7 +104,7 @@ export default function SignupPage() {
             id="displayName"
             type="text"
             autoComplete="name"
-            placeholder="e.g. Ayesha Noor"
+            placeholder="Your name"
             aria-invalid={Boolean(errors.displayName)}
             aria-describedby={errors.displayName ? "displayName-error" : undefined}
             className="h-11 w-full rounded-lg border bg-white px-3.5 text-base text-ink shadow-sm transition-colors placeholder:text-muted focus:outline-2 focus:outline-offset-1 focus:outline-gold-500 sm:text-sm aria-[invalid=true]:border-error aria-[invalid=true]:focus:outline-error"
@@ -126,7 +126,7 @@ export default function SignupPage() {
             id="username"
             type="text"
             autoComplete="username"
-            placeholder="e.g. ayesha-noor"
+            placeholder="your-username"
             aria-invalid={Boolean(errors.username)}
             aria-describedby={errors.username ? "username-error" : undefined}
             className="h-11 w-full rounded-lg border bg-white px-3.5 font-mono text-base text-ink shadow-sm transition-colors placeholder:text-muted focus:outline-2 focus:outline-offset-1 focus:outline-gold-500 sm:text-sm aria-[invalid=true]:border-error aria-[invalid=true]:focus:outline-error"
