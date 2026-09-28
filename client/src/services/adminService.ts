@@ -11,6 +11,8 @@ import type {
   AdminMemberListEnvelope,
   AdminPermission,
   AdminProjectListEnvelope,
+  AdminTeamListEnvelope,
+  AdminTeamListParams,
   AdminUser,
   AdminUserListEnvelope,
   AdminUserUpdate,
@@ -26,6 +28,7 @@ import type {
   Project,
   SlugAvailability,
   SocietyEvent,
+  TeamCardWrite,
   WatchVideo,
 } from "@/types";
 
@@ -75,6 +78,11 @@ export interface MediaUploadResult {
  *   createAlumnus(body) → POST   /api/admin/alumni
  *   updateAlumnus(id)   → PATCH  /api/admin/alumni/:id
  *   deleteAlumnus(id)   → DELETE /api/admin/alumni/:id
+ *   listTeam(params)    → GET    /api/admin/team            (12)
+ *   getTeamCard(id)     → GET    /api/admin/team/:id
+ *   createTeamCard(body)→ POST   /api/admin/team
+ *   updateTeamCard(id)  → PATCH  /api/admin/team/:id
+ *   deleteTeamCard(id)  → DELETE /api/admin/team/:id
  *   listMembers(params) → GET    /api/admin/members         (9E)
  *   getMember(id)       → GET    /api/admin/members/:id
  *   createMember(body)  → POST   /api/admin/members
@@ -335,6 +343,57 @@ export const adminService = {
   async deleteAlumnus(id: string): Promise<{ id: string; deleted: boolean }> {
     const response = await apiFetch<{ data: { id: string; deleted: boolean } }>(
       `/admin/alumni/${encodeURIComponent(id)}`,
+      { method: "DELETE" },
+    );
+    return response.data;
+  },
+
+  /* ------------------------------ Team (12) ------------------------------ */
+
+  /** GET /api/admin/team — search/filter/sort/paginate (real meta + facets). */
+  async listTeam(params: AdminTeamListParams): Promise<AdminTeamListEnvelope> {
+    return apiFetch<AdminTeamListEnvelope>("/admin/team", {
+      params: {
+        page: params.page,
+        pageSize: params.pageSize,
+        search: params.search,
+        group: params.group,
+        status: params.status,
+        sort: params.sort,
+      },
+    });
+  },
+
+  /** GET /api/admin/team/:id — single card (any status); ApiError 404 propagates. */
+  async getTeamCard(id: string): Promise<TeamCardWrite> {
+    const response = await apiFetch<{ data: TeamCardWrite }>(
+      `/admin/team/${encodeURIComponent(id)}`,
+    );
+    return response.data;
+  },
+
+  /** POST /api/admin/team — create; 400 field errors surface via ApiError. */
+  async createTeamCard(body: Partial<TeamCardWrite>): Promise<TeamCardWrite> {
+    const response = await apiFetch<{ data: TeamCardWrite }>("/admin/team", {
+      method: "POST",
+      body,
+    });
+    return response.data;
+  },
+
+  /** PATCH /api/admin/team/:id — partial update. */
+  async updateTeamCard(id: string, body: Partial<TeamCardWrite>): Promise<TeamCardWrite> {
+    const response = await apiFetch<{ data: TeamCardWrite }>(
+      `/admin/team/${encodeURIComponent(id)}`,
+      { method: "PATCH", body },
+    );
+    return response.data;
+  },
+
+  /** DELETE /api/admin/team/:id — explicit single-record deletion. */
+  async deleteTeamCard(id: string): Promise<{ id: string; deleted: boolean }> {
+    const response = await apiFetch<{ data: { id: string; deleted: boolean } }>(
+      `/admin/team/${encodeURIComponent(id)}`,
       { method: "DELETE" },
     );
     return response.data;

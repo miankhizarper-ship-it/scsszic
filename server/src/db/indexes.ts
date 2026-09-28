@@ -97,6 +97,14 @@ export async function ensureDatabaseIndexes(db: Db): Promise<void> {
     { key: { batchYear: -1 }, name: "by_batchYear_desc" },
   ]);
 
+  // ---- team cards (Phase 12 — leadership / developers) --------------------
+  // Public listings read one group, published only, manual order first.
+  await db.collection("team").createIndexes([
+    { key: { group: 1, status: 1, order: 1, name: 1 }, name: "by_group_status_order" },
+    { key: { status: 1 }, name: "by_status" },
+    { key: { updatedAt: -1 }, name: "by_updatedAt_desc" },
+  ]);
+
   // ---- projects ---------------------------------------------------------
   await db.collection("projects").createIndexes([
     { key: { slug: 1 }, unique: true, name: "uniq_slug" },

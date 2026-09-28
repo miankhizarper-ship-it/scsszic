@@ -25,6 +25,7 @@ import type {
   ProfileSocialLink,
   Project,
   SocietyEvent,
+  TeamCard,
   WatchVideo,
 } from "../../../client/src/types/index.js";
 
@@ -60,5 +61,5 @@ export type SerializedAlumnus = Omit<Alumnus, "socials"> & {
   socials?: SerializedSocialLink[];
 };
 
-export type { Alumnus, Blog, FeedPost, GalleryAlbum, Member, Project, SocietyEvent, WatchVideo };
+export type { Alumnus, Blog, FeedPost, GalleryAlbum, Member, Project, SocietyEvent, TeamCard, WatchVideo };
 export type { ProfileSocialLink };

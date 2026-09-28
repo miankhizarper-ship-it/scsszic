@@ -33,6 +33,8 @@ import AdminAlumniPage from "@/pages/admin/AdminAlumniPage";
 import AdminAlumniFormPage from "@/pages/admin/AdminAlumniFormPage";
 import AdminMembersPage from "@/pages/admin/AdminMembersPage";
 import AdminMemberFormPage from "@/pages/admin/AdminMemberFormPage";
+import AdminTeamPage from "@/pages/admin/AdminTeamPage";
+import AdminTeamFormPage from "@/pages/admin/AdminTeamFormPage";
 import AdminProjectsPage from "@/pages/admin/AdminProjectsPage";
 import AdminProjectFormPage from "@/pages/admin/AdminProjectFormPage";
 import AdminFeedPage from "@/pages/admin/AdminFeedPage";
@@ -279,6 +281,30 @@ export const appRouter = createBrowserRouter([
         element: (
           <AdminPermissionRoute permission="members" label="Members">
             <AdminMemberFormPage />
+          </AdminPermissionRoute>
+        ),
+      },
+      {
+        path: "team",
+        element: (
+          <AdminPermissionRoute permission="team" label="Team">
+            <AdminTeamPage />
+          </AdminPermissionRoute>
+        ),
+      },
+      {
+        path: "team/new",
+        element: (
+          <AdminPermissionRoute permission="team" label="Team">
+            <AdminTeamFormPage />
+          </AdminPermissionRoute>
+        ),
+      },
+      {
+        path: "team/:id/edit",
+        element: (
+          <AdminPermissionRoute permission="team" label="Team">
+            <AdminTeamFormPage />
           </AdminPermissionRoute>
         ),
       },

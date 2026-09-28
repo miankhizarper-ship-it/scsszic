@@ -12,7 +12,9 @@ import type {
   Project,
   SerializedAlumnus,
   SerializedEvent,
+  SerializedSocialLink,
   SocietyEvent,
+  TeamCard,
   WatchVideo,
 } from "../content/types.js";
 
@@ -142,6 +144,21 @@ export type VideoDoc = WatchVideo & { _id: string; durationMinutes: number };
 export type MemberDoc = Member & { _id: string };
 export type ProjectDoc = Project & { _id: string };
 /**
+ * TeamCardDoc — admin-managed Leadership/Developers cards (Phase 12). Adds
+ * the repository-computed `searchText` haystack (name/position/description)
+ * the admin management search matches against. On the WIRE (and in Mongo)
+ * social `icon` values are registry keys, so the doc type overrides the
+ * domain's component-typed socials with the serialized shape — the repos
+ * map to the domain TeamCard exactly like the alumni repos do.
+ */
+export type TeamDoc = Omit<TeamCard, "socials"> & {
+  _id: string;
+  searchText: string;
+  createdAt: string;
+  updatedAt: string;
+  socials?: SerializedSocialLink[];
+};
+/**
  * FeedPostDoc — adds the internal real-likes ledger. `likedBy` holds account
  * ids; it is stripped from every API payload (see strip.ts) and the count is
  * folded into the displayed `likes` (baseline + real). Optional so existing
@@ -183,6 +200,7 @@ export const collections = {
     getDatabase().collection("gallery_albums"),
   videos: (): Collection<VideoDoc> => getDatabase().collection("videos"),
   members: (): Collection<MemberDoc> => getDatabase().collection("members"),
+  team: (): Collection<TeamDoc> => getDatabase().collection("team"),
   projects: (): Collection<ProjectDoc> => getDatabase().collection("projects"),
   feedPosts: (): Collection<FeedPostDoc> => getDatabase().collection("feed_posts"),
   feedComments: (): Collection<FeedCommentDoc> =>
@@ -203,6 +221,7 @@ export const COLLECTION_NAMES = [
   "gallery_albums",
   "videos",
   "members",
+  "team",
   "projects",
   "feed_posts",
   "feed_comments",

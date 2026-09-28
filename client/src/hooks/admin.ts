@@ -10,6 +10,7 @@ import type {
   AdminGalleryListParams,
   AdminMemberListParams,
   AdminProjectListParams,
+  AdminTeamListParams,
   AdminUserListParams,
   AdminUserUpdate,
   AdminVideoListParams,
@@ -22,6 +23,7 @@ import type {
   Member,
   Project,
   SocietyEvent,
+  TeamCardWrite,
   WatchVideo,
 } from "@/types";
 
@@ -266,6 +268,62 @@ export function useDeleteAlumnus() {
   const invalidate = useInvalidateAlumniSurfaces();
   return useMutation({
     mutationFn: (id: string) => adminService.deleteAlumnus(id),
+    onSuccess: invalidate,
+  });
+}
+
+/* ------------------------------ Team (12) ------------------------------ */
+
+/** Invalidate every surface a team-card write can touch — dashboard included. */
+function useInvalidateTeamSurfaces() {
+  const queryClient = useQueryClient();
+  return () => {
+    void queryClient.invalidateQueries({ queryKey: ["admin", "team"] });
+    void queryClient.invalidateQueries({ queryKey: ["admin", "dashboard"] });
+    void queryClient.invalidateQueries({ queryKey: ["admin", "audit"] });
+    void queryClient.invalidateQueries({ queryKey: ["team"] });
+  };
+}
+
+/** Management listing — filters are part of the key; rows stay while refetching. */
+export function useAdminTeam(params: AdminTeamListParams) {
+  return useQuery({
+    queryKey: ["admin", "team", "list", params],
+    queryFn: () => adminService.listTeam(params),
+    placeholderData: (previous) => previous,
+  });
+}
+
+/** Single card for the edit form — 404s surface through `isError`. */
+export function useAdminTeamCard(id: string | undefined) {
+  return useQuery({
+    queryKey: ["admin", "team", "detail", id],
+    queryFn: () => adminService.getTeamCard(id as string),
+    enabled: Boolean(id),
+    retry: false,
+  });
+}
+
+export function useCreateTeamCard() {
+  const invalidate = useInvalidateTeamSurfaces();
+  return useMutation({
+    mutationFn: (body: Partial<TeamCardWrite>) => adminService.createTeamCard(body),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdateTeamCard(id: string) {
+  const invalidate = useInvalidateTeamSurfaces();
+  return useMutation({
+    mutationFn: (body: Partial<TeamCardWrite>) => adminService.updateTeamCard(id, body),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteTeamCard() {
+  const invalidate = useInvalidateTeamSurfaces();
+  return useMutation({
+    mutationFn: (id: string) => adminService.deleteTeamCard(id),
     onSuccess: invalidate,
   });
 }

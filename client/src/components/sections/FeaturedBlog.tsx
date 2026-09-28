@@ -72,18 +72,14 @@ export function FeaturedBlog() {
         )}
 
         {!loading && !error && feature && (
-          <div className="mt-12 grid grid-cols-1 gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-            <Reveal className="h-full">
-              <BlogCard blog={feature} className="h-full" />
-            </Reveal>
-
-            <div className="flex flex-col gap-6">
-              {sidebarPosts.map((post, index) => (
-                <Reveal key={post.id} delay={0.08 + index * 0.08} className="flex-1">
-                  <BlogCard blog={post} variant="compact" className="h-full" />
-                </Reveal>
-              ))}
-            </div>
+          /* Phase 12 redesign — three equal full-size cards (featured first)
+             instead of one large + two small compact thumbnails. */
+          <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {[feature, ...sidebarPosts].map((post, index) => (
+              <Reveal key={post.id} delay={index * 0.08} className="h-full">
+                <BlogCard blog={post} className="h-full" />
+              </Reveal>
+            ))}
           </div>
         )}
       </Container>

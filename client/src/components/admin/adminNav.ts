@@ -10,6 +10,7 @@ import {
   ScrollText,
   UserCog,
   Users,
+  UsersRound,
   type LucideIcon,
 } from "lucide-react";
 
@@ -103,6 +104,13 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     icon: Users,
     description: "Maintain the member directory.",
     permission: "members",
+  },
+  {
+    label: "Team",
+    to: ROUTES.admin.team,
+    icon: UsersRound,
+    description: "Edit the Leadership and Developers cards.",
+    permission: "team",
   },
   {
     label: "Projects",

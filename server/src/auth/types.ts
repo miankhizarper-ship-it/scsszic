@@ -20,7 +20,7 @@
 export type AuthUserRole = "member" | "manage" | "admin";
 
 /**
- * Phase 10B granular CMS permissions — exactly the eight admin content
+ * Phase 10B granular CMS permissions + Phase 12 "team" — the admin content
  * sections. Permissions belong to INDIVIDUAL users (no role-wide grants):
  * a manage user may access /api/admin/<section> only when their own
  * `permissions` array includes that section. Server-side enforcement is the
@@ -35,6 +35,7 @@ export const ADMIN_PERMISSIONS = [
   "feed",
   "gallery",
   "videos",
+  "team",
 ] as const;
 
 export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];

@@ -15,8 +15,14 @@ import type { AdminPermission } from "../../auth/types.js";
  * so those sections check usernames instead — same uniqueness rule.
  */
 
-/** Section (admin permission) → collection name + unique handle field. */
-const SLUG_TARGETS: Record<AdminPermission, { collectionName: string; field: "slug" | "username" }> = {
+/** Section (admin permission) → collection name + unique handle field.
+ *
+ *  "team" (Phase 12) is deliberately NOT here — team cards render in
+ *  listing sections only (no public detail page), so there is no unique
+ *  handle to check. The slug-check endpoint rejects the section (400). */
+type SlugCheckPermission = Exclude<AdminPermission, "team">;
+
+const SLUG_TARGETS: Record<SlugCheckPermission, { collectionName: string; field: "slug" | "username" }> = {
   events: { collectionName: "events", field: "slug" },
   blogs: { collectionName: "blogs", field: "slug" },
   gallery: { collectionName: "gallery_albums", field: "slug" },

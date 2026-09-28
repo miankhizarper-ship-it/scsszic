@@ -147,6 +147,12 @@ const feedSchema = z.object({
   projectSlug: slugish.optional(),
 });
 
+const teamSchema = z.object({
+  ...pagination,
+  /** Card group — omit for all published cards across both groups. */
+  group: z.enum(["leaders", "developers"]).optional(),
+});
+
 /** Related-count validation (?count=1..12, default 3). */
 export const relatedCountSchema = z.coerce.number().int().min(1).max(12).default(3);
 
@@ -164,6 +170,7 @@ export const QUERY_SCHEMAS = {
   watch: { schema: watchSchema, filterKeys: ["category", "duration", "featured"] },
   alumni: { schema: alumniSchema, filterKeys: ["batch", "field"] },
   members: { schema: membersSchema, filterKeys: ["batch", "domain", "featured", "usernames"] },
+  team: { schema: teamSchema, filterKeys: ["group"] },
   projects: { schema: projectsSchema, filterKeys: ["category", "technology", "status", "memberUsername", "featured"] },
   feed: { schema: feedSchema, filterKeys: ["type", "tag", "authorUsername", "projectSlug"] },
 } as const;

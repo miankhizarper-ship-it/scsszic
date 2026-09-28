@@ -23,6 +23,7 @@ import { feedRepository } from "../repositories/content/feedRepository.js";
 import { galleryRepository } from "../repositories/content/galleryRepository.js";
 import { membersRepository } from "../repositories/content/membersRepository.js";
 import { projectsRepository } from "../repositories/content/projectsRepository.js";
+import { teamRepository } from "../repositories/content/teamRepository.js";
 import { videosRepository } from "../repositories/content/videosRepository.js";
 
 /**
@@ -151,6 +152,15 @@ contentRouter.get(
     "Member profile not found",
   ),
 );
+
+/* ------------------------------- Team (12) --------------------------- */
+/**
+ * GET /api/team?group=leaders|developers&limit=N — admin-managed card
+ * groups for the home page (Leadership / Members-spotlight / Developers)
+ * and the About page's leadership strip. Published cards only, manual
+ * `order` first; archived cards never leave the database.
+ */
+contentRouter.get("/team", createListHandler("team", teamRepository));
 
 /* ------------------------------ Projects ---------------------------- */
 contentRouter.get("/projects", createListHandler("projects", projectsRepository));

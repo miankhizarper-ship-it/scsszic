@@ -22,6 +22,7 @@ const KIND_COPY: Record<string, { noun: string; surface: string }> = {
   album: { noun: "album", surface: "gallery" },
   video: { noun: "video", surface: "Watch hub" },
   user: { noun: "account", surface: "" },
+  teamCard: { noun: "team card", surface: "home page team sections" },
 };
 
 export function AdminEventDeleteDialog({
@@ -41,7 +42,8 @@ export function AdminEventDeleteDialog({
     | "post"
     | "album"
     | "video"
-    | "user";
+    | "user"
+    | "teamCard";
   /** Minimal record shape — both CMS items are {id, title}. */
   event: { id: string; title: string } | null;
   onClose: () => void;

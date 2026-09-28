@@ -37,6 +37,7 @@ export const ROUTES = {
     videos: "/admin/videos",
     members: "/admin/members",
     projects: "/admin/projects",
+    team: "/admin/team",
     feed: "/admin/feed",
     users: "/admin/users",
     audit: "/admin/audit",

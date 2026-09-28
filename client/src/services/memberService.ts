@@ -56,6 +56,16 @@ export const memberService = {
     return response.data;
   },
 
+  /**
+   * Home-page member spotlight (Phase 12) — the canonical directory order
+   * (featured first, newest batch, then name) capped to a small list, so
+   * featured members surface automatically without a dedicated flag day.
+   */
+  async getMemberSpotlights(count = 4): Promise<Member[]> {
+    const response = await fetchList<Member>("/members", { limit: count });
+    return response.data;
+  },
+
   /** Related members for a profile page (skills/interests/domain scoring). */
   async getRelatedMembers(username: string | undefined, count = 3): Promise<Member[]> {
     if (!username) return [];

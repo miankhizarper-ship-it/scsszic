@@ -300,13 +300,13 @@ request — the sidebar/filtering you see in the UI is only a reflection.
 
 | Role | Access |
 |------|--------|
-| `admin` | Everything: all 8 CMS sections, Users, Audit, media uploads, dashboard |
-| `manage` | Only the CMS sections explicitly granted to THAT account (events, blogs, alumni, members, projects, feed, gallery, videos). Never Users/Audit/uploads/dashboard |
+| `admin` | Everything: all 9 CMS sections, Users, Audit, media uploads, dashboard |
+| `manage` | Only the CMS sections explicitly granted to THAT account (events, blogs, alumni, members, projects, feed, gallery, videos, team). Never Users/Audit/uploads/dashboard |
 | `member` | No admin-panel access (unchanged) |
 
 Managing roles and permissions: sign in as an admin → **Users** → edit an
 account → set the role (`member` / `manage` / `admin`). For `manage` accounts
-a checkbox grid appears with the eight CMS sections; grants save with the same
+a checkbox grid appears with the CMS sections; grants save with the same
 PATCH. Notes:
 
 - Grant changes take effect on the affected account's **next request** — no
@@ -358,3 +358,43 @@ options plus a contact form → `POST /api/contact` (anonymous).
 - Submissions persist to the `contact_messages` collection. There is
   deliberately NO read API yet — read them directly in MongoDB (Atlas web
   UI or `mongosh`); an admin inbox is a possible later addition.
+
+---
+
+## 12. Home page people sections & Team CMS (Phase 12)
+
+The home page shows three admin-managed people sections, and the About
+page's leadership strip reads the same data:
+
+- **Leadership** — cards from the `team` collection with
+  `group: "leaders"` (home shows up to 4; About lists them all).
+- **Members spotlight** — up to 4 member-directory cards in the canonical
+  order (members flagged *featured* surface first).
+- **Developers** — cards with `group: "developers"`, rendered as a dark
+  navy band (up to 4).
+
+Manage every card in **Admin → Team** (`/admin/team`, permission-gated by
+the new `team` CMS permission): group, name, position, one-liner,
+initials, portrait (URL or R2 upload), social links, manual display order
+(lower numbers first), and a Published/Archived status. Archiving hides a
+card from every public surface without deleting it.
+
+- Public endpoint: `GET /api/team?group=leaders|developers&limit=N` —
+  published cards only, ordered by `order` then name.
+- Admin endpoints: `GET/POST /api/admin/team`,
+  `GET/PATCH/DELETE /api/admin/team/:id` — gated by
+  `requireAdminOrPermission("team")`; every write is audited
+  (`team.created` / `team.updated` / `team.deleted`).
+- Empty sections hide themselves: with no published cards the home page
+  and About page simply skip the section (no error boxes, no bare
+  headings). Team cards are NOT seeded — add your real people in the
+  admin panel.
+- The blog section on the home page now renders three full-size article
+  cards (featured article first, then the newest), replacing the old
+  large-plus-small-thumbnails layout. No featured flag is required — the
+  newest published articles always surface.
+- The demo alumni dataset moved out of the client bundle into a
+  seeder-only fixture (`server/src/scripts/fixtures/alumniDemo.ts`): the
+  shipped site carries zero fictional people while QA keeps its
+  deterministic 8-profile baseline. Production databases are never
+  seeded — real alumni come from the admin CMS.

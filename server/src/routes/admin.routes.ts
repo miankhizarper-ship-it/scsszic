@@ -39,6 +39,13 @@ import {
   updateAdminMemberStatus,
 } from "../controllers/admin/adminMembers.controller.js";
 import {
+  createAdminTeamCard,
+  deleteAdminTeamCard,
+  getAdminTeamCard,
+  listAdminTeam,
+  updateAdminTeamCard,
+} from "../controllers/admin/adminTeam.controller.js";
+import {
   createAdminProject,
   deleteAdminProject,
   getAdminProject,
@@ -225,6 +232,7 @@ adminRouter.use("/admin/projects", requireAdminOrPermission("projects"));
 adminRouter.use("/admin/feed", requireAdminOrPermission("feed"));
 adminRouter.use("/admin/gallery", requireAdminOrPermission("gallery"));
 adminRouter.use("/admin/videos", requireAdminOrPermission("videos"));
+adminRouter.use("/admin/team", requireAdminOrPermission("team"));
 
 // Category vocabulary (Phase 10C) — same per-section permission gates: a
 // manage user with the "events" grant manages event categories, never blog
@@ -286,6 +294,15 @@ adminRouter.post("/admin/members", createAdminMember);
 adminRouter.patch("/admin/members/:id", updateAdminMember);
 adminRouter.patch("/admin/members/:id/status", updateAdminMemberStatus);
 adminRouter.delete("/admin/members/:id", deleteAdminMember);
+
+// Team cards (Phase 12) — leadership + developers card CMS. Two-state
+// lifecycle (published/archived) is edited via PATCH; no separate status
+// route (the model has no rich lifecycle to transition through).
+adminRouter.get("/admin/team", listAdminTeam);
+adminRouter.get("/admin/team/:id", getAdminTeamCard);
+adminRouter.post("/admin/team", createAdminTeamCard);
+adminRouter.patch("/admin/team/:id", updateAdminTeamCard);
+adminRouter.delete("/admin/team/:id", deleteAdminTeamCard);
 
 adminRouter.get("/admin/projects", listAdminProjects);
 adminRouter.get("/admin/projects/:id", getAdminProject);

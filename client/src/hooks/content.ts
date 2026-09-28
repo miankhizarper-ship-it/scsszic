@@ -7,6 +7,7 @@ import { feedService } from "@/services/feedService";
 import { galleryService } from "@/services/galleryService";
 import { memberService } from "@/services/memberService";
 import { projectService } from "@/services/projectService";
+import { teamService } from "@/services/teamService";
 import { watchService } from "@/services/watchService";
 import { fetchCategories } from "@/services/contentApi";
 import type { EventFilters } from "@/lib/eventSearch";
@@ -16,7 +17,7 @@ import type { GalleryFilters } from "@/lib/gallerySearch";
 import type { MemberFilters } from "@/lib/memberSearch";
 import type { ProjectFilters } from "@/lib/projectSearch";
 import type { WatchFilters } from "@/lib/watchSearch";
-import type { CategorySection, FeedComment } from "@/types";
+import type { CategorySection, FeedComment, TeamGroup } from "@/types";
 
 /**
  * TanStack Query hooks over the Phase 8 content services (spec §17).
@@ -270,6 +271,15 @@ export function useFeaturedMembers(count = 3) {
   });
 }
 
+/** Home-page member spotlight (Phase 12) — featured first, capped list. */
+export function useMemberSpotlights(count = 4) {
+  return useQuery({
+    queryKey: ["members", "spotlights", count],
+    queryFn: () => memberService.getMemberSpotlights(count),
+    staleTime: LIST_STALE_TIME,
+  });
+}
+
 export function useRelatedMembers(username: string | undefined, count = 3) {
   return useQuery({
     queryKey: ["members", "related", username, count],
@@ -323,7 +333,24 @@ export function useRelatedProjects(slug: string | undefined, count = 3) {
   });
 }
 
-/* ---------------------------------- Feed ---------------------------------- */
+/* ------------------------------ Team (12) ------------------------------ */
+
+/**
+ * Admin-managed card group (leaders / developers) for the home page and
+ * the About leadership strip. The sections hide themselves when the API
+ * has no published cards — an empty collection means "nothing to show",
+ * never an error box on a public page.
+ */
+export function useTeamGroup(group: TeamGroup, limit = 4) {
+  return useQuery({
+    queryKey: ["team", "group", group, limit],
+    queryFn: () => teamService.getTeamGroup(group, limit),
+    staleTime: LIST_STALE_TIME,
+    retry: 1,
+  });
+}
+
+/* --------------------------------- Feed ---------------------------------- */
 
 export function useFeedPosts(filters: Partial<FeedFilters> = {}) {
   return useQuery({

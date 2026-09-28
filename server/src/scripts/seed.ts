@@ -10,6 +10,7 @@ import { closeDatabase, connectDatabase, getDatabase } from "../db/client.js";
 import { ensureDatabaseIndexes } from "../db/indexes.js";
 import { parseDurationMinutes } from "../repositories/content/text.js";
 import { logger } from "../utils/logger.js";
+import { ALUMNI_SEED } from "./fixtures/alumniDemo.js";
 
 /**
  * SCS data import / seeding (Phase 8, spec §8).
@@ -155,7 +156,7 @@ async function loadCanonicalData(vite: ViteDevServer): Promise<SeedSource> {
     return mod;
   };
 
-  const [events, blogs, gallery, watch, members, projects, feed, alumni] = await Promise.all([
+  const [events, blogs, gallery, watch, members, projects, feed] = await Promise.all([
     load("/src/data/events.ts"),
     load("/src/data/blogs.ts"),
     load("/src/data/gallery.ts"),
@@ -163,7 +164,6 @@ async function loadCanonicalData(vite: ViteDevServer): Promise<SeedSource> {
     load("/src/data/members.ts"),
     load("/src/data/projects.ts"),
     load("/src/data/feed.ts"),
-    load("/src/data/alumni.ts"),
   ]);
 
   const pick = (mod: Record<string, unknown>, key: string): Searchable[] => {
@@ -180,7 +180,10 @@ async function loadCanonicalData(vite: ViteDevServer): Promise<SeedSource> {
     members: pick(members, "MEMBERS"),
     projects: pick(projects, "PROJECTS"),
     posts: pick(feed, "FEED_POSTS"),
-    alumni: pick(alumni, "ALUMNI"),
+    // Phase 12 — the demo alumni dataset moved OUT of the client bundle into
+    // a seeder-only fixture (./fixtures/alumniDemo.ts). Same 8 deterministic
+    // profiles, so the 9I regression baseline is unchanged.
+    alumni: ALUMNI_SEED as unknown as Searchable[],
   };
 }
 

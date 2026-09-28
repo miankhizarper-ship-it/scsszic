@@ -432,6 +432,36 @@ export interface TeamMember {
   socials?: ProfileSocialLink[];
 }
 
+/**
+ * Admin-managed team cards (Phase 12) — the Leadership and Developers
+ * sections on the home page (and the About page's leadership strip) are
+ * backed by this ONE collection, split by `group`.
+ */
+export const TEAM_GROUPS = ["leaders", "developers"] as const;
+export type TeamGroup = (typeof TEAM_GROUPS)[number];
+
+/** Team cards have a two-state visibility lifecycle (no drafts). */
+export type TeamCardStatus = "published" | "archived";
+
+export interface TeamCard {
+  id: string;
+  group: TeamGroup;
+  name: string;
+  /** Role title shown as the card chip, e.g. "President" / "Backend Lead". */
+  position: string;
+  /** One-liner under the name (optional). */
+  description: string;
+  initials: string;
+  /** Portrait URL (R2 public URL or any https URL) — monogram fallback when absent. */
+  image?: string;
+  imageAlt?: string;
+  /** Resolved social links (icon = Lucide component) — the domain shape. */
+  socials?: ProfileSocialLink[];
+  /** Manual display order — lower numbers appear first. */
+  order: number;
+  status: TeamCardStatus;
+}
+
 /* ---------- Gallery ---------- */
 
 /** Album lifecycle — archived albums never appear in public listings. */
@@ -585,7 +615,7 @@ export interface ListEnvelope<T> {
 export type AuthUserRole = "member" | "manage" | "admin";
 
 /**
- * Phase 10B — the eight CMS sections a "manage" user can be granted,
+ * Phase 10B + 12 — the CMS sections a "manage" user can be granted,
  * matching the server's ADMIN_PERMISSIONS (auth/types.ts). Permissions belong
  * to individual users; the admin role bypasses permission checks entirely.
  * Server-side requireAdminOrPermission is the security boundary — client
@@ -600,6 +630,7 @@ export const ADMIN_PERMISSIONS = [
   "feed",
   "gallery",
   "videos",
+  "team",
 ] as const;
 
 export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];
@@ -614,6 +645,7 @@ export const ADMIN_PERMISSION_LABELS: Record<AdminPermission, string> = {
   feed: "Feed",
   gallery: "Gallery",
   videos: "Videos",
+  team: "Team",
 };
 
 /* ---------- Category vocabulary + slug availability (Phase 10C) ---------- */
@@ -882,6 +914,49 @@ export interface AdminAlumniListMeta {
 export interface AdminAlumniListEnvelope {
   data: AlumnusWrite[];
   meta: AdminAlumniListMeta;
+}
+
+/* ---------- Admin Team CMS (Phase 12) ---------- */
+
+/**
+ * Admin/API write-and-read shape of a team card — identical to the domain
+ * TeamCard except social icons stay registry KEYS (strings), exactly like
+ * AlumnusWrite. The public team service resolves them to Lucide components
+ * at its boundary; the admin CMS works directly with the serialized shape.
+ */
+export type TeamCardWrite = Omit<TeamCard, "socials"> & {
+  socials?: SerializedSocialLink[];
+};
+
+/** Server-side sort options for the admin team management table. */
+export type AdminTeamSort = "order_asc" | "name_asc" | "name_desc" | "newest";
+
+/** Query params accepted by GET /api/admin/team. */
+export interface AdminTeamListParams {
+  page: number;
+  pageSize: number;
+  search: string;
+  group?: TeamGroup;
+  status?: TeamCardStatus;
+  sort: AdminTeamSort;
+}
+
+/** Management-table metadata — filtered totals plus unfiltered distributions. */
+export interface AdminTeamListMeta {
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  facets: {
+    groups: AdminEventFacetEntry[];
+    statuses: AdminEventFacetEntry[];
+  };
+}
+
+/** Standard collection envelope for the admin team listing. */
+export interface AdminTeamListEnvelope {
+  data: TeamCardWrite[];
+  meta: AdminTeamListMeta;
 }
 
 /* ---------- Admin Members CMS (Phase 9E) ---------- */

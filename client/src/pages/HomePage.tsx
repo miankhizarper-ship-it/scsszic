@@ -4,19 +4,23 @@ import { Stats } from "@/components/sections/Stats";
 import { UpcomingEvents } from "@/components/sections/UpcomingEvents";
 import { CommunityPreview } from "@/components/sections/CommunityPreview";
 import { FeaturedBlog } from "@/components/sections/FeaturedBlog";
+import { LeadershipSection } from "@/components/sections/LeadershipSection";
 import { Highlights } from "@/components/sections/Highlights";
 import { GalleryPreview } from "@/components/sections/GalleryPreview";
+import { MembersSection } from "@/components/sections/MembersSection";
+import { DevelopersSection } from "@/components/sections/DevelopersSection";
 import { JoinCTA } from "@/components/sections/JoinCTA";
 import { usePageMetadata } from "@/lib/seo";
 
 /**
- * HomePage — Phase 1 showpiece.
+ * HomePage — Phase 12 layout.
  * Order: Hero → Society intro → Stats → Events → Community feed →
- * Featured blog → Highlights → Gallery → Join CTA.
+ * Featured blog (full-size cards) → Leadership → Highlights → Gallery →
+ * Members spotlight → Developers → Join CTA.
  *
- * The former AlumniHighlight strip (static demo profiles) was removed on
- * request — the alumni directory at /alumni is the single, API-backed home
- * for real graduate profiles.
+ * The three people sections (Leadership / Members / Developers) are
+ * admin-managed and hide themselves when their data is empty, so the page
+ * always shows only real, curated content.
  */
 export default function HomePage() {
   usePageMetadata({
@@ -34,8 +38,11 @@ export default function HomePage() {
       <UpcomingEvents />
       <CommunityPreview />
       <FeaturedBlog />
+      <LeadershipSection />
       <Highlights />
       <GalleryPreview />
+      <MembersSection />
+      <DevelopersSection />
       <JoinCTA />
     </>
   );
