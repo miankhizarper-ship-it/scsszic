@@ -25,6 +25,8 @@ export const ROUTES = {
   contact: "/contact",
   login: "/login",
   signup: "/signup",
+  /** Email verification landing page — the link inside the Brevo email. */
+  verifyEmail: "/verify-email",
   terms: "/terms",
   privacy: "/privacy",
   /* ---------- Admin (Phase 9) ---------- */

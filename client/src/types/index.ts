@@ -737,6 +737,9 @@ export interface AuthUser {
   permissions: AdminPermission[];
   /** Phase 6 Member profile this account can claim, when linked. */
   memberProfileId?: string;
+  /** Whether the email address is verified. Optional so responses from an
+   *  older server (mid-deploy) stay type-safe; legacy accounts are true. */
+  isVerified?: boolean;
   createdAt: string;
 }
 

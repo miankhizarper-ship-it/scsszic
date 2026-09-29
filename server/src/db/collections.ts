@@ -54,6 +54,14 @@ export interface UserDoc {
    *  repository mapping normalizes absence to []. */
   permissions?: AdminPermission[];
   memberProfileId?: string;
+  /** Email verification. Absent = legacy account (treated as verified by the
+   *  repository mapping). tokenHash is sha256 of the raw link token — the raw
+   *  token exists only inside the emailed link and is never stored. */
+  isVerified?: boolean;
+  emailVerification?: {
+    tokenHash: string;
+    expiresAt: Date;
+  };
   createdAt: string;
   updatedAt: string;
 }

@@ -66,6 +66,14 @@ const cookieSameSite = (process.env.COOKIE_SAME_SITE?.trim() || "lax") as "lax" 
 /* Documented dev-only defaults (spec §9) — fictional demo accounts, never
    real credentials. Passwords are never logged by the seeder. */
 
+/* --------------------------- Email (Brevo) --------------------------- */
+/* Transactional email for the signup verification flow. OPTIONAL by design:
+   with no BREVO_API_KEY (or sender) the mailer reports "unconfigured" and
+   signup auto-verifies accounts, so the platform keeps working before the
+   credentials are added (and local dev needs no email setup at all). */
+const brevoApiKey = process.env.BREVO_API_KEY?.trim() ?? "";
+const brevoSenderEmail = process.env.BREVO_SENDER_EMAIL?.trim() ?? "";
+
 export const env = {
   nodeEnv,
   isProduction,
@@ -84,6 +92,17 @@ export const env = {
   devSeedMemberPassword: process.env.DEV_SEED_MEMBER_PASSWORD?.trim() || "scs-demo-2026",
   devSeedHiraPassword: process.env.DEV_SEED_HIRA_PASSWORD?.trim() || "scs-demo-2026",
   devSeedAdminPassword: process.env.DEV_SEED_ADMIN_PASSWORD?.trim() || "scs-admin-2026",
+
+  // --- Email verification (Brevo) ---
+  brevoApiKey,
+  brevoSenderEmail,
+  brevoSenderName: process.env.BREVO_SENDER_NAME?.trim() || "Society of Computer Science",
+  /** Public client base URL — the verify-email link points here. */
+  clientUrl: process.env.CLIENT_URL?.trim() || "http://localhost:3000",
+  /** Verification links expire after this many minutes (user spec: 15). */
+  emailVerificationTtlMinutes: intOr(process.env.EMAIL_VERIFICATION_TTL_MINUTES, 15),
+  /** Verification flow activates only when Brevo is fully configured. */
+  emailVerificationEnabled: Boolean(brevoApiKey && brevoSenderEmail),
 } as const;
 
 export type Env = typeof env;

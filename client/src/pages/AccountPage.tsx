@@ -11,7 +11,9 @@ import {
   Info,
   LogOut,
   Mail,
+  MailWarning,
   Rss,
+  Send,
   ShieldCheck,
   UserRound,
   Users,
@@ -23,6 +25,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Reveal } from "@/components/ui/Reveal";
 import { useAuth } from "@/context/AuthProvider";
+import { authService } from "@/services/authService";
 import { useMember } from "@/hooks/content";
 import { formatDateLong } from "@/lib/format";
 import { ROUTES } from "@/routes/paths";
@@ -41,6 +44,10 @@ export default function AccountPage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [loggingOut, setLoggingOut] = useState(false);
+  // Email verification resend — only reachable while user.isVerified is false.
+  const [resendState, setResendState] = useState<
+    { phase: "idle" } | { phase: "sending" } | { phase: "sent"; message: string } | { phase: "error"; message: string }
+  >({ phase: "idle" });
 
   usePageMetadata({
     title: buildPageTitle("My Account"),
@@ -72,6 +79,19 @@ export default function AccountPage() {
       navigate(ROUTES.home, { replace: true });
     } finally {
       setLoggingOut(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    setResendState({ phase: "sending" });
+    try {
+      const data = await authService.resendVerification();
+      setResendState({ phase: "sent", message: data.message });
+    } catch (error) {
+      setResendState({
+        phase: "error",
+        message: error instanceof Error ? error.message : "Couldn't send the email. Try again.",
+      });
     }
   };
 
@@ -116,6 +136,41 @@ export default function AccountPage() {
           </div>
         </Container>
       </header>
+
+      {/* ---------- Email verification banner (unverified accounts only) ---------- */}
+      {user.isVerified === false && (
+        <Container className="pt-6">
+          <div
+            role="status"
+            className="flex flex-col gap-4 rounded-xl border border-gold-500/40 bg-gold-50 p-5 sm:flex-row sm:items-center sm:gap-5"
+          >
+            <MailWarning aria-hidden="true" size={24} className="shrink-0 text-gold-700" />
+            <div className="min-w-0 flex-1">
+              <p className="font-display text-sm font-bold text-navy-900">
+                Verify your email address
+              </p>
+              <p className="mt-1 text-sm text-ink">
+                {resendState.phase === "sent"
+                  ? resendState.message
+                  : resendState.phase === "error"
+                    ? resendState.message
+                    : `We sent a verification link to ${user.email}. It expires after 15 minutes — check your inbox (and spam folder).`}
+              </p>
+            </div>
+            <div className="shrink-0">
+              <Button
+                variant="navy"
+                onClick={handleResendVerification}
+                disabled={resendState.phase === "sending"}
+                className="w-full justify-center sm:w-auto"
+              >
+                <Send size={15} aria-hidden="true" className="mr-1.5" />
+                {resendState.phase === "sending" ? "Sending…" : "Resend email"}
+              </Button>
+            </div>
+          </div>
+        </Container>
+      )}
 
       {/* ---------- Body ---------- */}
       <Container className="py-10 lg:py-14">

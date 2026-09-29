@@ -50,6 +50,7 @@ import AdminSettingsPage from "@/pages/admin/AdminSettingsPage";
 import ContactPage from "@/pages/ContactPage";
 import LoginPage from "@/pages/LoginPage";
 import SignupPage from "@/pages/SignupPage";
+import VerifyEmailPage from "@/pages/VerifyEmailPage";
 import TermsPage from "@/pages/TermsPage";
 import PrivacyPage from "@/pages/PrivacyPage";
 import NotFoundPage from "@/pages/NotFoundPage";
@@ -112,6 +113,8 @@ export const appRouter = createBrowserRouter([
       { path: ROUTES.contact, element: <ContactPage /> },
       { path: ROUTES.login, element: <GuestRoute><LoginPage /></GuestRoute> },
       { path: ROUTES.signup, element: <GuestRoute><SignupPage /></GuestRoute> },
+      /* Public by design — the emailed token IS the credential. */
+      { path: ROUTES.verifyEmail, element: <VerifyEmailPage /> },
       {
         element: (
           <ProtectedRoute>

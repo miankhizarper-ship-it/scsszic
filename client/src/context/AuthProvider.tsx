@@ -9,7 +9,7 @@ import {
 } from "react";
 
 import { authService } from "@/services/authService";
-import type { SignupPayload } from "@/services/authService";
+import type { SignupPayload, SignupResult } from "@/services/authService";
 import type { AuthUser } from "@/types";
 
 /**
@@ -37,7 +37,7 @@ interface AuthContextValue {
   status: AuthStatus;
   isAuthenticated: boolean;
   login: (identifier: string, password: string) => Promise<AuthUser>;
-  signup: (payload: SignupPayload) => Promise<AuthUser>;
+  signup: (payload: SignupPayload) => Promise<SignupResult>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
 }
@@ -76,10 +76,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signup = useCallback(async (payload: SignupPayload) => {
-    const created = await authService.signup(payload);
-    setUser(created);
+    const result = await authService.signup(payload);
+    setUser(result.user);
     setStatus("authenticated");
-    return created;
+    return result;
   }, []);
 
   const logout = useCallback(async () => {

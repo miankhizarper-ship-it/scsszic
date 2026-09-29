@@ -30,8 +30,9 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
  * SignupPage — "Join SCS" (spec §20).
  *
  * Creates the account (POST /api/auth/signup) which also starts the session,
- * then lands on /account. Duplicate email/username surface as clean 409
- * field errors — never as raw internals.
+ * then lands on /account — where an unverified account shows the verification
+ * banner (and a resend button) until the emailed link is clicked. Duplicate
+ * email/username surface as clean 409 field errors — never as raw internals.
  */
 export default function SignupPage() {
   usePageMetadata({

@@ -62,6 +62,10 @@ export interface AuthUser {
    *  permission checks entirely; members have none. Normalized to [] by the
    *  repository mapping when absent, so pre-10B documents need no migration. */
   permissions: AdminPermission[];
+  /** Email verification. Absent in pre-verification documents — those are
+   *  legacy accounts which the repository mapping treats as VERIFIED so the
+   *  feature can ship without any migration. */
+  isVerified: boolean;
   /** Phase 6 Member (`data/members.ts`) this account can claim as its
    *  public community profile. Optional until accounts and member records
    *  are formally linked (Phase 8, MongoDB-backed). */
@@ -80,6 +84,9 @@ export interface PublicAuthUser {
   /** Phase 10B — CMS sections this account may manage (empty unless role
    *  is "manage" with grants; the admin role bypasses permission checks). */
   permissions: AdminPermission[];
+  /** Whether the account's email address is verified. Legacy accounts
+   *  (created before verification existed) are always true. */
+  isVerified: boolean;
   memberProfileId?: string;
   createdAt: string;
 }
@@ -93,6 +100,7 @@ export function toPublicUser(user: AuthUser): PublicAuthUser {
     displayName: user.displayName,
     role: user.role,
     permissions: toAdminPermissions(user.permissions),
+    isVerified: user.isVerified,
     ...(user.memberProfileId ? { memberProfileId: user.memberProfileId } : {}),
     createdAt: user.createdAt,
   };

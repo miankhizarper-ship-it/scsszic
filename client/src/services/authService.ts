@@ -24,6 +24,19 @@ export interface SignupPayload {
   confirmPassword: string;
 }
 
+/** What the server reports about the verification email on signup. */
+export interface SignupVerificationInfo {
+  /** Verification flow configured on the server (Brevo credentials present). */
+  enabled: boolean;
+  /** Whether the email was actually dispatched (false → resend from /account). */
+  sent: boolean;
+}
+
+export interface SignupResult {
+  user: AuthUser;
+  verification: SignupVerificationInfo;
+}
+
 export interface LoginPayload {
   /** Email address OR username (the server normalizes both). */
   identifier: string;
@@ -32,6 +45,10 @@ export interface LoginPayload {
 
 interface AuthResponse {
   user: AuthUser;
+}
+
+interface SignupResponse extends AuthResponse {
+  verification: SignupVerificationInfo;
 }
 
 interface MessageResponse {
@@ -53,13 +70,13 @@ function normalizeAuthError(error: unknown): Error {
 }
 
 export const authService = {
-  async signup(payload: SignupPayload): Promise<AuthUser> {
+  async signup(payload: SignupPayload): Promise<SignupResult> {
     try {
-      const data = await apiFetch<AuthResponse>("/auth/signup", {
+      const data = await apiFetch<SignupResponse>("/auth/signup", {
         method: "POST",
         body: payload,
       });
-      return data.user;
+      return { user: data.user, verification: data.verification };
     } catch (error) {
       throw normalizeAuthError(error);
     }
@@ -99,6 +116,31 @@ export const authService = {
   async logout(): Promise<void> {
     try {
       await apiFetch<MessageResponse>("/auth/logout", { method: "POST" });
+    } catch (error) {
+      throw normalizeAuthError(error);
+    }
+  },
+
+  /**
+   * Confirm an email address with the token from the verification link
+   * (GET /auth/verify-email?token=…). Resolves with the server's message.
+   */
+  async verifyEmail(token: string): Promise<MessageResponse> {
+    try {
+      return await apiFetch<MessageResponse>(
+        `/auth/verify-email?token=${encodeURIComponent(token)}`,
+      );
+    } catch (error) {
+      throw normalizeAuthError(error);
+    }
+  },
+
+  /** Ask for a fresh verification link (signed-in, unverified accounts). */
+  async resendVerification(): Promise<MessageResponse> {
+    try {
+      return await apiFetch<MessageResponse>("/auth/resend-verification", {
+        method: "POST",
+      });
     } catch (error) {
       throw normalizeAuthError(error);
     }

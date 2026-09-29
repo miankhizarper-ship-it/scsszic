@@ -34,6 +34,10 @@ export interface CreateUserInput {
   /** Phase 10B — optional per-user CMS grants (normalized/validated). */
   permissions?: AdminPermission[];
   memberProfileId?: string;
+  /** Email verification. Default true (legacy/demo accounts pre-date the
+   *  flow); the signup controller passes false explicitly when the Brevo
+   *  verification flow is enabled. */
+  isVerified?: boolean;
 }
 
 export interface UserRepository {
@@ -41,6 +45,21 @@ export interface UserRepository {
   findByUsername(username: string): Promise<AuthUser | null>;
   findById(id: string): Promise<AuthUser | null>;
   createUser(input: CreateUserInput): Promise<AuthUser>;
+  /** Store (or replace) the pending verification token hash + expiry. */
+  setEmailVerification(userId: string, tokenHash: string, expiresAt: Date): Promise<void>;
+  /** Find the user holding this pending token hash, WITH its expiry so the
+   *  caller can distinguish valid from expired links. */
+  findByVerificationTokenHash(tokenHash: string): Promise<VerificationTarget | null>;
+  /** Flip isVerified to true and remove the pending token. */
+  markEmailVerified(userId: string): Promise<void>;
+  /** Drop a stale/expired pending token without verifying. */
+  clearEmailVerification(userId: string): Promise<void>;
+}
+
+/** A user + the expiry of their pending verification token (null = none). */
+export interface VerificationTarget {
+  user: AuthUser;
+  expiresAt: Date | null;
 }
 
 export function normalizeEmail(email: string): string {
@@ -50,6 +69,11 @@ export function normalizeEmail(email: string): string {
 /** Usernames are case-insensitive unique handles; keep original casing for display. */
 export function normalizeUsername(username: string): string {
   return username.trim().toLowerCase();
+}
+
+interface PendingVerification {
+  tokenHash: string;
+  expiresAt: Date;
 }
 
 export class InMemoryUserRepository implements UserRepository {
@@ -97,6 +121,7 @@ export class InMemoryUserRepository implements UserRepository {
       displayName: input.displayName.trim(),
       role: input.role ?? "member",
       permissions: toAdminPermissions(input.permissions),
+      isVerified: input.isVerified ?? true,
       ...(input.memberProfileId ? { memberProfileId: input.memberProfileId } : {}),
       createdAt: now,
       updatedAt: now,
@@ -106,6 +131,37 @@ export class InMemoryUserRepository implements UserRepository {
     this.emails.add(email);
     this.usernames.add(username);
     return user;
+  }
+
+  async setEmailVerification(userId: string, tokenHash: string, expiresAt: Date): Promise<void> {
+    const user = this.users.get(userId);
+    if (!user) return;
+    (user as AuthUser & { emailVerification?: PendingVerification }).emailVerification =
+      { tokenHash, expiresAt };
+  }
+
+  async findByVerificationTokenHash(tokenHash: string): Promise<VerificationTarget | null> {
+    for (const user of this.users.values()) {
+      const pending = (user as AuthUser & { emailVerification?: PendingVerification })
+        .emailVerification;
+      if (pending?.tokenHash === tokenHash) {
+        return { user, expiresAt: pending.expiresAt ?? null };
+      }
+    }
+    return null;
+  }
+
+  async markEmailVerified(userId: string): Promise<void> {
+    const user = this.users.get(userId);
+    if (!user) return;
+    user.isVerified = true;
+    delete (user as AuthUser & { emailVerification?: unknown }).emailVerification;
+  }
+
+  async clearEmailVerification(userId: string): Promise<void> {
+    const user = this.users.get(userId);
+    if (!user) return;
+    delete (user as AuthUser & { emailVerification?: unknown }).emailVerification;
   }
 }
 

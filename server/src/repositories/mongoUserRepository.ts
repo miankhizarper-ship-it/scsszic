@@ -4,7 +4,7 @@ import { collections } from "../db/collections.js";
 import { duplicateKeyField, isDuplicateKeyError } from "../db/errors.js";
 import type { AuthUser } from "../auth/types.js";
 import { toAdminPermissions } from "../auth/types.js";
-import type { CreateUserInput, UserRepository } from "../auth/userRepository.js";
+import type { CreateUserInput, UserRepository, VerificationTarget } from "../auth/userRepository.js";
 import { DuplicateUserError, normalizeEmail, normalizeUsername } from "../auth/userRepository.js";
 import type { UserDoc } from "../db/collections.js";
 
@@ -66,6 +66,7 @@ export class MongoUserRepository implements UserRepository {
       displayName: input.displayName.trim(),
       role: input.role ?? "member",
       permissions: toAdminPermissions(input.permissions),
+      isVerified: input.isVerified ?? true,
       ...(input.memberProfileId ? { memberProfileId: input.memberProfileId } : {}),
       createdAt: now,
       updatedAt: now,
@@ -87,6 +88,46 @@ export class MongoUserRepository implements UserRepository {
 
     return toAuthUser(doc);
   }
+
+  async setEmailVerification(userId: string, tokenHash: string, expiresAt: Date): Promise<void> {
+    if (typeof userId !== "string" || userId.length < 8 || userId.length > 128) return;
+    await collections.users().updateOne(
+      { _id: userId },
+      {
+        $set: { emailVerification: { tokenHash, expiresAt }, updatedAt: new Date().toISOString() },
+      },
+    );
+  }
+
+  async findByVerificationTokenHash(tokenHash: string): Promise<VerificationTarget | null> {
+    if (typeof tokenHash !== "string" || tokenHash.length !== 64) return null;
+    const doc = await collections.users().findOne({
+      "emailVerification.tokenHash": tokenHash,
+    });
+    if (!doc) return null;
+    const rawExpiry = doc.emailVerification?.expiresAt;
+    const expiresAt = rawExpiry ? new Date(rawExpiry) : null;
+    return { user: toAuthUser(doc), expiresAt: expiresAt && !Number.isNaN(expiresAt.getTime()) ? expiresAt : null };
+  }
+
+  async markEmailVerified(userId: string): Promise<void> {
+    if (typeof userId !== "string" || userId.length < 8 || userId.length > 128) return;
+    await collections.users().updateOne(
+      { _id: userId },
+      {
+        $set: { isVerified: true, updatedAt: new Date().toISOString() },
+        $unset: { emailVerification: "" },
+      },
+    );
+  }
+
+  async clearEmailVerification(userId: string): Promise<void> {
+    if (typeof userId !== "string" || userId.length < 8 || userId.length > 128) return;
+    await collections.users().updateOne(
+      { _id: userId },
+      { $unset: { emailVerification: "" }, $set: { updatedAt: new Date().toISOString() } },
+    );
+  }
 }
 
 /**
@@ -107,6 +148,9 @@ function toAuthUser(doc: UserDoc): AuthUser {
     // auth middleware can always treat it as an array. Existing users need
     // no migration (spec: existing users must remain valid).
     permissions: toAdminPermissions(doc.permissions),
+    // Pre-verification documents have no isVerified field — those are legacy
+    // accounts, treated as VERIFIED so this feature ships without migration.
+    isVerified: doc.isVerified ?? true,
     ...(doc.memberProfileId ? { memberProfileId: doc.memberProfileId } : {}),
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
