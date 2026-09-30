@@ -77,8 +77,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signup = useCallback(async (payload: SignupPayload) => {
     const result = await authService.signup(payload);
-    setUser(result.user);
-    setStatus("authenticated");
+    // The server only starts a session for (auto-)verified accounts — the
+    // dev no-credentials fallback. Unverified signups get NO session here:
+    // client auth state stays unauthenticated and the visitor follows the
+    // "check your inbox" → verify-email flow instead.
+    if (result.user.isVerified === true) {
+      setUser(result.user);
+      setStatus("authenticated");
+    } else {
+      setUser(null);
+      setStatus("unauthenticated");
+    }
     return result;
   }, []);
 

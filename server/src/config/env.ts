@@ -97,6 +97,8 @@ export const env = {
   brevoApiKey,
   brevoSenderEmail,
   brevoSenderName: process.env.BREVO_SENDER_NAME?.trim() || "Society of Computer Science",
+  /** API base override — QA can point the mailer at a local mock Brevo. */
+  brevoApiUrl: process.env.BREVO_API_URL?.trim() || "https://api.brevo.com",
   /** Public client base URL — the verify-email link points here. */
   clientUrl: process.env.CLIENT_URL?.trim() || "http://localhost:3000",
   /** Verification links expire after this many minutes (user spec: 15). */

@@ -8,7 +8,9 @@ import { PasswordField } from "@/components/auth/PasswordField";
 import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/context/AuthProvider";
 import { getFieldErrors } from "@/services/authService";
+import { ApiError } from "@/services/apiClient";
 import { sanitizeRedirect } from "@/lib/safeRedirect";
+import { ROUTES } from "@/routes/paths";
 import { buildPageTitle, usePageMetadata } from "@/lib/seo";
 
 interface LoginForm {
@@ -23,7 +25,10 @@ interface LoginForm {
  * errors from the server (400/409) map onto inputs; login failures surface
  * one generic message (the server deliberately never says which half was
  * wrong — no user enumeration). On success the visitor returns to
- * `?redirect=` (internal paths only — see lib/safeRedirect).
+ * `?redirect=` (internal paths only — see lib/safeRedirect), otherwise HOME.
+ *
+ * A 403 `email_not_verified` answer (unverified accounts cannot sign in)
+ * bounces to the "check your inbox" page, which offers a fresh link.
  */
 export default function LoginPage() {
   usePageMetadata({
@@ -48,8 +53,18 @@ export default function LoginPage() {
     setFormError(null);
     try {
       await login(values.identifier, values.password);
-      navigate(sanitizeRedirect(searchParams.get("redirect")), { replace: true });
+      navigate(sanitizeRedirect(searchParams.get("redirect"), ROUTES.home), { replace: true });
     } catch (error) {
+      if (error instanceof ApiError && error.status === 403) {
+        // Unverified account — the password was correct, the inbox isn't done
+        // yet. The 403 body carries the account email for the resend flow.
+        const email = typeof error.body?.email === "string" ? error.body.email : values.identifier;
+        navigate(ROUTES.checkEmail, {
+          replace: true,
+          state: { email, reason: "unverified" },
+        });
+        return;
+      }
       const fieldErrors = getFieldErrors(error);
       if (fieldErrors?.identifier) {
         setError("identifier", { message: fieldErrors.identifier });

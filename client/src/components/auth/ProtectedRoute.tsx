@@ -72,7 +72,11 @@ export function GuestRoute({ children }: ProtectedRouteProps) {
 
   if (status === "authenticated") {
     const params = new URLSearchParams(location.search);
-    const redirectTo = sanitizeRedirect(params.get("redirect"));
+    // Signed-in visitors who open /login or /signup land on HOME (unless a
+    // guarded route sent them here with an explicit ?redirect= target). This
+    // also wins the redirect race after a fresh login: the auth state flips
+    // before LoginPage's own navigate() runs, and this Navigate decides.
+    const redirectTo = sanitizeRedirect(params.get("redirect"), ROUTES.home);
     return <Navigate to={redirectTo} replace />;
   }
 

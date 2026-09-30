@@ -16,12 +16,17 @@ import { logger } from "../../utils/logger.js";
  *    never token values.
  */
 
-const BREVO_ENDPOINT = "https://api.brevo.com/v3/smtp/email";
+const BREVO_ENDPOINT_PATH = "/v3/smtp/email";
 const SEND_TIMEOUT_MS = 10_000;
 
 export type EmailSendOutcome =
   | { sent: true; messageId: string }
-  | { sent: false; reason: "unconfigured" | "http_error" | "network_error"; detail?: string };
+  | {
+      sent: false;
+      reason: "unconfigured" | "http_error" | "network_error";
+      /** Sanitized, human-readable hint (Brevo's own error message) for the UI. */
+      detail?: string;
+    };
 
 interface VerificationEmailInput {
   to: string;
@@ -94,6 +99,22 @@ function verificationText(input: VerificationEmailInput): string {
   ].join("\n");
 }
 
+/** Pull a safe, short hint out of Brevo's error response body. */
+async function brevoErrorDetail(response: Response): Promise<string> {
+  const statusPart = `brevo_http_${response.status}`;
+  try {
+    const data = (await response.json()) as { message?: string; code?: string } | null;
+    const message = typeof data?.message === "string" ? data.message : "";
+    const code = typeof data?.code === "string" ? data.code : "";
+    // Brevo's message never contains credentials — safe to surface. Truncate
+    // defensively so a pathological body cannot blow up a UI banner.
+    const hint = [code, message].filter(Boolean).join(": ").slice(0, 240);
+    return hint ? `${statusPart} — ${hint}` : statusPart;
+  } catch {
+    return statusPart;
+  }
+}
+
 /** Send the verification email through Brevo. Never throws. */
 export async function sendVerificationEmail(input: VerificationEmailInput): Promise<EmailSendOutcome> {
   if (!env.emailVerificationEnabled) {
@@ -109,7 +130,7 @@ export async function sendVerificationEmail(input: VerificationEmailInput): Prom
   };
 
   try {
-    const response = await fetch(BREVO_ENDPOINT, {
+    const response = await fetch(`${env.brevoApiUrl.replace(/\/+$/, "")}${BREVO_ENDPOINT_PATH}`, {
       method: "POST",
       headers: {
         "api-key": env.brevoApiKey,
@@ -121,7 +142,7 @@ export async function sendVerificationEmail(input: VerificationEmailInput): Prom
     });
 
     if (!response.ok) {
-      const detail = `${response.status} ${response.statusText}`.trim();
+      const detail = await brevoErrorDetail(response);
       logger.error(`[email] Brevo send failed for ${input.to}: ${detail}`);
       return { sent: false, reason: "http_error", detail };
     }

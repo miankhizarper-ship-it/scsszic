@@ -30,6 +30,10 @@ export interface SignupVerificationInfo {
   enabled: boolean;
   /** Whether the email was actually dispatched (false → resend from /account). */
   sent: boolean;
+  /** When not sent: "unconfigured" (no Brevo creds) | "send_failed" (mail error). */
+  reason?: "unconfigured" | "send_failed";
+  /** Sanitized mailer hint (e.g. "brevo_http_401 — …") shown for debugging. */
+  detail?: string;
 }
 
 export interface SignupResult {
@@ -135,11 +139,16 @@ export const authService = {
     }
   },
 
-  /** Ask for a fresh verification link (signed-in, unverified accounts). */
-  async resendVerification(): Promise<MessageResponse> {
+  /**
+   * Ask for a fresh verification link. Works from a session (the account
+   * page) OR anonymously with an explicit email (the check-email page —
+   * unverified accounts have no session to resend from).
+   */
+  async resendVerification(email?: string): Promise<MessageResponse> {
     try {
       return await apiFetch<MessageResponse>("/auth/resend-verification", {
         method: "POST",
+        body: email ? { email } : undefined,
       });
     } catch (error) {
       throw normalizeAuthError(error);

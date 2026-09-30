@@ -19,12 +19,20 @@ export class ApiError extends Error {
   readonly status: number;
   /** Field → message map from 400/409 responses (forms bind to this). */
   readonly errors?: Record<string, string>;
+  /** Full parsed body of the error response (e.g. { code, email } on 403). */
+  readonly body?: Record<string, unknown>;
 
-  constructor(status: number, message: string, errors?: Record<string, string>) {
+  constructor(
+    status: number,
+    message: string,
+    errors?: Record<string, string>,
+    body?: Record<string, unknown>,
+  ) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.errors = errors;
+    this.body = body;
   }
 }
 
@@ -72,11 +80,12 @@ export async function apiFetch<T>(
   });
 
   if (!response.ok) {
-    const { message, errors } = await safeErrorBody(response);
+    const { message, errors, body } = await safeErrorBody(response);
     throw new ApiError(
       response.status,
       message ?? `Request failed with status ${response.status}`,
       errors,
+      body,
     );
   }
 
@@ -89,14 +98,21 @@ export async function apiFetch<T>(
 interface ErrorBody {
   message?: string;
   errors?: Record<string, string>;
+  [key: string]: unknown;
 }
 
-async function safeErrorBody(response: Response): Promise<ErrorBody> {
+async function safeErrorBody(response: Response): Promise<{
+  message?: string;
+  errors?: Record<string, string>;
+  body?: Record<string, unknown>;
+}> {
   try {
     const data = (await response.json()) as ErrorBody;
+    const { message, errors, ...rest } = data;
     return {
-      message: data.message ?? `Request failed with status ${response.status}`,
-      errors: typeof data.errors === "object" && data.errors !== null ? data.errors : undefined,
+      message: message ?? `Request failed with status ${response.status}`,
+      errors: typeof errors === "object" && errors !== null ? errors : undefined,
+      body: rest,
     };
   } catch {
     return { message: `Request failed with status ${response.status}` };

@@ -8,6 +8,7 @@ import { PasswordField } from "@/components/auth/PasswordField";
 import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/context/AuthProvider";
 import { getFieldErrors } from "@/services/authService";
+import { ROUTES } from "@/routes/paths";
 import { buildPageTitle, usePageMetadata } from "@/lib/seo";
 
 interface SignupForm {
@@ -29,9 +30,10 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 /**
  * SignupPage — "Join SCS" (spec §20).
  *
- * Creates the account (POST /api/auth/signup) which also starts the session,
- * then lands on /account — where an unverified account shows the verification
- * banner (and a resend button) until the emailed link is clicked. Duplicate
+ * Creates the account (POST /api/auth/signup). With the email-verification
+ * flow active the server starts NO session: the visitor is sent to the
+ * "check your inbox" page (with the failure reason when the mailer could not
+ * dispatch) and must click the emailed link before signing in. Duplicate
  * email/username surface as clean 409 field errors — never as raw internals.
  */
 export default function SignupPage() {
@@ -58,8 +60,23 @@ export default function SignupPage() {
   const onSubmit = async (values: SignupForm) => {
     setFormError(null);
     try {
-      await signup(values);
-      navigate("/account", { replace: true });
+      const result = await signup(values);
+      if (result.user.isVerified === false) {
+        // Verification flow owns the next step: no session was created.
+        const reason = !result.verification.enabled
+          ? "unconfigured"
+          : result.verification.sent
+            ? "sent"
+            : "send_failed";
+        navigate(ROUTES.checkEmail, {
+          replace: true,
+          state: { email: values.email, reason, detail: result.verification.detail },
+        });
+        return;
+      }
+      // Dev fallback (no Brevo credentials): auto-verified with a session —
+      // go enjoy the site.
+      navigate(ROUTES.home, { replace: true });
     } catch (error) {
       const fieldErrors = getFieldErrors(error);
       const mapped = Object.entries(fieldErrors ?? {});

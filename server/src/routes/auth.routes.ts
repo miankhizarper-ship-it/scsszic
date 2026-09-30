@@ -20,7 +20,7 @@ import { verifySameOrigin } from "../auth/originGuard.js";
  *  GET  /api/auth/me                     current session probe      (optionalAuth)
  *  POST /api/auth/logout                 invalidate session         (origin-checked)
  *  GET  /api/auth/verify-email           email-link verification    (public — the token IS the credential)
- *  POST /api/auth/resend-verification    fresh link for unverified  (requireAuth, origin-checked)
+ *  POST /api/auth/resend-verification    fresh link for unverified  (optionalAuth — session OR {email} body, origin-checked)
  *  GET  /api/auth/admin/ping             authorization smoke test   (requireAuth + admin)
  */
 export const authRouter = Router();
@@ -30,6 +30,9 @@ authRouter.post("/auth/login", verifySameOrigin, postLogin);
 authRouter.get("/auth/me", optionalAuth, getMe);
 authRouter.post("/auth/logout", verifySameOrigin, optionalAuth, postLogout);
 authRouter.get("/auth/verify-email", getVerifyEmail);
-authRouter.post("/auth/resend-verification", verifySameOrigin, requireAuth, postResendVerification);
+// optionalAuth: signed-in callers resend for their own account; anonymous
+// callers may pass { email } (the "check your inbox" page path). The
+// controller enforces the throttle + anti-enumeration rules.
+authRouter.post("/auth/resend-verification", verifySameOrigin, optionalAuth, postResendVerification);
 
 authRouter.get("/auth/admin/ping", requireAuth, requireRole("admin"), getAdminPing);

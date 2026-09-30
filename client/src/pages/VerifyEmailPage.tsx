@@ -80,10 +80,10 @@ export default function VerifyEmailPage() {
           <>
             Ready to explore?{" "}
             <Link
-              to={ROUTES.account}
+              to={ROUTES.login}
               className="font-semibold text-gold-700 transition-colors hover:text-gold-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500"
             >
-              Go to your account
+              Sign in now
             </Link>
           </>
         ) : (
@@ -114,8 +114,8 @@ export default function VerifyEmailPage() {
           <>
             <CheckCircle2 size={56} aria-hidden="true" className="text-emerald-600" />
             <p className="text-sm font-medium text-ink">{state.message}</p>
-            <Button variant="navy" className="w-full justify-center" onClick={() => window.location.assign(ROUTES.account)}>
-              Continue to your account
+            <Button variant="navy" className="w-full justify-center" to={ROUTES.login}>
+              Sign in to your account
             </Button>
           </>
         )}
@@ -129,8 +129,8 @@ export default function VerifyEmailPage() {
             )}
             <p className="text-sm font-medium text-ink">{state.message}</p>
             <p className="text-xs text-muted">
-              Verification links expire after 15 minutes and work exactly once. Signed in? You can
-              request a fresh email from your account page.
+              Verification links expire after 15 minutes and work exactly once. Try signing in —
+              if your email still needs verification you'll be offered a fresh link.
             </p>
             <Link
               to={ROUTES.login}

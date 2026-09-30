@@ -42,6 +42,10 @@ interface SignupVerificationInfo {
   enabled: boolean;
   /** Whether the email was actually dispatched (false → resend from /account). */
   sent: boolean;
+  /** When not sent: "unconfigured" | "send_failed" — drives the UI copy. */
+  reason?: "unconfigured" | "send_failed";
+  /** Sanitized mailer detail (e.g. "brevo_http_401 — …") for debugging. */
+  detail?: string;
 }
 
 /**
@@ -49,7 +53,11 @@ interface SignupVerificationInfo {
  * Returns the summary embedded in the signup response; never throws —
  * an email outage degrades to `sent: false`, never a failed signup.
  */
-async function issueVerificationEmail(userId: string, email: string, displayName: string): Promise<SignupVerificationInfo> {
+async function issueVerificationEmail(
+  userId: string,
+  email: string,
+  displayName: string,
+): Promise<SignupVerificationInfo> {
   const { raw, tokenHash } = generateVerificationToken();
   const expiresAt = new Date(Date.now() + env.emailVerificationTtlMinutes * 60_000);
   await userRepository.setEmailVerification(userId, tokenHash, expiresAt);
@@ -62,10 +70,24 @@ async function issueVerificationEmail(userId: string, email: string, displayName
     expiryMinutes: env.emailVerificationTtlMinutes,
   });
 
-  return { enabled: true, sent: outcome.sent };
+  return outcome.sent
+    ? { enabled: true, sent: true }
+    : { enabled: true, sent: false, reason: "send_failed", detail: outcome.detail };
 }
 
-/** POST /api/auth/signup — create an account and start a session. */
+/**
+ * POST /api/auth/signup — create an account; the email-verification flow owns
+ * what happens next.
+ *
+ *  - Brevo configured  → account starts UNVERIFIED (isVerified: false), the
+ *    15-minute link is emailed, and NO session is started: the visitor lands
+ *    on the "check your inbox" page and must click the emailed link.
+ *  - Production, unconfigured → account still starts UNVERIFIED and session-
+ *    less, with reason "unconfigured" surfaced to the UI. Silent auto-verify
+ *    in production is FORBIDDEN — it masked Brevo misconfigurations.
+ *  - Development, unconfigured → documented fallback: auto-verify + session
+ *    so local `bun run dev` keeps working without any email setup.
+ */
 export async function postSignup(req: Request, res: Response): Promise<void> {
   const result = validateSignup(req.body);
   if (!result.valid) {
@@ -94,28 +116,34 @@ export async function postSignup(req: Request, res: Response): Promise<void> {
   }
 
   try {
-    // When the Brevo verification flow is configured, fresh accounts start
-    // UNVERIFIED and receive a 15-minute email link. Without credentials the
-    // platform must keep working: accounts auto-verify (documented fallback).
     const verificationRequired = env.emailVerificationEnabled;
+    // Unverified in production EVEN IF Brevo is unconfigured (fail-safe), and
+    // unverified whenever the verification flow is configured. Only the
+    // no-credentials dev fallback auto-verifies.
+    const autoVerify = !verificationRequired && !env.isProduction;
     const user = await userRepository.createUser({
       displayName,
       username,
       email,
       passwordHash: await hashPassword(password),
-      isVerified: !verificationRequired,
+      isVerified: autoVerify,
     });
 
     let verification: SignupVerificationInfo = { enabled: false, sent: false };
     if (verificationRequired) {
       verification = await issueVerificationEmail(user.id, user.email, user.displayName);
+    } else if (env.isProduction) {
+      verification = { enabled: false, sent: false, reason: "unconfigured" };
     }
 
-    const session = await sessionStore.create(user.id);
-    setSessionCookie(res, createSessionToken(session.sessionId));
+    // A session starts ONLY when the account is (or became) verified.
+    if (autoVerify) {
+      const session = await sessionStore.create(user.id);
+      setSessionCookie(res, createSessionToken(session.sessionId));
+    }
 
     logger.info(
-      `[auth] signup ok: ${user.username} (verified=${String(user.isVerified)}, emailSent=${String(verification.sent)})`,
+      `[auth] signup ok: ${user.username} (verified=${String(user.isVerified)}, emailSent=${String(verification.sent)}${verification.detail ? `, detail="${verification.detail}"` : ""})`,
     );
     res.status(201).json({ user: toPublicUser(user), verification });
   } catch (error) {
@@ -158,6 +186,23 @@ export async function postLogin(req: Request, res: Response): Promise<void> {
   if (!passwordOk) {
     logger.info(`[auth] login failed: bad password for ${user.username}`);
     res.status(401).json({ message: "Invalid email/username or password." });
+    return;
+  }
+
+  // Unverified accounts cannot sign in once the verification flow is active.
+  // Production enforces this even if Brevo is unconfigured — a deployment
+  // without mail credentials must never silently open the member gates.
+  const gateVerification = env.emailVerificationEnabled || env.isProduction;
+  if (gateVerification && user.isVerified !== true) {
+    logger.info(`[auth] login blocked: unverified account ${user.username}`);
+    // The requester just proved the password — echoing the account email is
+    // safe and lets the "check your inbox" page offer a resend even when the
+    // visitor signed in with their username.
+    res.status(403).json({
+      message: "Verify your email before signing in — check your inbox for the verification link.",
+      code: "email_not_verified",
+      email: user.email,
+    });
     return;
   }
 
@@ -225,7 +270,8 @@ export async function getVerifyEmail(req: Request, res: Response): Promise<void>
     // Clean the stale token so the record cannot be resurrected later.
     await userRepository.clearEmailVerification(user.id);
     res.status(410).json({
-      message: "This verification link has expired. Sign in and request a new email from your account page.",
+      message:
+        "This verification link has expired. Sign in with your email and password — you'll be offered a fresh link.",
     });
     return;
   }
@@ -236,37 +282,89 @@ export async function getVerifyEmail(req: Request, res: Response): Promise<void>
 }
 
 /**
- * POST /api/auth/resend-verification — signed-in, unverified users can ask
- * for a fresh link (new token, new 15-minute window; the old token dies).
+ * POST /api/auth/resend-verification — fresh link (new token, new 15-minute
+ * window; the old token dies). Two access paths share one endpoint:
+ *
+ *  - SIGNED IN (session cookie): resends for the session's own account.
+ *  - ANONYMOUS with { email } body: the "check your inbox" page path —
+ *    unverified accounts get NO session, so the resend must work without one.
+ *    Per-email throttling (1/minute) keeps the public path from being turned
+ *    into a mail-bombing vector; unknown or already-verified addresses get a
+ *    generic 200 so the endpoint cannot be used to probe account existence.
  */
+const RESEND_THROTTLE_MS = 60_000;
+const resendHistory = new Map<string, number>();
+
+function pruneResendHistory(now: number): void {
+  for (const [key, at] of resendHistory) {
+    if (now - at > 10 * 60_000) resendHistory.delete(key);
+  }
+}
+
 export async function postResendVerification(req: Request, res: Response): Promise<void> {
-  const user = req.user as PublicAuthUser | undefined;
-  if (!user) {
-    res.status(401).json({ message: "Sign in first." });
+  const sessionUser = req.user as PublicAuthUser | undefined;
+  const bodyEmail = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
+
+  if (!sessionUser && !bodyEmail) {
+    res.status(400).json({ message: "Provide the email address you signed up with." });
     return;
   }
 
   if (!env.emailVerificationEnabled) {
-    res.status(400).json({ message: "Email verification is not configured on the server." });
+    // Anonymous callers get the same generic answer as a finished verification
+    // (no probing); signed-in callers may see the honest state.
+    if (sessionUser) {
+      res.status(400).json({ message: "Email verification is not configured on the server." });
+    } else {
+      res.status(200).json({ message: "If that account needs verification, a fresh link is on its way." });
+    }
     return;
   }
 
-  // Re-read the record: req.user may predate a verify that happened elsewhere.
-  const current = await userRepository.findById(user.id);
+  // Resolve the target account: session identity wins, else the emailed body.
+  const current = sessionUser
+    ? await userRepository.findById(sessionUser.id)
+    : await userRepository.findByEmail(bodyEmail);
+
+  if (!sessionUser && !current) {
+    // Unknown address — stay generic, send nothing, reveal nothing.
+    res.status(200).json({ message: "If that account needs verification, a fresh link is on its way." });
+    return;
+  }
   if (!current) {
     res.status(401).json({ message: "Sign in first." });
     return;
   }
   if (current.isVerified) {
-    res.status(400).json({ message: "Your email is already verified." });
+    if (sessionUser) {
+      res.status(400).json({ message: "Your email is already verified." });
+    } else {
+      res.status(200).json({ message: "If that account needs verification, a fresh link is on its way." });
+    }
     return;
   }
 
+  // Throttle AFTER resolving so an attacker cannot distinguish throttled
+  // accounts from unknown ones — every "real" resend pays the same wait.
+  const now = Date.now();
+  pruneResendHistory(now);
+  const last = resendHistory.get(current.email);
+  if (last !== undefined && now - last < RESEND_THROTTLE_MS) {
+    res.status(429).json({
+      message: "A verification email was just requested — please wait a minute before asking again.",
+    });
+    return;
+  }
+  resendHistory.set(current.email, now);
+
   const outcome = await issueVerificationEmail(current.id, current.email, current.displayName);
   if (!outcome.sent) {
-    logger.error(`[auth] resend verification failed for ${current.username} (mail service unavailable)`);
+    logger.error(
+      `[auth] resend verification failed for ${current.username} (${outcome.detail ?? "mail service unavailable"})`,
+    );
     res.status(502).json({
       message: "We couldn't send the email right now — please try again in a moment.",
+      detail: outcome.detail,
     });
     return;
   }

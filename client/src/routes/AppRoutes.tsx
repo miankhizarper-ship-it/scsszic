@@ -51,6 +51,7 @@ import ContactPage from "@/pages/ContactPage";
 import LoginPage from "@/pages/LoginPage";
 import SignupPage from "@/pages/SignupPage";
 import VerifyEmailPage from "@/pages/VerifyEmailPage";
+import CheckEmailPage from "@/pages/CheckEmailPage";
 import TermsPage from "@/pages/TermsPage";
 import PrivacyPage from "@/pages/PrivacyPage";
 import NotFoundPage from "@/pages/NotFoundPage";
@@ -115,6 +116,8 @@ export const appRouter = createBrowserRouter([
       { path: ROUTES.signup, element: <GuestRoute><SignupPage /></GuestRoute> },
       /* Public by design — the emailed token IS the credential. */
       { path: ROUTES.verifyEmail, element: <VerifyEmailPage /> },
+      /* Public — unverified visitors land here after signup (no session). */
+      { path: ROUTES.checkEmail, element: <CheckEmailPage /> },
       {
         element: (
           <ProtectedRoute>
