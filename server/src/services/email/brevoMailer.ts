@@ -99,16 +99,51 @@ function verificationText(input: VerificationEmailInput): string {
   ].join("\n");
 }
 
-/** Pull a safe, short hint out of Brevo's error response body. */
+/** Brevo's "Authorised IPs" security feature rejects unknown caller IPs. */
+const IP_BLOCK_PATTERN = /un\s?recognised ip address|un\s?recognized ip address|authorised[_\s-]?ips/i;
+const IPV4_PATTERN = /\b(?:\d{1,3}\.){3}\d{1,3}\b/;
+
+/**
+ * Pull a safe, short hint out of Brevo's error response body — with special,
+ * actionable handling for Brevo's Authorised-IPs rejection (its account-level
+ * security feature silently blocks serverless callers whose outbound IP is
+ * not on the allowlist, which is exactly what Vercel deployments hit).
+ */
 async function brevoErrorDetail(response: Response): Promise<string> {
   const statusPart = `brevo_http_${response.status}`;
   try {
     const data = (await response.json()) as { message?: string; code?: string } | null;
     const message = typeof data?.message === "string" ? data.message : "";
     const code = typeof data?.code === "string" ? data.code : "";
+    const raw = [code, message].filter(Boolean).join(": ");
+
+    if (IP_BLOCK_PATTERN.test(raw)) {
+      // Tell the administrator exactly what to toggle — and why adding the
+      // single reported IP is only a stopgap (Vercel egress IPs rotate).
+      const ip = message.match(IPV4_PATTERN)?.[0];
+      const stopgap = ip
+        ? `Adding the exact IP (${ip}) also works, but only until it changes.`
+        : "Adding the reported IP also works, but only until it changes.";
+      return [
+        `${statusPart} — Brevo is blocking this server's IP address${ip ? ` (${ip})` : ""}:`,
+        `your Brevo account only accepts API calls from authorised IPs. Fix: open Brevo → Security →`,
+        `Authorised IPs (app.brevo.com/security/authorised_ips) and turn IP authorisation OFF —`,
+        `Vercel's outbound IPs rotate, so a single allowlisted address will break again.`,
+        stopgap,
+      ]
+        .join(" ")
+        .slice(0, 480);
+    }
+
     // Brevo's message never contains credentials — safe to surface. Truncate
     // defensively so a pathological body cannot blow up a UI banner.
-    const hint = [code, message].filter(Boolean).join(": ").slice(0, 240);
+    let hint = raw.slice(0, 240);
+    if (response.status === 401) {
+      hint += " — check that BREVO_API_KEY matches a v3 key from Brevo → SMTP & API";
+    }
+    if (/sender/i.test(raw)) {
+      hint += " — and that the sender address is verified in Brevo → Senders";
+    }
     return hint ? `${statusPart} — ${hint}` : statusPart;
   } catch {
     return statusPart;
