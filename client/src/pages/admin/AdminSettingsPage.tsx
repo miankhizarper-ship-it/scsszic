@@ -112,13 +112,16 @@ export default function AdminSettingsPage() {
   }, [settingsQuery.data, form.reset]);
 
   const onSubmit = form.handleSubmit((values) => {
-    updateMutation.mutate(
-      values.links.map((link) => ({
+    updateMutation.mutate({
+      socials: values.links.map((link) => ({
         label: autoLabel(link.platform),
         href: link.href.trim(),
         icon: link.platform,
       })),
-    );
+      // Replace-all endpoint: always send the CURRENT hero image through so a
+      // socials-only save (this page) can never clear it (Task 26).
+      heroImage: settingsQuery.data?.heroImage ?? "",
+    });
   });
 
   const serverError =

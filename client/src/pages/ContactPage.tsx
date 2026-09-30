@@ -169,6 +169,8 @@ export default function ContactPage() {
                       <a
                         href={href}
                         aria-label={label}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="inline-flex size-9 items-center justify-center rounded-lg border border-line text-muted transition-colors hover:border-navy-300 hover:text-navy-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500"
                       >
                         <Icon size={16} aria-hidden="true" />

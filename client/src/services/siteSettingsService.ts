@@ -19,10 +19,11 @@ export const siteSettingsService = {
   /** Public site settings (footer social links today). */
   async getSiteSettings(): Promise<SiteSettings> {
     const response = await apiFetch<{
-      data: { socials: SerializedSocialLink[]; updatedAt: string };
+      data: { socials: SerializedSocialLink[]; heroImage?: string; updatedAt: string };
     }>("/settings");
     return {
       socials: resolveSocialLinks(response.data.socials) ?? [],
+      heroImage: response.data.heroImage ?? "",
       updatedAt: response.data.updatedAt,
     };
   },

@@ -1,7 +1,8 @@
 import { useEffect, useMemo } from "react";
 import { NavLink, useSearchParams } from "react-router-dom";
-import { Code2, Sparkles, Users, UsersRound } from "lucide-react";
+import { Code2, Image as ImageIcon, Sparkles, Users, UsersRound } from "lucide-react";
 
+import { HeroImageManager } from "@/components/admin/HeroImageManager";
 import { MembersSpotlightManager } from "@/components/admin/MembersSpotlightManager";
 import { TeamCardsManager } from "@/components/admin/TeamCardsManager";
 import { useAuth } from "@/context/AuthProvider";
@@ -16,7 +17,9 @@ import { ROUTES } from "@/routes/paths";
  *                board cards at the top of the page);
  *   Members    → the member-directory spotlight (star = pin to home);
  *   Developers → the `team` collection, group "developers" (the dark
- *                Developers band near the bottom).
+ *                Developers band near the bottom);
+ *   Hero       → the hero picture on the public home page (site settings,
+ *                Task 26) — admins / Settings-permission accounts only.
  *
  * The About page's leadership strip reads the SAME "leaders" cards — that is
  * surfaced on the About Page manager, not duplicated here. Tabs the signed-in
@@ -24,12 +27,13 @@ import { ROUTES } from "@/routes/paths";
  * gate admits any-of ["team", "members"].
  */
 
-type HomeTab = "leaders" | "members" | "developers";
+type HomeTab = "leaders" | "members" | "developers" | "hero";
 
 const TABS: Array<{ id: HomeTab; label: string; icon: typeof UsersRound }> = [
   { id: "leaders", label: "Leadership", icon: UsersRound },
   { id: "members", label: "Members spotlight", icon: Users },
   { id: "developers", label: "Developers", icon: Code2 },
+  { id: "hero", label: "Hero image", icon: ImageIcon },
 ];
 
 export default function AdminHomePage() {
@@ -40,11 +44,19 @@ export default function AdminHomePage() {
 
   const canManageTeam = isAdmin || granted.has("team");
   const canManageMembers = isAdmin || granted.has("members");
+  // The hero image lives on the site-settings document, and /admin/settings
+  // is a ROLE-ONLY admin gate (requireAdminSection) — "settings" is not a
+  // grantable permission, so the tab is admin-only, matching the server.
+  const canManageHero = isAdmin;
 
   const allowedTabs = useMemo(
     () =>
-      TABS.filter((tab) => (tab.id === "members" ? canManageMembers : canManageTeam)),
-    [canManageMembers, canManageTeam],
+      TABS.filter((tab) => {
+        if (tab.id === "members") return canManageMembers;
+        if (tab.id === "hero") return canManageHero;
+        return canManageTeam;
+      }),
+    [canManageMembers, canManageHero, canManageTeam],
   );
 
   const requested = searchParams.get("tab") as HomeTab | null;
@@ -90,9 +102,9 @@ export default function AdminHomePage() {
           Home Page
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
-          Edit the people cards shown on the home page — the Leadership row, the
-          Members spotlight, and the Developers band. Changes go live as soon as
-          they are saved.
+          Edit what the home page shows — the Leadership row, the Members
+          spotlight, the Developers band, and the hero image. Changes go live
+          as soon as they are saved.
         </p>
       </header>
 
@@ -186,6 +198,8 @@ export default function AdminHomePage() {
             </div>
           </section>
         )}
+
+        {activeTab === "hero" && <HeroImageManager />}
 
         {activeTab === "developers" && (
           <section aria-labelledby="home-developers-heading">

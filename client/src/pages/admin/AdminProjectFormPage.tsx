@@ -472,7 +472,7 @@ export default function AdminProjectFormPage() {
               </Field>
             </div>
 
-            <Field id="project-technologies" label="Technologies" required error={errors.technologies?.message} hint="Comma-separated, e.g. React, TypeScript, Node.js">
+            <Field id="project-technologies" label="Technologies" required error={errors.technologies?.message} hint="Comma- or space-separated, e.g. React, TypeScript, Node.js">
               <input
                 id="project-technologies"
                 type="text"

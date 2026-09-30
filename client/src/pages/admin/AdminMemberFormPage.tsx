@@ -450,7 +450,7 @@ export default function AdminMemberFormPage() {
               </Field>
             </div>
 
-            <Field id="member-skills" label="Skills" error={errors.skills?.message} hint="Comma-separated, e.g. React, TypeScript">
+            <Field id="member-skills" label="Skills" error={errors.skills?.message} hint="Comma- or space-separated, e.g. React, TypeScript">
               <input
                 id="member-skills"
                 type="text"
@@ -460,7 +460,7 @@ export default function AdminMemberFormPage() {
               />
             </Field>
 
-            <Field id="member-interests" label="Interests" error={errors.interests?.message} hint="Comma-separated, e.g. EdTech, Mentoring">
+            <Field id="member-interests" label="Interests" error={errors.interests?.message} hint="Comma- or space-separated, e.g. EdTech, Mentoring">
               <input
                 id="member-interests"
                 type="text"
@@ -524,7 +524,7 @@ export default function AdminMemberFormPage() {
               id="member-projects"
               label="Project slugs"
               error={errors.projectSlugsText?.message}
-              hint="Comma-separated slugs from the projects showcase — the server verifies they exist."
+              hint="Comma- or space-separated slugs from the projects showcase — the server verifies they exist."
             >
               <input
                 id="member-projects"

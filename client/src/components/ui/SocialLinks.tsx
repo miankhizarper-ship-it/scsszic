@@ -33,6 +33,8 @@ export function SocialLinks({
           <a
             href={href}
             aria-label={label}
+            target="_blank"
+            rel="noopener noreferrer"
             className={cn(
               "inline-flex items-center justify-center rounded-lg transition-colors",
               boxSize,

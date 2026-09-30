@@ -78,6 +78,9 @@ export interface SiteSettings {
   /** Footer social links, in editor order. Empty = footer falls back to
    *  its curated placeholder set (pre-settings behavior). */
   socials: SerializedSocialLink[];
+  /** Hero visual on the public home page (Task 26) — an https:// URL or a
+   *  site-relative path (/...). Empty = the Hero renders its fallback tile. */
+  heroImage: string;
   updatedAt: string;
 }
 

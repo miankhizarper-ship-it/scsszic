@@ -370,6 +370,8 @@ export default function ProjectDetailPage() {
                     {project.repositoryUrl && (
                       <a
                         href={project.repositoryUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="inline-flex items-center gap-2 text-sm font-semibold text-navy-900 transition-colors hover:text-gold-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500"
                       >
                         <Github size={15} aria-hidden="true" />
@@ -379,6 +381,8 @@ export default function ProjectDetailPage() {
                     {project.liveUrl && (
                       <a
                         href={project.liveUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="inline-flex items-center gap-2 text-sm font-semibold text-navy-900 transition-colors hover:text-gold-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500"
                       >
                         <Globe size={15} aria-hidden="true" />

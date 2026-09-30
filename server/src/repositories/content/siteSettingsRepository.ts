@@ -1,6 +1,7 @@
 import { collections } from "../../db/collections.js";
 import { isConnectionError } from "../../db/errors.js";
 import type { SiteSettings, SerializedSocialLink } from "../../content/types.js";
+import type { SiteSettingsUpdateInput } from "../../http/settingsSchemas.js";
 
 /**
  * Site-settings repository (Task 15) — the single `site_settings` document
@@ -14,10 +15,15 @@ const SETTINGS_ID = "site" as const;
 /** The pre-first-save shape — an empty link list, no placeholders stored. */
 const DEFAULT_SETTINGS: SiteSettings = {
   socials: [],
+  heroImage: "",
   updatedAt: "",
 };
 
-function toSettings(doc: { socials?: SerializedSocialLink[]; updatedAt: string } | null): SiteSettings {
+function toSettings(doc: {
+  socials?: SerializedSocialLink[];
+  heroImage?: string;
+  updatedAt: string;
+} | null): SiteSettings {
   if (!doc) return { ...DEFAULT_SETTINGS };
   return {
     socials: (doc.socials ?? []).map((social) => ({
@@ -25,6 +31,7 @@ function toSettings(doc: { socials?: SerializedSocialLink[]; updatedAt: string }
       href: social.href,
       icon: social.icon,
     })),
+    heroImage: typeof doc.heroImage === "string" ? doc.heroImage : "",
     updatedAt: doc.updatedAt,
   };
 }
@@ -43,16 +50,18 @@ export const siteSettingsRepository = {
   },
 
   /** Replace-all update (PUT semantics) — upserts the single document. */
-  async update(socials: SerializedSocialLink[]): Promise<SiteSettings> {
+  async update(input: SiteSettingsUpdateInput): Promise<SiteSettings> {
     const now = new Date().toISOString();
+    const socials = input.socials;
+    const heroImage = input.heroImage?.trim() || "";
     const result = await collections.siteSettings().findOneAndUpdate(
       { _id: SETTINGS_ID },
       {
-        $set: { socials, updatedAt: now },
+        $set: { socials, heroImage, updatedAt: now },
         $setOnInsert: { createdAt: now },
       },
       { upsert: true, returnDocument: "after" },
     );
-    return toSettings(result ?? null) ?? { socials, updatedAt: now };
+    return toSettings(result ?? null) ?? { socials, heroImage, updatedAt: now };
   },
 };

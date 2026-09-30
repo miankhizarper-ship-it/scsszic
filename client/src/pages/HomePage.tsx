@@ -2,6 +2,7 @@ import { Hero } from "@/components/sections/Hero";
 import { SocietyIntro } from "@/components/sections/SocietyIntro";
 import { Stats } from "@/components/sections/Stats";
 import { UpcomingEvents } from "@/components/sections/UpcomingEvents";
+import { ProjectsSection } from "@/components/sections/ProjectsSection";
 import { CommunityPreview } from "@/components/sections/CommunityPreview";
 import { FeaturedBlog } from "@/components/sections/FeaturedBlog";
 import { LeadershipSection } from "@/components/sections/LeadershipSection";
@@ -36,6 +37,7 @@ export default function HomePage() {
       <SocietyIntro />
       <Stats />
       <UpcomingEvents />
+      <ProjectsSection />
       <CommunityPreview />
       <FeaturedBlog />
       <LeadershipSection />

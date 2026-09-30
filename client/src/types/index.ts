@@ -506,12 +506,16 @@ export interface SiteSettings {
   /** Footer social links in editor order. Empty = footer falls back to
    *  its curated placeholder set (pre-settings behavior). */
   socials: ProfileSocialLink[];
+  /** Hero visual on the public home page — https:// URL or /-rooted path.
+   *  Empty = the Hero renders its fallback tile (Task 26). */
+  heroImage: string;
   updatedAt: string;
 }
 
 /** Admin/API shape — social icons stay registry KEYS over the wire. */
 export interface AdminSiteSettings {
   socials: SerializedSocialLink[];
+  heroImage: string;
   updatedAt: string;
 }
 

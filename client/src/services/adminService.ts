@@ -407,11 +407,15 @@ export const adminService = {
     return response.data;
   },
 
-  /** PUT /api/admin/settings — replace-all the footer social links. */
-  async updateSiteSettings(socials: SerializedSocialLink[]): Promise<AdminSiteSettings> {
+  /** PUT /api/admin/settings — replace-all the settings payload (socials +
+   *  hero image; the endpoint is replace-all so BOTH always travel). */
+  async updateSiteSettings(input: {
+    socials: SerializedSocialLink[];
+    heroImage: string;
+  }): Promise<AdminSiteSettings> {
     const response = await apiFetch<{ data: AdminSiteSettings }>("/admin/settings", {
       method: "PUT",
-      body: { socials },
+      body: input,
     });
     return response.data;
   },

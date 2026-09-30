@@ -33,12 +33,24 @@ export const siteSocialSchema = z.object({
   icon: z.enum(SOCIAL_PLATFORMS, { message: "Choose a valid platform." }),
 });
 
+/** Hero image — https:// URL or site-relative path (uploads return URLs,
+ *  the field also accepts /-rooted paths so pre-existing assets work). */
+export const heroImageSchema = z
+  .string()
+  .trim()
+  .max(500, "Hero image must be at most 500 characters.")
+  .refine(
+    (value) => value === "" || /^(https:\/\/|http:\/\/|\/)/.test(value),
+    "Use an https:// image URL or a site-relative path starting with /.",
+  );
+
 /** PUT /api/admin/settings body — the full settings payload (replace-all). */
 export const siteSettingsUpdateSchema = z
   .object({
     socials: z
       .array(siteSocialSchema)
       .max(8, "At most 8 social links are allowed."),
+    heroImage: heroImageSchema.optional(),
   })
   .strict();
 

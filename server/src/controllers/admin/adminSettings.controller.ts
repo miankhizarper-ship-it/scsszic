@@ -44,7 +44,7 @@ export const updateAdminSettings: RequestHandler = withErrorBoundary(
       return;
     }
 
-    const settings = await siteSettingsRepository.update(parsed.data.socials);
+    const settings = await siteSettingsRepository.update(parsed.data);
     await recordAudit(req, {
       action: "settings.updated",
       resourceType: "settings",

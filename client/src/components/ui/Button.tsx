@@ -95,8 +95,15 @@ export function Button({
   }
 
   if (href !== undefined) {
+    // External URLs open in a new tab by default (Task 26) — a caller-passed
+    // target still wins. Internal hash/mailto links behave as before.
+    const isExternal = /^https?:\/\//i.test(href);
+    const externalProps =
+      isExternal && (rest as AnchorProps).target === undefined
+        ? { target: "_blank", rel: "noopener noreferrer" }
+        : {};
     return (
-      <a className={classes} href={href} {...(rest as AnchorProps)}>
+      <a className={classes} href={href} {...externalProps} {...(rest as AnchorProps)}>
         {children}
       </a>
     );

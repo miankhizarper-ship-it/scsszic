@@ -354,7 +354,7 @@ export default function AdminAlumniFormPage() {
               />
             </Field>
 
-            <Field id="alumni-skills" label="Skills" error={errors.skills?.message} hint="Comma-separated, e.g. TypeScript, Node.js, AWS">
+            <Field id="alumni-skills" label="Skills" error={errors.skills?.message} hint="Comma- or space-separated, e.g. TypeScript, Node.js, AWS">
               <input
                 id="alumni-skills"
                 type="text"

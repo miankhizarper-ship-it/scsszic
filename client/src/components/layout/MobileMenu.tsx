@@ -239,6 +239,8 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
                     key={label}
                     href={href}
                     aria-label={label}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="inline-flex size-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white/10 hover:text-gold-300"
                   >
                     <Icon size={17} aria-hidden="true" />

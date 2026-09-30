@@ -6,6 +6,7 @@ import { isConnectionError } from "../../db/errors.js";
 import { logger } from "../../utils/logger.js";
 import { inUseCategoryNames, listCategories } from "../../repositories/content/categoriesRepository.js";
 import { siteSettingsRepository } from "../../repositories/content/siteSettingsRepository.js";
+import { collections } from "../../db/collections.js";
 import type { ListResult } from "../../repositories/content/listRepository.js";
 import type { EnrichedFeedPost } from "../../repositories/content/feedRepository.js";
 
@@ -226,6 +227,29 @@ export const getPublicCategories: RequestHandler = withErrorBoundary(
     res.status(200).json({ data: { section, categories: merged } });
   },
   "public-categories",
+);
+
+/**
+ * GET /api/stats (Task 26) — the society's real headline numbers for the
+ * home-page Stats band and Hero chips. Derived live from the collections
+ * (no admin-editable layer): archived members and cancelled events never
+ * count; "workshops" is the events whose category or tags are
+ * workshop-flavoured. Deliberately cheap: four countDocuments calls.
+ */
+export const getPublicStats: RequestHandler = withErrorBoundary(
+  async (_req, res) => {
+    const [members, events, workshops, projects] = await Promise.all([
+      collections.members().countDocuments({ status: { $ne: "archived" } }),
+      collections.events().countDocuments({ status: { $ne: "cancelled" } }),
+      collections.events().countDocuments({
+        status: { $ne: "cancelled" },
+        $or: [{ category: { $regex: /workshop/i } }, { tags: { $regex: /workshop/i } }],
+      }),
+      collections.projects().countDocuments({}),
+    ]);
+    res.status(200).json({ data: { members, events, workshops, projects } });
+  },
+  "public-stats",
 );
 
 /**

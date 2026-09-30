@@ -115,9 +115,10 @@ export function projectFormDefaults(): ProjectFormValues {
 /** Form values → API payload (exact Project model shape). The slug is
  *  server-generated (Task 16) and never sent from the form. */
 export function toProjectPayload(values: ProjectFormValues): Partial<Project> {
+  // Commas AND whitespace both separate (Task 26).
   const splitList = (text: string | undefined) =>
     (text ?? "")
-      .split(",")
+      .split(/[\s,]+/)
       .map((entry) => entry.trim())
       .filter(Boolean);
 

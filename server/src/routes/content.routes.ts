@@ -8,6 +8,7 @@ import {
   createUsernameDetailHandler,
   getPublicCategories,
   getPublicSettings,
+  getPublicStats,
 } from "../controllers/content/content.controller.js";
 import {
   addFeedComment,
@@ -226,4 +227,5 @@ contentRouter.get("/categories", getPublicCategories);
  * Read-only, no auth; an empty list means "not configured yet" and the
  * footer renders its curated placeholder set.
  */
+contentRouter.get("/stats", getPublicStats);
 contentRouter.get("/settings", getPublicSettings);

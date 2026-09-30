@@ -134,12 +134,21 @@ export function TagsInput({
     }
   }
 
-  /** Pasted / typed text: split on commas immediately, keep the tail editable. */
+  /** Pasted / typed text: commas AND whitespace both separate (Task 26);
+   *  quoted text passes through untouched — the space key inside an open
+   *  quote is literal (the multi-word escape). */
   function handleInput(event: React.ChangeEvent<HTMLInputElement>) {
     const raw = event.target.value;
     setNotice(null);
     if (raw.includes(",")) {
       const parts = raw.split(",");
+      const tail = parts.pop() ?? "";
+      parts.forEach((part) => commit(part));
+      setDraft(tail);
+      return;
+    }
+    if (!raw.includes('"') && !raw.includes("'") && /\s/.test(raw)) {
+      const parts = raw.split(/\s+/);
       const tail = parts.pop() ?? "";
       parts.forEach((part) => commit(part));
       setDraft(tail);

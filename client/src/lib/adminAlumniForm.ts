@@ -143,8 +143,9 @@ export function alumniFormDefaults(): AlumniFormValues {
 
 /** Form values → API payload (exact Alumnus model shape). */
 export function toAlumniPayload(values: AlumniFormValues): Partial<AlumnusWrite> {
+  // Commas AND whitespace both separate (Task 26).
   const splitSkills = (values.skills ?? "")
-    .split(",")
+    .split(/[\s,]+/)
     .map((skill) => skill.trim())
     .filter(Boolean);
   const highlights = (values.careerHighlights ?? "")

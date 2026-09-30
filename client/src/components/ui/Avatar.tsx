@@ -20,6 +20,12 @@ interface AvatarProps {
  * Portraits are optional across every profile-shaped entity (members,
  * authors, feed authors), so this component centralizes the "image or
  * monogram" treatment: navy tile, gold initials, gold hairline ring.
+ *
+ * The size travels as inline CSS width/height (not just attributes): the
+ * Tailwind preflight sets `img { height: auto }`, which would otherwise let
+ * a non-square portrait stretch the circular frame into an ellipse — the
+ * Task-26 member-card bug. object-cover + fixed CSS box = always a perfect
+ * circle, whatever the source image's aspect ratio.
  */
 export function Avatar({
   src,
@@ -37,6 +43,7 @@ export function Avatar({
         src={src}
         alt={alt ?? `Portrait placeholder for ${initials}`}
         {...dimension}
+        style={dimension}
         loading="lazy"
         decoding="async"
         className={cn(

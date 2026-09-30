@@ -153,12 +153,14 @@ export function initialsFromName(value: string): string {
     .join("");
 }
 
-/** Split a comma-separated text list into trimmed, non-empty entries — the
- *  single parsing rule shared by the form schema (pre-validation) and the
- *  payload builder, so what the admin sees validated is what gets sent. */
+/** Split a text list into trimmed, non-empty entries — commas AND
+ *  whitespace both separate (Task 26: "react, typescript" and
+ *  "react typescript" are the same list). The single parsing rule shared
+ *  by the form schema (pre-validation) and the payload builder, so what
+ *  the admin sees validated is exactly what gets sent. */
 export function splitList(text: string | undefined | null): string[] {
   return (text ?? "")
-    .split(",")
+    .split(/[\s,]+/)
     .map((entry) => entry.trim())
     .filter(Boolean);
 }

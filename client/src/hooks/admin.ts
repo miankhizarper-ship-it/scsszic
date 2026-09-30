@@ -806,8 +806,8 @@ export function useAdminSettings() {
 export function useUpdateSiteSettings() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (socials: SerializedSocialLink[]) =>
-      adminService.updateSiteSettings(socials),
+    mutationFn: (input: { socials: SerializedSocialLink[]; heroImage: string }) =>
+      adminService.updateSiteSettings(input),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["admin", "settings"] });
       void queryClient.invalidateQueries({ queryKey: ["settings", "site"] });

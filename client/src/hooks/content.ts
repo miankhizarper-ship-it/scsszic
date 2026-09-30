@@ -8,6 +8,7 @@ import { galleryService } from "@/services/galleryService";
 import { memberService } from "@/services/memberService";
 import { projectService } from "@/services/projectService";
 import { siteSettingsService } from "@/services/siteSettingsService";
+import { statsService, type SiteStats } from "@/services/statsService";
 import { teamService } from "@/services/teamService";
 import { watchService } from "@/services/watchService";
 import { fetchCategories } from "@/services/contentApi";
@@ -441,6 +442,21 @@ export function useAddFeedComment(postId: string) {
 }
 
 /* ------------------------- Site settings (Task 15) ----------------------- */
+
+/**
+ * Real society numbers for the home page (Task 26) — members, events,
+ * workshops, projects, derived live by GET /api/stats. Long-cached like
+ * the settings: the numbers change rarely within a session.
+ */
+export function useSiteStats() {
+  return useQuery<SiteStats | null>({
+    queryKey: ["stats", "site"],
+    queryFn: () => statsService.getSiteStats(),
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+}
+
 
 /**
  * Public site settings (footer social links). Shared app-chrome data —
