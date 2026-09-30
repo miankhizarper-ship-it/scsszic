@@ -14,6 +14,7 @@ import {
 } from "@/hooks/admin";
 import {
   MEMBER_STATUSES,
+  formFieldForServerError,
   initialsFromName,
   memberFormDefaults,
   memberFormSchema,
@@ -136,6 +137,26 @@ export default function AdminMemberFormPage() {
   const initialsDirty = Boolean(initialsValue && initialsValue !== initialsFromName(name ?? ""));
   const batchDirty = Boolean(batch && batch !== `Batch ${batchYear}`);
 
+  // Keep initials in sync with the name until the admin types custom ones —
+  // the hint promises "auto-matches the name", so make it actually happen
+  // instead of blocking the submit with "Initials are required.".
+  useEffect(() => {
+    const auto = initialsFromName(name ?? "");
+    if (!initialsDirty && (initialsValue ?? "") !== auto) {
+      setValue("initials", auto, { shouldValidate: false });
+    }
+  }, [name, initialsValue, initialsDirty, setValue]);
+
+  // Same contract for the batch label: "Auto-matches the batch year." until
+  // manually customized (edit mode: existing labels are preserved).
+  useEffect(() => {
+    if (!/^\d{4}$/.test(batchYear ?? "")) return;
+    const auto = `Batch ${batchYear}`;
+    if (!batchDirty && batch !== auto) {
+      setValue("batch", auto, { shouldValidate: false });
+    }
+  }, [batchYear, batch, batchDirty, setValue]);
+
   const pending = isSubmitting || createMember.isPending || updateMember.isPending;
 
   // Keep the display label in sync with the numeric year until manually edited.
@@ -152,16 +173,26 @@ export default function AdminMemberFormPage() {
 
   function applyServerErrors(error: unknown) {
     if (error instanceof ApiError && error.errors) {
-      let mapped = false;
+      const unmapped: string[] = [];
+      let mappedAny = false;
       for (const [key, message] of Object.entries(error.errors)) {
-        try {
-          setError(key as keyof MemberFormValues, { type: "server", message });
-          mapped = true;
-        } catch {
-          // Unknown key — fall through to the form-level message.
+        // Server keys use model names + indexed paths ("projectSlugs.0",
+        // "social", "skills.0") — map them onto the fields that can render,
+        // and NEVER drop the rest into an invisible setError (Task 25: the
+        // silent 400). Unmapped messages land in the form-level banner.
+        const field = formFieldForServerError(key);
+        if (field) {
+          setError(field, { type: "server", message });
+          mappedAny = true;
+        } else {
+          unmapped.push(message);
         }
       }
-      if (mapped) return;
+      if (unmapped.length > 0) {
+        setFormError([error.message, ...unmapped].filter(Boolean).join(" "));
+        return;
+      }
+      if (mappedAny) return;
     }
     setFormError(
       error instanceof Error ? error.message : "Saving failed. Please try again.",
@@ -320,7 +351,9 @@ export default function AdminMemberFormPage() {
                   max={2100}
                   aria-invalid={Boolean(errors.batchYear)}
                   className={INPUT_CLASS}
-                  onChange={(changeEvent) => handleBatchYearChange(changeEvent.target.value)}
+                  {...register("batchYear", {
+                    onChange: (changeEvent) => handleBatchYearChange(changeEvent.target.value),
+                  })}
                 />
               </Field>
               <Field id="member-batch" label="Batch label" required error={errors.batch?.message} hint={batchDirty ? "Custom label." : "Auto-matches the batch year."}>
