@@ -64,6 +64,7 @@ export class MongoUserRepository implements UserRepository {
       normalizedEmail: email,
       ...(input.passwordHash !== undefined ? { passwordHash: input.passwordHash } : {}),
       ...(input.googleId ? { googleId: input.googleId } : {}),
+      ...(input.picture ? { picture: input.picture } : {}),
       displayName: input.displayName.trim(),
       role: input.role ?? "member",
       permissions: toAdminPermissions(input.permissions),
@@ -129,6 +130,18 @@ export class MongoUserRepository implements UserRepository {
       { $unset: { emailVerification: "" }, $set: { updatedAt: new Date().toISOString() } },
     );
   }
+
+  async updateGooglePicture(userId: string, picture: string): Promise<void> {
+    // Same id plausibility guard as findById — malformed ids fail safely.
+    if (typeof userId !== "string" || userId.length < 8 || userId.length > 128) return;
+    if (typeof picture !== "string" || !picture.startsWith("https://") || picture.length > 500) {
+      return;
+    }
+    await collections.users().updateOne(
+      { _id: userId },
+      { $set: { picture, updatedAt: new Date().toISOString() } },
+    );
+  }
 }
 
 /**
@@ -144,6 +157,7 @@ function toAuthUser(doc: UserDoc): AuthUser {
     email: doc.email,
     ...(doc.passwordHash !== undefined ? { passwordHash: doc.passwordHash } : {}),
     ...(doc.googleId ? { googleId: doc.googleId } : {}),
+    ...(doc.picture ? { picture: doc.picture } : {}),
     displayName: doc.displayName,
     role: doc.role,
     // Pre-10B documents have no permissions field — normalize to [] so the

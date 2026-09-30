@@ -5,6 +5,7 @@ import { LogIn, LogOut, Menu } from "lucide-react";
 import { MobileMenu } from "@/components/layout/MobileMenu";
 import { NavDropdown } from "@/components/layout/NavDropdown";
 import { Logo } from "@/components/ui/Logo";
+import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { NAV_LINKS } from "@/data/navigation";
@@ -24,8 +25,9 @@ import { cn } from "@/lib/utils";
  *    (the strip renders outside the sticky header), so scrolling down keeps
  *    the navigation reachable without jumping back to the top (Phase 10C).
  *  - desktop inline nav (≥ xl), slide-in MobileMenu below xl
- *  - auth-aware actions (Phase 7): Login/Join Us for guests; initials chip,
- *    display name (→ /account), and logout for signed-in members
+ *  - auth-aware actions (Phase 7): Login/Join Us for guests; avatar (the
+ *    Google picture when present, initials otherwise) chip, display name
+ *    (→ /account), and logout for signed-in members
  */
 export function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -128,12 +130,16 @@ export function Navbar() {
                   aria-label={`My account — ${user.displayName}`}
                   className="hidden items-center gap-2.5 rounded-full border border-gold-500/40 bg-gold-500/10 py-1 pl-1.5 pr-3.5 text-sm font-semibold text-gold-300 transition-colors hover:border-gold-400 hover:text-gold-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500 sm:inline-flex"
                 >
-                  <span
-                    aria-hidden="true"
-                    className="grid size-7 place-items-center rounded-full bg-navy-900 font-display text-[11px] font-bold text-gold-300"
-                  >
-                    {initials}
-                  </span>
+                  {user.picture ? (
+                    <Avatar src={user.picture} initials={initials ?? ""} size={28} alt="" />
+                  ) : (
+                    <span
+                      aria-hidden="true"
+                      className="grid size-7 place-items-center rounded-full bg-navy-900 font-display text-[11px] font-bold text-gold-300"
+                    >
+                      {initials}
+                    </span>
+                  )}
                   <span className="max-w-[10rem] truncate">{user.displayName}</span>
                 </NavLink>
                 <button

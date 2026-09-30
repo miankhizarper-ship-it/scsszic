@@ -5,10 +5,7 @@ import {
   Bookmark,
   CalendarDays,
   CircleUserRound,
-  Database,
   ExternalLink,
-  Fingerprint,
-  Info,
   LogOut,
   Mail,
   MailWarning,
@@ -35,10 +32,11 @@ import { buildPageTitle, usePageMetadata } from "@/lib/seo";
  * AccountPage — the authenticated account surface at /account (spec §21).
  *
  * This is NOT a public profile: /profile/:username remains the community
- * surface (Phase 6). The account page shows the signed-in identity from the
- * server (/api/auth/me), the link to the user's public member profile when
- * one exists, and the server-backed logout. Accounts are now PERSISTED in
- * MongoDB (Phase 8); profile editing remains future work.
+ * surface. The page shows the signed-in identity from the server
+ * (/api/auth/me) — including the Google avatar for Google accounts — the
+ * link to the user's public member profile when one is linked, and the
+ * server-backed logout. Internal storage/record details are deliberately
+ * NOT shown here: the account page speaks only in user-owned facts.
  */
 export default function AccountPage() {
   const { user, logout } = useAuth();
@@ -51,8 +49,7 @@ export default function AccountPage() {
 
   usePageMetadata({
     title: buildPageTitle("My Account"),
-    description:
-      "Your Society of Computer Science account — identity, linked public profile, and session.",
+    description: "Your Society of Computer Science account — identity, linked public profile, and sign-in.",
   });
 
   // AuthUser → Member compatibility (spec §25): the account links to the
@@ -108,7 +105,13 @@ export default function AccountPage() {
 
         <Container className="relative py-12 sm:py-14">
           <div className="flex flex-col items-center gap-6 text-center sm:flex-row sm:items-end sm:text-left">
-            <Avatar initials={initials} size={104} shape="rounded" alt="" />
+            <Avatar
+              src={user.picture}
+              initials={initials}
+              size={104}
+              shape="rounded"
+              alt=""
+            />
 
             <div className="min-w-0">
               <Badge variant="onDark">
@@ -195,7 +198,7 @@ export default function AccountPage() {
                     term: "Role",
                     detail:
                       user.role === "admin"
-                        ? "Admin (architecture demo)"
+                        ? "Administrator"
                         : user.role === "manage"
                           ? "Content manager"
                           : "Member",
@@ -205,15 +208,6 @@ export default function AccountPage() {
                     term: "Member since",
                     detail: formatDateLong(user.createdAt),
                   },
-                  ...(user.memberProfileId
-                    ? [
-                        {
-                          icon: Fingerprint,
-                          term: "Linked profile record",
-                          detail: user.memberProfileId,
-                        },
-                      ]
-                    : []),
                 ].map(({ icon: Icon, term, detail }) => (
                   <div key={term} className="flex items-center justify-between gap-4 py-3.5">
                     <dt className="flex shrink-0 items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted">
@@ -225,26 +219,18 @@ export default function AccountPage() {
                     </dd>
                   </div>
                 ))}
-                <div className="flex items-center justify-between gap-4 py-3.5">
-                  <dt className="flex shrink-0 items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted">
-                    <ShieldCheck size={13} aria-hidden="true" className="text-navy-400" />
-                    Session
-                  </dt>
-                  <dd className="min-w-0 truncate text-right text-sm font-medium text-navy-900">
-                    HTTP-only cookie, server-managed
-                  </dd>
-                </div>
               </dl>
             </Reveal>
 
-            {/* Public profile connection */}
-            <Reveal delay={0.05} className="rounded-xl border border-line bg-white p-6 shadow-sm sm:p-8">
-              <h2 className="flex items-center gap-2 font-display text-lg font-semibold text-navy-900">
-                <Users size={18} aria-hidden="true" className="text-gold-600" />
-                Public community profile
-              </h2>
+            {/* Public profile connection — only when a member record is
+                actually linked; no speculative copy when it isn't. */}
+            {memberProfile && (
+              <Reveal delay={0.05} className="rounded-xl border border-line bg-white p-6 shadow-sm sm:p-8">
+                <h2 className="flex items-center gap-2 font-display text-lg font-semibold text-navy-900">
+                  <Users size={18} aria-hidden="true" className="text-gold-600" />
+                  Public community profile
+                </h2>
 
-              {memberProfile ? (
                 <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
                   <Avatar
                     src={memberProfile.avatar}
@@ -265,21 +251,8 @@ export default function AccountPage() {
                     <ArrowRight size={14} aria-hidden="true" />
                   </Button>
                 </div>
-              ) : (
-                <div className="mt-4 flex items-start gap-3 rounded-lg border border-dashed border-line bg-surface px-4 py-4">
-                  <Info size={16} aria-hidden="true" className="mt-0.5 shrink-0 text-navy-400" />
-                  <p className="text-sm leading-relaxed text-muted">
-                    No public community profile is linked to this account yet. Member
-                    records live in the society database — when your account is
-                    connected to a member record, your public profile will appear at{" "}
-                    <span className="font-mono text-navy-900">
-                      /profile/{user.username}
-                    </span>
-                    .
-                  </p>
-                </div>
-              )}
-            </Reveal>
+              </Reveal>
+            )}
           </div>
 
           {/* ---------- Sidebar: actions ---------- */}
@@ -337,24 +310,6 @@ export default function AccountPage() {
                   </>
                 )}
               </button>
-            </Reveal>
-
-            <Reveal
-              delay={0.05}
-              className="relative overflow-hidden rounded-xl border border-gold-500/40 bg-navy-950 p-6"
-            >
-              <div aria-hidden="true" className="absolute inset-0 bg-grid-dark mask-fade-radial" />
-              <div className="relative">
-                <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-gold-400">
-                  <Database size={13} aria-hidden="true" />
-                  Persistent account
-                </p>
-                <p className="mt-3 text-sm leading-relaxed text-slate-300">
-                  Accounts are stored in the society's database and survive server
-                  restarts. Editable profiles and community posting arrive in a
-                  later phase — this page is read-only by design for now.
-                </p>
-              </div>
             </Reveal>
           </aside>
         </div>

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AlertTriangle, KeyRound, RefreshCw, ShieldCheck, UserCog, Users, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, KeyRound, RefreshCw, ShieldCheck, UserCog, UserPlus, Users, X } from "lucide-react";
 
 import { AdminEventDeleteDialog } from "@/components/admin/AdminEventDeleteDialog";
 import { Badge, type BadgeVariant } from "@/components/ui/Badge";
@@ -8,16 +8,18 @@ import { ErrorState } from "@/components/ui/CollectionState";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FilterBar } from "@/components/ui/FilterBar";
 import { SearchInput } from "@/components/ui/SearchInput";
-import { useAdminUsers, useDeleteUser, useUpdateUser } from "@/hooks/admin";
+import { useAdminUsers, useCreateMember, useDeleteUser, useUpdateUser } from "@/hooks/admin";
 import { useAuth } from "@/context/AuthProvider";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { cn } from "@/lib/utils";
 import { formatCardDate } from "@/lib/format";
+import { initialsFromName, MEMBER_STATUSES } from "@/lib/adminMemberForm";
+import { ROUTES } from "@/routes/paths";
 import {
   ADMIN_PERMISSIONS,
   ADMIN_PERMISSION_LABELS,
 } from "@/types";
-import type { AdminPermission, AdminUser, AdminUserSort } from "@/types";
+import type { AdminPermission, AdminUser, AdminUserSort, Member } from "@/types";
 
 /**
  * Admin Users CMS (Phase 9H, Phase 10B role/permission management) — the
@@ -29,7 +31,10 @@ import type { AdminPermission, AdminUser, AdminUserSort } from "@/types";
  *    permissions; username/email/password are NOT editable here (login
  *    identity + signup flow own those);
  *  - there is deliberately NO create button — accounts self-register via
- *    the public signup flow;
+ *    the public signup flow. Task 27 adds the bridge INTO the member
+ *    directory instead: the member-plus action creates a Member record
+ *    prefilled from the account (POST /api/admin/members) so the person
+ *    gains a public profile without retyping their identity;
  *  - deletion/role changes are safeguarded server-side (never the last
  *    admin, never the signed-in account) and the UI communicates the same
  *    rules while the server stays the authority.
@@ -311,6 +316,394 @@ function UserEditDialog({
   );
 }
 
+/**
+ * The member-directory handle rules (server memberSchemas): lowercase
+ * letters/digits/hyphens, not starting with a hyphen. Account handles may
+ * also contain underscores, so the prefill sanitizes instead of sending
+ * something the server would refuse — and the admin can adjust it.
+ */
+const MEMBER_HANDLE_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
+
+function memberHandleFor(username: string): string {
+  return username
+    .toLowerCase()
+    .replace(/_/g, "-")
+    .replace(/[^a-z0-9-]/g, "")
+    .replace(/^-+/, "")
+    .slice(0, 80);
+}
+
+/** Neutral starter bio — the member model requires a non-empty bio, and the
+ *  admin is expected to flesh it out in the member editor afterwards. */
+const STARTER_BIO = "New member of the Society of Computer Science — full profile coming soon.";
+
+const ADD_MEMBER_STATUS_OPTIONS = MEMBER_STATUSES;
+
+/**
+ * "Add to members" dialog (Task 27) — creates a Member directory record
+ * prefilled from the auth account (POST /api/admin/members via the SAME
+ * useCreateMember mutation the members CMS uses, so every cache that shows
+ * members refreshes automatically).
+ *
+ * Identity fields (name) come from the account; directory-specific fields
+ * (role, domain, batch, bio, status) get sensible editable defaults because
+ * the member model — not the account model — owns them. The optional
+ * profile handle links the public /profile/:username page to the account
+ * when it matches the account's @username.
+ */
+function AddMemberDialog({ user, onClose }: { user: AdminUser; onClose: () => void }) {
+  const createMember = useCreateMember();
+  const currentYear = new Date().getFullYear();
+
+  const [name, setName] = useState(user.displayName);
+  const [handle, setHandle] = useState(memberHandleFor(user.username));
+  const [role, setRole] = useState("Member");
+  const [domain, setDomain] = useState("General");
+  const [batch, setBatch] = useState(`Batch ${currentYear}`);
+  const [batchYear, setBatchYear] = useState(String(currentYear));
+  const [bio, setBio] = useState(STARTER_BIO);
+  const [status, setStatus] = useState<(typeof ADD_MEMBER_STATUS_OPTIONS)[number]>("active");
+  const [created, setCreated] = useState<Member | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  // ESC cancels while the request is not in flight; focus lands on name.
+  useEffect(() => {
+    const focusTimer = window.setTimeout(() => {
+      dialogRef.current?.querySelector<HTMLInputElement>("input")?.focus();
+    }, 0);
+    const onKeyDown = (keyEvent: KeyboardEvent) => {
+      if (keyEvent.key === "Escape" && !createMember.isPending) onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.clearTimeout(focusTimer);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [onClose, createMember.isPending]);
+
+  /** Client-side mirror of the server's create rules — bad input is flagged
+   *  here, visibly, instead of coming back as a surprise 400. */
+  function validationError(): string | null {
+    const trimmedName = name.trim();
+    if (trimmedName.length < 1 || trimmedName.length > 120) {
+      return "Name is required (at most 120 characters).";
+    }
+    const trimmedHandle = handle.trim();
+    if (trimmedHandle && !MEMBER_HANDLE_PATTERN.test(trimmedHandle)) {
+      return "The profile handle may only use lowercase letters, numbers, and hyphens (no leading hyphen).";
+    }
+    if (trimmedHandle.length > 80) {
+      return "The profile handle must be at most 80 characters.";
+    }
+    const trimmedRole = role.trim();
+    if (trimmedRole.length < 1 || trimmedRole.length > 120) {
+      return "Role in society is required (at most 120 characters).";
+    }
+    const trimmedDomain = domain.trim();
+    if (trimmedDomain.length < 1 || trimmedDomain.length > 80) {
+      return "Domain is required (at most 80 characters).";
+    }
+    const trimmedBatch = batch.trim();
+    if (trimmedBatch.length < 1 || trimmedBatch.length > 40) {
+      return "Batch label is required (at most 40 characters).";
+    }
+    const year = Number(batchYear);
+    if (!Number.isInteger(year) || year < 1990 || year > 2100) {
+      return "Batch year must be a whole number between 1990 and 2100.";
+    }
+    const trimmedBio = bio.trim();
+    if (trimmedBio.length < 1 || trimmedBio.length > 4000) {
+      return "Bio is required (at most 4000 characters).";
+    }
+    return null;
+  }
+
+  function submit() {
+    const problem = validationError();
+    if (problem) return;
+
+    const trimmedHandle = handle.trim();
+    createMember.mutate(
+      {
+        name: name.trim(),
+        initials: initialsFromName(name) || name.trim().charAt(0).toUpperCase(),
+        ...(trimmedHandle ? { username: trimmedHandle } : {}),
+        role: role.trim(),
+        domain: domain.trim(),
+        batch: batch.trim(),
+        batchYear: Number(batchYear),
+        bio: bio.trim(),
+        skills: [],
+        interests: [],
+        status,
+        featured: false,
+      },
+      { onSuccess: (member) => setCreated(member) },
+    );
+  }
+
+  const problem = created ? null : validationError();
+
+  return (
+    <div
+      className="fixed inset-0 z-50 grid place-items-center p-4"
+      role="presentation"
+      data-testid="admin-add-member-dialog"
+    >
+      <button
+        type="button"
+        aria-label="Close dialog"
+        onClick={() => !createMember.isPending && onClose()}
+        className="absolute inset-0 bg-navy-950/60"
+      />
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="admin-add-member-title"
+        aria-describedby="admin-add-member-description"
+        className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-line bg-white p-6 shadow-xl"
+      >
+        {created ? (
+          /* ---------- Success state ---------- */
+          <div className="flex flex-col items-start gap-4">
+            <span className="grid size-11 place-items-center rounded-xl bg-emerald-50 text-emerald-600">
+              <CheckCircle2 size={22} aria-hidden="true" />
+            </span>
+            <div>
+              <h2 id="admin-add-member-title" className="font-display text-lg font-bold text-navy-900">
+                Member record created
+              </h2>
+              <p id="admin-add-member-description" className="mt-1.5 text-sm leading-relaxed text-muted">
+                <span className="font-semibold text-navy-900">{created.name}</span>
+                {created.username ? (
+                  <>
+                    {" "}is now in the member directory as{" "}
+                    <span className="font-mono text-navy-900">@{created.username}</span>
+                  </>
+                ) : (
+                  " is now in the member directory"
+                )}
+                . Add their portrait, skills, and social links from the member editor.
+              </p>
+            </div>
+            <div className="mt-2 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button variant="outline" size="sm" onClick={onClose}>
+                Close
+              </Button>
+              <Button
+                to={`${ROUTES.admin.members}/${created.id}/edit`}
+                variant="navy"
+                size="sm"
+                onClick={onClose}
+              >
+                Edit member profile
+                <UserCog size={14} aria-hidden="true" />
+              </Button>
+            </div>
+          </div>
+        ) : (
+          /* ---------- Form state ---------- */
+          <>
+            <div className="flex items-start justify-between gap-3">
+              <span className="grid size-11 place-items-center rounded-xl bg-gold-50 text-gold-700">
+                <UserPlus size={20} aria-hidden="true" />
+              </span>
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close dialog"
+                className="grid size-8 place-items-center rounded-lg text-navy-700 transition-colors hover:bg-navy-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500"
+              >
+                <X size={16} aria-hidden="true" />
+              </button>
+            </div>
+            <h2 id="admin-add-member-title" className="mt-4 font-display text-lg font-bold text-navy-900">
+              Add to members
+            </h2>
+            <p id="admin-add-member-description" className="mt-1.5 text-sm leading-relaxed text-muted">
+              Create a public member-directory record for{" "}
+              <span className="font-semibold text-navy-900">@{user.username}</span> ({user.email}).
+              The account itself is unchanged.
+            </p>
+
+            <div className="mt-5 flex flex-col gap-4">
+              <div>
+                <label
+                  htmlFor="admin-add-member-name"
+                  className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-muted"
+                >
+                  Name
+                </label>
+                <input
+                  id="admin-add-member-name"
+                  type="text"
+                  value={name}
+                  maxLength={120}
+                  onChange={(changeEvent) => setName(changeEvent.target.value)}
+                  className="h-11 w-full rounded-lg border border-line bg-white px-3 text-sm text-ink shadow-sm transition-colors focus:outline-2 focus:outline-offset-1 focus:outline-gold-500"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="admin-add-member-handle"
+                  className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-muted"
+                >
+                  Profile handle <span className="normal-case tracking-normal">(optional)</span>
+                </label>
+                <input
+                  id="admin-add-member-handle"
+                  type="text"
+                  value={handle}
+                  maxLength={80}
+                  onChange={(changeEvent) => setHandle(changeEvent.target.value)}
+                  placeholder="Auto-generated when left empty"
+                  className="h-11 w-full rounded-lg border border-line bg-white px-3 font-mono text-sm text-ink shadow-sm transition-colors focus:outline-2 focus:outline-offset-1 focus:outline-gold-500"
+                />
+                <p className="mt-1.5 text-xs leading-relaxed text-muted">
+                  When it matches the account's handle, the account page links to the public
+                  profile. Lowercase letters, numbers, and hyphens only.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label
+                    htmlFor="admin-add-member-role"
+                    className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-muted"
+                  >
+                    Role in society
+                  </label>
+                  <input
+                    id="admin-add-member-role"
+                    type="text"
+                    value={role}
+                    maxLength={120}
+                    onChange={(changeEvent) => setRole(changeEvent.target.value)}
+                    className="h-11 w-full rounded-lg border border-line bg-white px-3 text-sm text-ink shadow-sm transition-colors focus:outline-2 focus:outline-offset-1 focus:outline-gold-500"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="admin-add-member-domain"
+                    className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-muted"
+                  >
+                    Domain
+                  </label>
+                  <input
+                    id="admin-add-member-domain"
+                    type="text"
+                    value={domain}
+                    maxLength={80}
+                    onChange={(changeEvent) => setDomain(changeEvent.target.value)}
+                    className="h-11 w-full rounded-lg border border-line bg-white px-3 text-sm text-ink shadow-sm transition-colors focus:outline-2 focus:outline-offset-1 focus:outline-gold-500"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="admin-add-member-batch"
+                    className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-muted"
+                  >
+                    Batch label
+                  </label>
+                  <input
+                    id="admin-add-member-batch"
+                    type="text"
+                    value={batch}
+                    maxLength={40}
+                    onChange={(changeEvent) => setBatch(changeEvent.target.value)}
+                    className="h-11 w-full rounded-lg border border-line bg-white px-3 text-sm text-ink shadow-sm transition-colors focus:outline-2 focus:outline-offset-1 focus:outline-gold-500"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="admin-add-member-year"
+                    className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-muted"
+                  >
+                    Batch year
+                  </label>
+                  <input
+                    id="admin-add-member-year"
+                    type="number"
+                    min={1990}
+                    max={2100}
+                    value={batchYear}
+                    onChange={(changeEvent) => setBatchYear(changeEvent.target.value)}
+                    className="h-11 w-full rounded-lg border border-line bg-white px-3 text-sm text-ink shadow-sm transition-colors focus:outline-2 focus:outline-offset-1 focus:outline-gold-500"
+                  />
+                </div>
+              </div>
+              <div>
+                <label
+                  htmlFor="admin-add-member-bio"
+                  className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-muted"
+                >
+                  Bio
+                </label>
+                <textarea
+                  id="admin-add-member-bio"
+                  value={bio}
+                  maxLength={4000}
+                  rows={3}
+                  onChange={(changeEvent) => setBio(changeEvent.target.value)}
+                  className="w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm text-ink shadow-sm transition-colors focus:outline-2 focus:outline-offset-1 focus:outline-gold-500"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="admin-add-member-status"
+                  className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-muted"
+                >
+                  Directory status
+                </label>
+                <select
+                  id="admin-add-member-status"
+                  value={status}
+                  onChange={(changeEvent) =>
+                    setStatus(changeEvent.target.value as (typeof ADD_MEMBER_STATUS_OPTIONS)[number])
+                  }
+                  className="h-11 w-full rounded-lg border border-line bg-white px-3 text-sm text-ink shadow-sm transition-colors focus:outline-2 focus:outline-offset-1 focus:outline-gold-500"
+                >
+                  {ADD_MEMBER_STATUS_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option.charAt(0).toUpperCase() + option.slice(1)}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1.5 text-xs leading-relaxed text-muted">
+                  Archived records stay private — only active and alumni members appear publicly.
+                </p>
+              </div>
+            </div>
+
+            {(problem || (createMember.isError ? createMember.error?.message ?? null : null)) && (
+              <p
+                role="alert"
+                className="mt-3 rounded-lg border border-error/30 bg-error/5 px-3.5 py-2.5 text-xs font-medium text-error"
+              >
+                {problem ?? createMember.error?.message}
+              </p>
+            )}
+
+            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button variant="outline" size="sm" onClick={onClose} disabled={createMember.isPending}>
+                Cancel
+              </Button>
+              <Button
+                variant="navy"
+                size="sm"
+                onClick={submit}
+                disabled={createMember.isPending || Boolean(problem)}
+              >
+                {createMember.isPending ? "Creating…" : "Create member record"}
+              </Button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /** One management row — desktop table cells. */
 function UserRowCells({ user, isSelf }: { user: AdminUser; isSelf: boolean }) {
   const style = roleChipStyle(user.role);
@@ -346,13 +739,23 @@ interface UserRowProps {
   isSelf: boolean;
   onEdit: (user: AdminUser) => void;
   onDelete: (user: AdminUser) => void;
+  onAddMember: (user: AdminUser) => void;
 }
 
-/** Row action cluster — edit + delete (self-delete visually disabled). */
-function UserRowActions({ user, isSelf, onEdit, onDelete }: UserRowProps) {
+/** Row action cluster — add-to-members + edit + delete (self-delete visually disabled). */
+function UserRowActions({ user, isSelf, onEdit, onDelete, onAddMember }: UserRowProps) {
   return (
     <td className="px-4 py-3.5">
       <div className="flex flex-wrap items-center justify-end gap-1.5">
+        <button
+          type="button"
+          onClick={() => onAddMember(user)}
+          aria-label={`Add ${user.displayName} to the member directory`}
+          title="Add to members"
+          className="grid size-8 place-items-center rounded-lg text-navy-700 transition-colors hover:bg-gold-50 hover:text-gold-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500"
+        >
+          <UserPlus size={15} aria-hidden="true" />
+        </button>
         <button
           type="button"
           onClick={() => onEdit(user)}
@@ -378,7 +781,7 @@ function UserRowActions({ user, isSelf, onEdit, onDelete }: UserRowProps) {
 }
 
 /** Mobile card for one account — same real fields, stacked layout. */
-function UserCard({ user, isSelf, onEdit, onDelete }: UserRowProps) {
+function UserCard({ user, isSelf, onEdit, onDelete, onAddMember }: UserRowProps) {
   const style = roleChipStyle(user.role);
   return (
     <li className="p-4">
@@ -408,6 +811,15 @@ function UserCard({ user, isSelf, onEdit, onDelete }: UserRowProps) {
       </dl>
 
       <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line pt-3">
+        <button
+          type="button"
+          onClick={() => onAddMember(user)}
+          aria-label={`Add ${user.displayName} to the member directory`}
+          className="inline-flex h-8 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-navy-700 transition-colors hover:bg-gold-50 hover:text-gold-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500"
+        >
+          <UserPlus size={14} aria-hidden="true" />
+          Add to members
+        </button>
         <button
           type="button"
           onClick={() => onEdit(user)}
@@ -452,6 +864,7 @@ export default function AdminUsersPage() {
   const [page, setPage] = useState(1);
   const [pendingEdit, setPendingEdit] = useState<AdminUser | null>(null);
   const [pendingDelete, setPendingDelete] = useState<AdminUser | null>(null);
+  const [pendingAddMember, setPendingAddMember] = useState<AdminUser | null>(null);
 
   const { data, isError, isFetching, refetch } = useAdminUsers({
     page,
@@ -496,8 +909,9 @@ export default function AdminUsersPage() {
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
             Manage account roles and display names. Accounts are created through the public
-            signup flow; the system can never be left without an administrator, and every role
-            change is recorded in the audit log.
+            signup flow — use the member-plus action to add one to the public member directory.
+            The system can never be left without an administrator, and every role change is
+            recorded in the audit log.
           </p>
         </div>
       </header>
@@ -637,6 +1051,7 @@ export default function AdminUsersPage() {
                           isSelf={user.id === currentUser?.id}
                           onEdit={setPendingEdit}
                           onDelete={setPendingDelete}
+                          onAddMember={setPendingAddMember}
                         />
                       </tr>
                     ))}
@@ -653,6 +1068,7 @@ export default function AdminUsersPage() {
                     isSelf={user.id === currentUser?.id}
                     onEdit={setPendingEdit}
                     onDelete={setPendingDelete}
+                    onAddMember={setPendingAddMember}
                   />
                 ))}
               </ul>
@@ -697,6 +1113,14 @@ export default function AdminUsersPage() {
           user={pendingEdit}
           isSelf={pendingEdit.id === currentUser?.id}
           onClose={() => setPendingEdit(null)}
+        />
+      )}
+
+      {/* ---------- Add-to-members dialog (Task 27) ---------- */}
+      {pendingAddMember && (
+        <AddMemberDialog
+          user={pendingAddMember}
+          onClose={() => setPendingAddMember(null)}
         />
       )}
 

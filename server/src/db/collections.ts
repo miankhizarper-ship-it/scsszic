@@ -52,6 +52,9 @@ export interface UserDoc {
   role: "member" | "manage" | "admin";
   /** Google subject id (`sub`) for OAuth-created/linked accounts. */
   googleId?: string;
+  /** Google avatar URL — https-validated at capture time; refreshed on
+   *  every linked login. Absent on password accounts. */
+  picture?: string;
   /** Phase 10B — per-user CMS grants for the "manage" role. Optional in the
    *  document so pre-10B records stay valid without any migration; the
    *  repository mapping normalizes absence to []. */

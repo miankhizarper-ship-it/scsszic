@@ -741,6 +741,9 @@ export interface AuthUser {
   permissions: AdminPermission[];
   /** Phase 6 Member profile this account can claim, when linked. */
   memberProfileId?: string;
+  /** The account owner's Google avatar (https URL), when the account signs
+   *  in with Google and Google reports one. Shown on the account page only. */
+  picture?: string;
   /** Whether the email address is verified. Optional so responses from an
    *  older server (mid-deploy) stay type-safe; legacy accounts are true. */
   isVerified?: boolean;

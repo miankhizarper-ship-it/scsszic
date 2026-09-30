@@ -71,6 +71,11 @@ export interface AuthUser {
   /** Google account subject id (the stable `sub` claim) for accounts created
    *  or linked through "Continue with Google". Absent on password accounts. */
   googleId?: string;
+  /** Google account avatar URL — captured at OAuth time and refreshed on
+   *  every linked login. Only https URLs are ever stored (see googleOAuth);
+   *  shown back to the account owner on /account. Absent on password
+   *  accounts and when Google reports no avatar. */
+  picture?: string;
   /** Phase 6 Member (`data/members.ts`) this account can claim as its
    *  public community profile. Optional until accounts and member records
    *  are formally linked (Phase 8, MongoDB-backed). */
@@ -92,6 +97,9 @@ export interface PublicAuthUser {
   /** Whether the account's email address is verified. Legacy accounts
    *  (created before verification existed) are always true. */
   isVerified: boolean;
+  /** The account owner's Google avatar, when the account uses Google
+   *  sign-in and Google reports one — displayed only to the owner. */
+  picture?: string;
   memberProfileId?: string;
   createdAt: string;
 }
@@ -106,6 +114,7 @@ export function toPublicUser(user: AuthUser): PublicAuthUser {
     role: user.role,
     permissions: toAdminPermissions(user.permissions),
     isVerified: user.isVerified,
+    ...(user.picture ? { picture: user.picture } : {}),
     ...(user.memberProfileId ? { memberProfileId: user.memberProfileId } : {}),
     createdAt: user.createdAt,
   };

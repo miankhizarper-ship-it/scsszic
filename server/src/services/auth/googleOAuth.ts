@@ -28,6 +28,20 @@ import { logger } from "../../utils/logger.js";
 
 const REQUEST_TIMEOUT_MS = 10_000;
 
+/**
+ * Accept ONLY https avatar URLs, trimmed and length-capped. Google serves
+ * avatars from lh3.googleusercontent.com over https; anything else (http,
+ * protocol-relative, data:, garbage) is dropped — the UI then falls back
+ * to initials, so a malformed claim can never reach an <img src>.
+ */
+function googleAvatarUrl(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed.startsWith("https://")) return null;
+  if (trimmed.length > 500) return null;
+  return trimmed;
+}
+
 export interface GoogleProfile {
   /** Stable Google account id (the `sub` claim) — never shown publicly. */
   sub: string;
@@ -36,6 +50,10 @@ export interface GoogleProfile {
   emailVerified: boolean;
   /** Display name Google reports (may be empty). */
   name: string;
+  /** Google account avatar URL (the userinfo `picture` claim). Optional —
+   *  Google omits it for some accounts; only https URLs are accepted so a
+   *  non-https injection attempt can never become an <img src>. */
+  pictureUrl?: string;
 }
 
 type AuthUrlResult = { ok: true; url: string } | { ok: false; reason: "unconfigured" };
@@ -122,6 +140,7 @@ export async function fetchGoogleProfile(accessToken: string): Promise<ProfileRe
       email?: string;
       email_verified?: boolean;
       name?: string;
+      picture?: string;
     } | null;
 
     if (!data?.sub || !data.email) {
@@ -137,13 +156,17 @@ export async function fetchGoogleProfile(accessToken: string): Promise<ProfileRe
       };
     }
 
+    const name = typeof data.name === "string" ? data.name : "";
+    const pictureUrl = googleAvatarUrl(data.picture);
+
     return {
       ok: true,
       profile: {
         sub: data.sub,
         email: data.email.trim().toLowerCase(),
         emailVerified: true,
-        name: typeof data.name === "string" ? data.name : "",
+        name,
+        ...(pictureUrl ? { pictureUrl } : {}),
       },
     };
   } catch (error) {

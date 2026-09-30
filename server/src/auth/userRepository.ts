@@ -37,6 +37,8 @@ export interface CreateUserInput {
   memberProfileId?: string;
   /** Google subject id for OAuth-created accounts (never exposed publicly). */
   googleId?: string;
+  /** Google avatar URL (validated https-only upstream) for OAuth accounts. */
+  picture?: string;
   /** Email verification. Default true (legacy/demo accounts pre-date the
    *  flow); the signup controller passes false explicitly when the Brevo
    *  verification flow is enabled. */
@@ -57,6 +59,8 @@ export interface UserRepository {
   markEmailVerified(userId: string): Promise<void>;
   /** Drop a stale/expired pending token without verifying. */
   clearEmailVerification(userId: string): Promise<void>;
+  /** Store or replace the Google avatar URL captured at OAuth time. */
+  updateGooglePicture(userId: string, picture: string): Promise<void>;
 }
 
 /** A user + the expiry of their pending verification token (null = none). */
@@ -122,6 +126,7 @@ export class InMemoryUserRepository implements UserRepository {
       email,
       ...(input.passwordHash !== undefined ? { passwordHash: input.passwordHash } : {}),
       ...(input.googleId ? { googleId: input.googleId } : {}),
+      ...(input.picture ? { picture: input.picture } : {}),
       displayName: input.displayName.trim(),
       role: input.role ?? "member",
       permissions: toAdminPermissions(input.permissions),
@@ -166,6 +171,13 @@ export class InMemoryUserRepository implements UserRepository {
     const user = this.users.get(userId);
     if (!user) return;
     delete (user as AuthUser & { emailVerification?: unknown }).emailVerification;
+  }
+
+  async updateGooglePicture(userId: string, picture: string): Promise<void> {
+    const user = this.users.get(userId);
+    if (!user) return;
+    user.picture = picture;
+    user.updatedAt = new Date().toISOString();
   }
 }
 

@@ -177,6 +177,11 @@ export const getGoogleCallback: RequestHandler = async (req, res) => {
         await userRepository.markEmailVerified(existing.id);
         logger.info(`[oauth] linked login verified previously-unverified account ${existing.username}`);
       }
+      // Keep the stored avatar in step with what Google currently reports
+      // (people change their picture). https-validity was checked upstream.
+      if (profile.pictureUrl && profile.pictureUrl !== existing.picture) {
+        await userRepository.updateGooglePicture(existing.id, profile.pictureUrl);
+      }
       await startSessionFor(res, existing.id);
       logger.info(`[oauth] google login ok: ${existing.username}`);
       res.redirect(302, `${env.clientUrl.replace(/\/+$/, "")}/`);
@@ -190,6 +195,7 @@ export const getGoogleCallback: RequestHandler = async (req, res) => {
       email: profile.email,
       displayName: displayNameFor(profile),
       googleId: profile.sub,
+      ...(profile.pictureUrl ? { picture: profile.pictureUrl } : {}),
       isVerified: true,
     });
 
