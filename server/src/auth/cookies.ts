@@ -45,3 +45,39 @@ export function clearSessionCookie(res: Response): void {
     path: "/",
   });
 }
+
+/* ------------------------- Google OAuth state ------------------------- */
+
+/**
+ * CSRF protection for the OAuth dance: the "Continue with Google" handler
+ * issues a random state bound to THIS browser via an HTTP-only cookie; the
+ * callback refuses any code that does not arrive with the matching state.
+ * Lax same-site + short TTL (10 minutes) + host-scoped path — the cookie
+ * dies the moment the flow resolves either way.
+ */
+export const OAUTH_STATE_COOKIE_NAME = "scs_oauth_state";
+
+const OAUTH_STATE_MAX_AGE_MS = 10 * 60 * 1000;
+
+function oauthStateCookieOptions() {
+  return {
+    httpOnly: true,
+    secure: env.cookieSecure,
+    sameSite: "lax" as const,
+    path: "/",
+    maxAge: OAUTH_STATE_MAX_AGE_MS,
+  } as const;
+}
+
+export function setOAuthStateCookie(res: Response, state: string): void {
+  res.cookie(OAUTH_STATE_COOKIE_NAME, state, oauthStateCookieOptions());
+}
+
+export function clearOAuthStateCookie(res: Response): void {
+  res.clearCookie(OAUTH_STATE_COOKIE_NAME, {
+    httpOnly: true,
+    secure: env.cookieSecure,
+    sameSite: "lax",
+    path: "/",
+  });
+}

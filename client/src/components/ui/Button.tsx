@@ -96,7 +96,7 @@ export function Button({
 
   if (href !== undefined) {
     return (
-      <a className={classes} {...(rest as AnchorProps)}>
+      <a className={classes} href={href} {...(rest as AnchorProps)}>
         {children}
       </a>
     );

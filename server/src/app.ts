@@ -20,6 +20,10 @@ export function createApp(): express.Express {
   const app = express();
 
   app.disable("x-powered-by");
+  // Behind Vercel's proxy (and the dev Vite proxy): req.protocol/req.ip must
+  // reflect X-Forwarded-* so OAuth redirect URIs and rate-limit keys are
+  // derived from the real client-facing host, not the internal hop.
+  app.set("trust proxy", 1);
   app.use(cors({ origin: env.corsOrigin, credentials: true }));
   app.use(express.json({ limit: "1mb" }));
   // Required by the auth layer: req.cookies[SESSION_COOKIE_NAME]. Cookies are

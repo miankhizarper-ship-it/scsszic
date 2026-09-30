@@ -234,7 +234,7 @@ export default function ContactPage() {
                             id="contact-name"
                             type="text"
                             autoComplete="name"
-                            placeholder="e.g. Ahmad Shah"
+                            placeholder="Your full name"
                             aria-invalid={Boolean(errors.name)}
                             aria-describedby={errors.name ? "contact-name-error" : undefined}
                             className={AUTH_INPUT_CLASSES}

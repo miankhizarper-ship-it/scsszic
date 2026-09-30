@@ -74,6 +74,15 @@ const cookieSameSite = (process.env.COOKIE_SAME_SITE?.trim() || "lax") as "lax" 
 const brevoApiKey = process.env.BREVO_API_KEY?.trim() ?? "";
 const brevoSenderEmail = process.env.BREVO_SENDER_EMAIL?.trim() ?? "";
 
+/* --------------------------- Google OAuth --------------------------- */
+/* "Continue with Google" for login/signup. OPTIONAL by design: with either
+   credential missing the auth routes redirect back to the client with an
+   "oauth=unconfigured" notice and the password forms keep working. The
+   auth/token/userinfo endpoints are env-overridable so QA can point the
+   flow at a local mock Google (same seam pattern as BREVO_API_URL). */
+const googleClientId = process.env.GOOGLE_CLIENT_ID?.trim() ?? "";
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim() ?? "";
+
 export const env = {
   nodeEnv,
   isProduction,
@@ -105,6 +114,23 @@ export const env = {
   emailVerificationTtlMinutes: intOr(process.env.EMAIL_VERIFICATION_TTL_MINUTES, 15),
   /** Verification flow activates only when Brevo is fully configured. */
   emailVerificationEnabled: Boolean(brevoApiKey && brevoSenderEmail),
+  /** Where contact-form messages are delivered. Defaults to the Brevo
+   *  sender itself (the society inbox) so one address serves both roles. */
+  contactToEmail:
+    process.env.CONTACT_TO_EMAIL?.trim() || brevoSenderEmail || "scs@szic.edu.pk",
+
+  // --- Google OAuth (login / signup) ---
+  googleClientId,
+  googleClientSecret,
+  /** Explicit override for the registered callback URL; derived from the
+   *  request when unset (works on Vercel with trust-proxy and locally). */
+  googleRedirectUri: process.env.GOOGLE_REDIRECT_URI?.trim() || "",
+  googleAuthUrl: process.env.GOOGLE_AUTH_URL?.trim() || "https://accounts.google.com/o/oauth2/v2/auth",
+  googleTokenUrl: process.env.GOOGLE_TOKEN_URL?.trim() || "https://oauth2.googleapis.com/token",
+  googleUserInfoUrl:
+    process.env.GOOGLE_USERINFO_URL?.trim() || "https://www.googleapis.com/oauth2/v3/userinfo",
+  /** OAuth flow activates only when BOTH credentials are present. */
+  googleOAuthEnabled: Boolean(googleClientId && googleClientSecret),
 } as const;
 
 export type Env = typeof env;

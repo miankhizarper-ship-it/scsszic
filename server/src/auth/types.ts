@@ -54,8 +54,10 @@ export interface AuthUser {
   username: string;
   /** Lowercase-normalized, used for uniqueness + login lookup. */
   email: string;
-  /** bcrypt hash — NEVER returned by any API response. */
-  passwordHash: string;
+  /** bcrypt hash — NEVER returned by any API response. Google-OAuth-only
+   *  accounts have NO password: the field is absent and password login is
+   *  refused with the generic invalid-credentials answer. */
+  passwordHash?: string;
   displayName: string;
   role: AuthUserRole;
   /** Phase 10B — per-user CMS sections for the "manage" role. Admins bypass
@@ -66,6 +68,9 @@ export interface AuthUser {
    *  legacy accounts which the repository mapping treats as VERIFIED so the
    *  feature can ship without any migration. */
   isVerified: boolean;
+  /** Google account subject id (the stable `sub` claim) for accounts created
+   *  or linked through "Continue with Google". Absent on password accounts. */
+  googleId?: string;
   /** Phase 6 Member (`data/members.ts`) this account can claim as its
    *  public community profile. Optional until accounts and member records
    *  are formally linked (Phase 8, MongoDB-backed). */

@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 
 import { AuthField, AuthShell } from "@/components/auth/AuthShell";
 import { PasswordField } from "@/components/auth/PasswordField";
+import { GoogleIcon, googleOAuthUrl } from "@/components/auth/googleOAuth";
 import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/context/AuthProvider";
 import { getFieldErrors } from "@/services/authService";
@@ -17,6 +18,24 @@ interface LoginForm {
   identifier: string;
   password: string;
 }
+
+/**
+ * Human copy for the `?oauth=<reason>` codes the Google callback redirects
+ * back with (see server/src/controllers/googleAuth.controller.ts). Unknown
+ * or missing reasons render nothing — the notice only ever appears after a
+ * Google round-trip that did not finish.
+ */
+const OAUTH_NOTICES: Record<string, string> = {
+  unconfigured:
+    "Google sign-in isn't set up on the server yet — use your email and password for now.",
+  denied: "Google sign-in was cancelled. You can try again whenever you're ready.",
+  state: "That Google sign-in expired before it finished — start again below.",
+  exchange: "Google sign-in hit a temporary problem exchanging the login — please try again.",
+  profile: "Google sign-in hit a temporary problem reading your profile — please try again.",
+  email_unverified:
+    "Your Google account's email address isn't verified with Google yet — verify it with Google, then try again.",
+  busy: "Something went wrong finishing Google sign-in — please try again in a moment.",
+};
 
 /**
  * LoginPage — "Welcome back" (spec §20).
@@ -41,6 +60,8 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [formError, setFormError] = useState<string | null>(null);
+
+  const oauthNotice = OAUTH_NOTICES[searchParams.get("oauth") ?? ""] ?? null;
 
   const {
     register,
@@ -95,6 +116,12 @@ export default function LoginPage() {
         </>
       }
     >
+      {oauthNotice && (
+        <p role="status" className="rounded-lg border border-gold-500/40 bg-gold-500/10 px-3.5 py-2.5 text-xs font-medium text-ink">
+          {oauthNotice}
+        </p>
+      )}
+
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-5">
         <AuthField id="identifier" label="Email or username" error={errors.identifier?.message}>
           <input
@@ -129,6 +156,17 @@ export default function LoginPage() {
         <Button type="submit" variant="navy" disabled={isSubmitting} className="w-full justify-center">
           {isSubmitting ? "Signing in…" : "Sign in"}
           {!isSubmitting && <ArrowRight size={15} aria-hidden="true" />}
+        </Button>
+
+        <div className="flex items-center gap-3" aria-hidden="true">
+          <span className="h-px flex-1 bg-line" />
+          <span className="text-xs font-medium text-muted">or</span>
+          <span className="h-px flex-1 bg-line" />
+        </div>
+
+        <Button variant="outline" href={googleOAuthUrl()} className="w-full justify-center">
+          <GoogleIcon size={16} />
+          Continue with Google
         </Button>
       </form>
     </AuthShell>

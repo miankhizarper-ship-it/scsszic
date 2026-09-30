@@ -182,6 +182,16 @@ export async function postLogin(req: Request, res: Response): Promise<void> {
     return;
   }
 
+  // Google-OAuth-only accounts have NO password — the generic answer keeps
+  // passwordless accounts indistinguishable from a wrong-password attempt.
+  // (dummyVerify keeps the timing identical to the unknown-identifier path.)
+  if (!user.passwordHash) {
+    await dummyVerify(password);
+    logger.info(`[auth] login failed: passwordless account ${user.username} (use Google)`);
+    res.status(401).json({ message: "Invalid email/username or password." });
+    return;
+  }
+
   const passwordOk = await verifyPassword(password, user.passwordHash);
   if (!passwordOk) {
     logger.info(`[auth] login failed: bad password for ${user.username}`);

@@ -108,8 +108,11 @@ const IPV4_PATTERN = /\b(?:\d{1,3}\.){3}\d{1,3}\b/;
  * actionable handling for Brevo's Authorised-IPs rejection (its account-level
  * security feature silently blocks serverless callers whose outbound IP is
  * not on the allowlist, which is exactly what Vercel deployments hit).
+ *
+ * Exported so every Brevo-speaking mailer (verification, contact) surfaces
+ * ONE consistent, classified error vocabulary.
  */
-async function brevoErrorDetail(response: Response): Promise<string> {
+export async function brevoErrorDetail(response: Response): Promise<string> {
   const statusPart = `brevo_http_${response.status}`;
   try {
     const data = (await response.json()) as { message?: string; code?: string } | null;

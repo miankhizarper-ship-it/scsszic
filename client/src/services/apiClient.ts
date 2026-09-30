@@ -15,6 +15,14 @@
 
 const API_BASE: string = import.meta.env.VITE_API_BASE_URL ?? "/api";
 
+/**
+ * The exact origin+path prefix every API call uses. Exported for flows that
+ * must leave the SPA by full navigation — Google OAuth ("Continue with
+ * Google" links to `${API_BASE}/auth/google`) so the cookie ends up on the
+ * SAME origin the rest of the API already exchanges cookies with.
+ */
+export const API_BASE_URL = API_BASE;
+
 export class ApiError extends Error {
   readonly status: number;
   /** Field → message map from 400/409 responses (forms bind to this). */

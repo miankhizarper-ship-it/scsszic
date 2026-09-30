@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 
 import { AuthField, AuthShell } from "@/components/auth/AuthShell";
 import { PasswordField } from "@/components/auth/PasswordField";
+import { GoogleIcon, googleOAuthUrl } from "@/components/auth/googleOAuth";
 import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/context/AuthProvider";
 import { getFieldErrors } from "@/services/authService";
@@ -219,6 +220,17 @@ export default function SignupPage() {
         <Button type="submit" variant="navy" disabled={isSubmitting} className="w-full justify-center">
           {isSubmitting ? "Creating account…" : "Create account"}
           {!isSubmitting && <ArrowRight size={15} aria-hidden="true" />}
+        </Button>
+
+        <div className="flex items-center gap-3" aria-hidden="true">
+          <span className="h-px flex-1 bg-line" />
+          <span className="text-xs font-medium text-muted">or</span>
+          <span className="h-px flex-1 bg-line" />
+        </div>
+
+        <Button variant="outline" href={googleOAuthUrl()} className="w-full justify-center">
+          <GoogleIcon size={16} />
+          Continue with Google
         </Button>
       </form>
     </AuthShell>

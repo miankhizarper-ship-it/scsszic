@@ -45,10 +45,13 @@ export interface UserDoc {
   /** Already-lowercase (same as `email`), kept explicit for the unique index. */
   normalizedEmail: string;
   email: string;
-  /** bcrypt hash — server-only, never returned or logged. */
-  passwordHash: string;
+  /** bcrypt hash — server-only, never returned or logged. Absent on
+   *  Google-OAuth-only accounts (they have no password at all). */
+  passwordHash?: string;
   displayName: string;
   role: "member" | "manage" | "admin";
+  /** Google subject id (`sub`) for OAuth-created/linked accounts. */
+  googleId?: string;
   /** Phase 10B — per-user CMS grants for the "manage" role. Optional in the
    *  document so pre-10B records stay valid without any migration; the
    *  repository mapping normalizes absence to []. */

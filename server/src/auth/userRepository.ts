@@ -24,16 +24,19 @@ import { toAdminPermissions } from "./types.js";
  *  - ids are opaque strings (UUID today, ObjectId.toHexString in Phase 8)
  */
 
-/** Data needed to create a user — password arrives pre-hashed. */
+/** Data needed to create a user — password arrives pre-hashed. Google
+ *  OAuth accounts omit passwordHash entirely (no password exists). */
 export interface CreateUserInput {
   username: string;
   email: string;
-  passwordHash: string;
+  passwordHash?: string;
   displayName: string;
   role?: AuthUserRole;
   /** Phase 10B — optional per-user CMS grants (normalized/validated). */
   permissions?: AdminPermission[];
   memberProfileId?: string;
+  /** Google subject id for OAuth-created accounts (never exposed publicly). */
+  googleId?: string;
   /** Email verification. Default true (legacy/demo accounts pre-date the
    *  flow); the signup controller passes false explicitly when the Brevo
    *  verification flow is enabled. */
@@ -117,7 +120,8 @@ export class InMemoryUserRepository implements UserRepository {
       id: randomUUID(),
       username: input.username.trim(),
       email,
-      passwordHash: input.passwordHash,
+      ...(input.passwordHash !== undefined ? { passwordHash: input.passwordHash } : {}),
+      ...(input.googleId ? { googleId: input.googleId } : {}),
       displayName: input.displayName.trim(),
       role: input.role ?? "member",
       permissions: toAdminPermissions(input.permissions),
