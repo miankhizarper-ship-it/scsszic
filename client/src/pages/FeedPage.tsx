@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ArrowUpRight, PenLine, Rss, SearchX } from "lucide-react";
+import { PenLine, Rss, SearchX } from "lucide-react";
 
 import { Container } from "@/components/ui/Container";
 import { SearchInput } from "@/components/ui/SearchInput";
@@ -247,12 +247,6 @@ export default function FeedPage() {
         description="Project launches, contest results, internship offers, event recaps — the feed is written by members like you. Create an account to get ready for posting."
         primary={{ label: "Join the Community", to: "/signup" }}
         secondary={{ label: "Browse Projects", to: "/projects" }}
-        note={
-          <span className="inline-flex items-center gap-1.5">
-            <ArrowUpRight size={13} aria-hidden="true" />
-            Member posting arrives with the community platform phase.
-          </span>
-        }
       />
     </>
   );

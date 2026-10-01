@@ -14,7 +14,8 @@ import { ROUTES } from "@/routes/paths";
 /**
  * GalleryPreview — editorial mosaic of the latest society moments.
  * Flattened from the gallery API (newest albums first) via one server-side
- * listing request — the first five photos across the most recent albums.
+ * listing request — the first eight photos across the most recent albums;
+ * the mosaic grid wraps into extra rows as the archive grows.
  */
 export function GalleryPreview() {
   const albumsQuery = useAlbums();
@@ -24,7 +25,7 @@ export function GalleryPreview() {
     const items: GalleryGridItem[] = [];
     for (const album of albums) {
       for (const photo of album.photos) {
-        if (items.length >= 5) break;
+        if (items.length >= 8) break;
         items.push({
           id: photo.id,
           title: album.title,
@@ -33,7 +34,7 @@ export function GalleryPreview() {
           alt: photo.alt,
         });
       }
-      if (items.length >= 5) break;
+      if (items.length >= 8) break;
     }
     return items;
   }, [albums]);

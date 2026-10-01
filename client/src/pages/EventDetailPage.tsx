@@ -1,5 +1,5 @@
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, ArrowUpRight, CalendarDays, Lock, MapPin, SearchX, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, CalendarDays, Lock, MapPin, SearchX } from "lucide-react";
 
 import { Container } from "@/components/ui/Container";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -359,12 +359,6 @@ export default function EventDetailPage() {
         description="SCS events are built by members, for members. Join the community to suggest topics, volunteer at events, and never miss a session."
         primary={{ label: "Join the Community", to: ROUTES.signup }}
         secondary={{ label: "Explore All Events", to: ROUTES.events }}
-        note={
-          <span className="inline-flex items-center gap-1.5">
-            <Sparkles size={13} aria-hidden="true" />
-            Demo event content — real programming arrives with the platform's next phases.
-          </span>
-        }
       />
     </>
   );

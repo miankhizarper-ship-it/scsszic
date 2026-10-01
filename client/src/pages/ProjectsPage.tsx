@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { FolderGit2, SearchX, Users } from "lucide-react";
+import { SearchX } from "lucide-react";
 
 import { Container } from "@/components/ui/Container";
 import { PageHero } from "@/components/ui/PageHero";
@@ -200,13 +200,6 @@ export default function ProjectsPage() {
         description="Project teams form at workshops, hackathons, and study circles — no experience required, just a willingness to figure it out together. Bring your idea or adopt one."
         primary={{ label: "Join the Community", to: ROUTES.signup }}
         secondary={{ label: "See Upcoming Events", to: ROUTES.events }}
-        note={
-          <span className="inline-flex items-center gap-1.5">
-            <FolderGit2 size={13} aria-hidden="true" />
-            <Users size={13} aria-hidden="true" className="sr-only" />
-            Demo showcase — member submissions arrive with the community platform phase.
-          </span>
-        }
       />
     </>
   );

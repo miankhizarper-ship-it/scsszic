@@ -14,11 +14,12 @@ import type { TeamMember } from "@/types";
  * section reads as a distinct, technical beat — and the closing JoinCTA
  * navy-950 band stays the page's single dark finale (two adjacent navy
  * bands used to bleed together). Cards come from the admin-managed Team
- * CMS (group = "developers") and the section hides itself while loading,
- * on error, or when no published cards exist.
+ * CMS (group = "developers") — up to eight, with the responsive grid
+ * wrapping into extra rows as the crew grows — and the section hides
+ * itself while loading, on error, or when no published cards exist.
  */
 export function DevelopersSection() {
-  const teamQuery = useTeamGroup("developers", 4);
+  const teamQuery = useTeamGroup("developers", 8);
   const developers = teamQuery.data;
 
   if (teamQuery.isPending || teamQuery.isError || !developers || developers.length === 0) {

@@ -10,20 +10,23 @@ import { ROUTES } from "@/routes/paths";
 /**
  * ProjectsSection (Task 26) — the society's REAL work on the home page:
  * featured projects from the Projects showcase, falling back to the
- * newest entries when nothing is starred. Hides itself while loading and
- * when the showcase is empty — like the other data-driven home sections.
+ * newest entries when nothing is starred. The row scales with the
+ * showcase (up to six cards) and the responsive grid wraps into extra
+ * rows, so a growing portfolio stays a tidy grid — never one long strip.
+ * Hides itself while loading and when the showcase is empty — like the
+ * other data-driven home sections.
  */
 export function ProjectsSection() {
   const projectsQuery = useQuery({
     queryKey: ["projects", "homePreview"],
     queryFn: async () => {
-      const featured = await projectService.getFeaturedProjects(3);
-      if (featured.length >= 3) return featured;
+      const featured = await projectService.getFeaturedProjects(6);
+      if (featured.length >= 6) return featured;
       // Top the row up with the newest entries so the band never shows a
       // lone card while the showcase has more to offer.
       const latest = (await projectService.listProjects()).data;
       const seen = new Set(featured.map((project) => project.id));
-      return [...featured, ...latest.filter((project) => !seen.has(project.id))].slice(0, 3);
+      return [...featured, ...latest.filter((project) => !seen.has(project.id))].slice(0, 6);
     },
     staleTime: 60_000,
   });

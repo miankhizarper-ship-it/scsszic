@@ -1,5 +1,5 @@
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, ArrowRight, CalendarDays, Clock, RefreshCcw, SearchX } from "lucide-react";
+import { ArrowLeft, CalendarDays, Clock, RefreshCcw, SearchX } from "lucide-react";
 
 import { Container } from "@/components/ui/Container";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -225,12 +225,6 @@ export default function BlogDetailPage() {
         description="The best way to understand an article is to build what it describes. Join the Society of Computer Science to find teammates, mentors, and events that turn ideas into projects."
         primary={{ label: "Join the Community", to: ROUTES.signup }}
         secondary={{ label: "Explore All Articles", to: ROUTES.blogs }}
-        note={
-          <span className="inline-flex items-center gap-1.5">
-            <ArrowRight size={13} aria-hidden="true" />
-            Log in to join the conversation — every article has a comment thread.
-          </span>
-        }
       />
     </>
   );

@@ -8,12 +8,13 @@ import { ROUTES } from "@/routes/paths";
 
 /**
  * CommunityPreview — modern feed preview on Home.
- * Three newest published posts via the feed API (cross-references already
- * resolved server-side on each post); the full feed supports member/admin
- * publishing in a later phase.
+ * Six newest published posts via the feed API (cross-references already
+ * resolved server-side on each post); the responsive grid wraps into a
+ * second row as the community publishes more, so the preview never
+ * becomes a single cramped strip.
  */
 export function CommunityPreview() {
-  const postsQuery = useFeedPreview(3);
+  const postsQuery = useFeedPreview(6);
   const posts = postsQuery.data ?? [];
 
   return (

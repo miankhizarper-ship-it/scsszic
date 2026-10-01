@@ -13,10 +13,11 @@ import type { TeamMember } from "@/types";
  * same records the About page's leadership strip renders. The section
  * hides itself entirely while loading, on error, or when no published
  * cards exist: an empty CMS means "nothing to show", never an error box
- * or a bare heading on the home page.
+ * or a bare heading on the home page. Up to eight cards render and the
+ * responsive grid wraps into extra rows as the team grows.
  */
 export function LeadershipSection() {
-  const teamQuery = useTeamGroup("leaders", 4);
+  const teamQuery = useTeamGroup("leaders", 8);
   const leaders = teamQuery.data;
 
   if (teamQuery.isPending || teamQuery.isError || !leaders || leaders.length === 0) {

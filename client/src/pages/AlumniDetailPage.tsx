@@ -10,6 +10,7 @@ import { ProfileCard } from "@/components/media/ProfileCard";
 import { ProfileShell } from "@/components/profile/ProfileShell";
 import { CollectionLoading, ErrorState } from "@/components/ui/CollectionState";
 import { useAlumnus, useRelatedAlumni } from "@/hooks/content";
+import { useAuth } from "@/context/AuthProvider";
 import { ROUTES } from "@/routes/paths";
 import { usePageMetadata } from "@/lib/seo";
 
@@ -23,6 +24,7 @@ import { usePageMetadata } from "@/lib/seo";
  */
 export default function AlumniDetailPage() {
   const { slug } = useParams<{ slug: string }>();
+  const { user } = useAuth();
   const alumnusQuery = useAlumnus(slug);
   const person = alumnusQuery.data;
 
@@ -146,26 +148,28 @@ export default function AlumniDetailPage() {
               </dl>
             </Reveal>
 
-            {/* Network CTA */}
-            <Reveal
-              delay={0.1}
-              className="relative overflow-hidden rounded-xl border border-gold-500/40 bg-navy-950 p-6"
-            >
-              <div aria-hidden="true" className="absolute inset-0 bg-grid-dark mask-fade-radial" />
-              <div className="relative">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold-400">
-                  SCS Network
-                </p>
-                <p className="mt-2.5 text-sm leading-relaxed text-slate-300">
-                  Want to meet alumni like this? Join the society and take part in
-                  mentorship sessions, alumni talks, and portfolio reviews.
-                </p>
-                <Button to={ROUTES.signup} variant="gold" size="sm" className="mt-4">
-                  Join the Community
-                  <ArrowRight size={14} aria-hidden="true" />
-                </Button>
-              </div>
-            </Reveal>
+            {/* Network CTA — signup prompt for visitors who haven't joined. */}
+            {!user && (
+              <Reveal
+                delay={0.1}
+                className="relative overflow-hidden rounded-xl border border-gold-500/40 bg-navy-950 p-6"
+              >
+                <div aria-hidden="true" className="absolute inset-0 bg-grid-dark mask-fade-radial" />
+                <div className="relative">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold-400">
+                    SCS Network
+                  </p>
+                  <p className="mt-2.5 text-sm leading-relaxed text-slate-300">
+                    Want to meet alumni like this? Join the society and take part in
+                    mentorship sessions, alumni talks, and portfolio reviews.
+                  </p>
+                  <Button to={ROUTES.signup} variant="gold" size="sm" className="mt-4">
+                    Join the Community
+                    <ArrowRight size={14} aria-hidden="true" />
+                  </Button>
+                </div>
+              </Reveal>
+            )}
           </div>
         }
       >

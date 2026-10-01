@@ -7,12 +7,14 @@ import { useUpcomingEvents } from "@/hooks/content";
 import { ROUTES } from "@/routes/paths";
 
 /**
- * UpcomingEvents — three soonest live events via the events API.
- * The listing runs server-side (?status=upcoming,ongoing&limit=3);
- * loading/error states keep the Home page calm when the API is slow.
+ * UpcomingEvents — soonest live events via the events API.
+ * The listing runs server-side (?status=upcoming,ongoing&limit=6) and the
+ * responsive grid wraps into extra rows as the calendar fills up, so a busy
+ * semester never squeezes cards into a cramped single strip.
+ * Loading/error states keep the Home page calm when the API is slow.
  */
 export function UpcomingEvents() {
-  const eventsQuery = useUpcomingEvents(3);
+  const eventsQuery = useUpcomingEvents(6);
   const events = eventsQuery.data ?? [];
 
   return (

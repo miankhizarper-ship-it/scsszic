@@ -7,7 +7,6 @@ import {
   FolderGit2,
   Github,
   Globe,
-  RefreshCw,
   SearchX,
   Users,
   Wrench,
@@ -431,12 +430,6 @@ export default function ProjectDetailPage() {
         description="Project teams form at workshops, hackathons, and study circles — no experience required, just a willingness to figure it out together. Bring your idea or adopt one."
         primary={{ label: "Join the Community", to: ROUTES.signup }}
         secondary={{ label: "See Upcoming Events", to: ROUTES.events }}
-        note={
-          <span className="inline-flex items-center gap-1.5">
-            <RefreshCw size={13} aria-hidden="true" />
-            Demo project — real showcases arrive with member submissions.
-          </span>
-        }
       />
     </>
   );

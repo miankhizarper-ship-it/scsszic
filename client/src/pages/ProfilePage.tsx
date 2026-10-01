@@ -318,9 +318,12 @@ export default function ProfilePage() {
               Browse the directory
               <ChevronRight size={15} aria-hidden="true" />
             </Button>
-            <Button to={ROUTES.signup} variant="outline">
-              Join the community
-            </Button>
+            {/* Signup CTA is for visitors who haven't joined yet. */}
+            {!user && (
+              <Button to={ROUTES.signup} variant="outline">
+                Join the community
+              </Button>
+            )}
           </div>
         </Container>
       </section>

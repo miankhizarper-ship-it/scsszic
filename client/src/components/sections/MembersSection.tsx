@@ -8,12 +8,14 @@ import { ROUTES } from "@/routes/paths";
 /**
  * MembersSection — a spotlight of society members on the home page
  * (Phase 12). Reads the canonical member-directory order (featured
- * members first, newest batch, then name) capped to four cards, so
- * flagging a member as "featured" in the Members CMS surfaces them here
+ * members first, newest batch, then name) capped to eight cards, and the
+ * responsive grid wraps into extra rows as the directory grows, so a
+ * bigger spotlight stays a tidy grid instead of one long strip.
+ * Flagging a member as "featured" in the Members CMS surfaces them here
  * automatically. The section hides itself when the directory is empty.
  */
 export function MembersSection() {
-  const membersQuery = useMemberSpotlights(4);
+  const membersQuery = useMemberSpotlights(8);
   const members = membersQuery.data;
 
   if (membersQuery.isPending || membersQuery.isError || !members || members.length === 0) {
@@ -33,7 +35,7 @@ export function MembersSection() {
 
         <ul className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {members.map((member, index) => (
-            <Reveal key={member.id} delay={(index % 4) * 0.08} className="h-full">
+            <Reveal key={member.id} delay={(index % 4) * 0.06} className="h-full">
               <li className="h-full">
                 <MemberCard member={member} className="h-full" />
               </li>

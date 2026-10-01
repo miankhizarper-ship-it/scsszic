@@ -514,7 +514,7 @@ export default function AdminFeedFormPage() {
         </Section>
 
         {/* ---------- Media & metadata ---------- */}
-        <Section id="feed-media" title="Media & metadata" description="Optional artwork, publication timestamp, tags, and demo engagement counts.">
+        <Section id="feed-media" title="Media & metadata" description="Optional artwork, publication timestamp, tags, and seed engagement counts.">
           <div className="grid grid-cols-1 gap-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field id="feed-image" label="Image path/URL" error={errors.image?.message} hint="Path or URL — or upload a file.">
@@ -569,7 +569,7 @@ export default function AdminFeedFormPage() {
                   {...register("publishedAtLocal")}
                 />
               </Field>
-              <Field id="feed-likes" label="Likes" error={errors.likes?.message} hint="Display-only demo count.">
+              <Field id="feed-likes" label="Likes" error={errors.likes?.message} hint="Display-only seed count shown on the card.">
                 <input
                   id="feed-likes"
                   type="number"
@@ -579,7 +579,7 @@ export default function AdminFeedFormPage() {
                   {...register("likes")}
                 />
               </Field>
-              <Field id="feed-comments" label="Comments" error={errors.comments?.message} hint="Display-only demo count.">
+              <Field id="feed-comments" label="Comments" error={errors.comments?.message} hint="Display-only seed count shown on the card.">
                 <input
                   id="feed-comments"
                   type="number"

@@ -1,4 +1,4 @@
-import { ArrowRight, ShieldCheck } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { Container } from "@/components/ui/Container";
@@ -116,13 +116,7 @@ export function AuthShell({
           {footer && <div className="mt-7 text-center text-sm text-muted">{footer}</div>}
         </div>
 
-        <p className="mx-auto mt-6 flex max-w-md items-center justify-center gap-1.5 text-center text-[11px] leading-relaxed text-muted">
-          <ShieldCheck size={13} aria-hidden="true" className="shrink-0 text-navy-400" />
-          Sessions are protected with HTTP-only cookies — nothing sensitive is
-          ever stored in your browser.
-        </p>
-
-        <div className="mx-auto mt-4 max-w-md text-center">
+        <div className="mx-auto mt-6 max-w-md text-center">
           <Link
             to={ROUTES.home}
             className="inline-flex items-center gap-1 text-xs font-semibold text-muted transition-colors hover:text-navy-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500"

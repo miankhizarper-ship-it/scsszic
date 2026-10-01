@@ -3,6 +3,7 @@ import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { Reveal } from "@/components/ui/Reveal";
+import { useAuth } from "@/context/AuthProvider";
 import type { CtaAction } from "@/types";
 
 interface CTASectionProps {
@@ -19,6 +20,11 @@ interface CTASectionProps {
 /**
  * CTASection — reusable closing call-to-action band.
  * Deep navy surface, subtle grid + glow, restrained gold accents.
+ *
+ * The band speaks to visitors who haven't joined yet (signup CTAs), so it
+ * renders nothing for signed-in accounts — and stays out of the layout
+ * while the session probe is still in flight (no signup flash for members
+ * on hard reloads, matching the Navbar's calm boot behavior).
  */
 export function CTASection({
   eyebrow,
@@ -29,6 +35,9 @@ export function CTASection({
   note,
   id,
 }: CTASectionProps) {
+  const { user, status } = useAuth();
+  if (user || status === "loading") return null;
+
   return (
     <section aria-labelledby={id} className="relative overflow-hidden bg-navy-950">
       {/* Decorative layers */}
