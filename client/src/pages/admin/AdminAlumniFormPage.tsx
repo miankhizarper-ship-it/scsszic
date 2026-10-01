@@ -8,6 +8,11 @@ import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/CollectionState";
 import { UploadMediaButton } from "@/components/admin/UploadMediaButton";
 import {
+  AiAssistantProvider,
+  AiFillButton,
+  AiSourcePanel,
+} from "@/components/admin/AiAssistant";
+import {
   useAdminAlumnus,
   useCreateAlumnus,
   useUpdateAlumnus,
@@ -48,6 +53,7 @@ function Field({
   required,
   children,
   className,
+  ai,
 }: {
   id: string;
   label: string;
@@ -56,12 +62,15 @@ function Field({
   required?: boolean;
   children: React.ReactNode;
   className?: string;
+  /** Optional AI fill button rendered inside the label row (Task 28). */
+  ai?: React.ReactNode;
 }) {
   return (
     <div className={className}>
       <label htmlFor={id} className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted">
         {label}
         {required && <span aria-hidden="true" className="ml-0.5 text-error">*</span>}
+        {ai}
       </label>
       {children}
       {hint && !error && <p className="mt-1.5 text-xs text-muted">{hint}</p>}
@@ -111,6 +120,7 @@ export default function AdminAlumniFormPage() {
     handleSubmit,
     reset,
     setValue,
+    watch,
     control,
     setError,
     formState: { errors, isSubmitting },
@@ -206,6 +216,7 @@ export default function AdminAlumniFormPage() {
   const alumnus = alumnusQuery.data;
 
   return (
+    <AiAssistantProvider>
     <div className="mx-auto w-full max-w-3xl">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -233,6 +244,8 @@ export default function AdminAlumniFormPage() {
           </a>
         )}
       </div>
+
+      <AiSourcePanel className="mt-6" />
 
       <form onSubmit={onSubmit} noValidate className="mt-6 flex flex-col gap-5">
         {/* ---------- Basics ---------- */}
@@ -329,7 +342,22 @@ export default function AdminAlumniFormPage() {
               />
             </Field>
 
-            <Field id="alumni-achievement" label="Achievement summary" required error={errors.achievement?.message} hint="Short card description shown on the directory listing.">
+            <Field
+              id="alumni-achievement"
+              label="Achievement summary"
+              required
+              error={errors.achievement?.message}
+              hint="Short card description shown on the directory listing."
+              ai={
+                <AiFillButton
+                  kind="achievement"
+                  label="Achievement summary"
+                  context="alumni profile"
+                  title={watch("name")}
+                  apply={(result) => setValue("achievement", result.value ?? "", { shouldValidate: true })}
+                />
+              }
+            >
               <textarea
                 id="alumni-achievement"
                 rows={2}
@@ -344,7 +372,20 @@ export default function AdminAlumniFormPage() {
         {/* ---------- Profile detail ---------- */}
         <Section id="alumni-detail" title="Profile detail" description="The bio, skills, and career highlights shown on the profile page.">
           <div className="grid grid-cols-1 gap-4">
-            <Field id="alumni-bio" label="Bio" error={errors.bio?.message}>
+            <Field
+              id="alumni-bio"
+              label="Bio"
+              error={errors.bio?.message}
+              ai={
+                <AiFillButton
+                  kind="bio"
+                  label="Bio"
+                  context="alumni profile"
+                  title={watch("name")}
+                  apply={(result) => setValue("bio", result.value ?? "", { shouldValidate: true })}
+                />
+              }
+            >
               <textarea
                 id="alumni-bio"
                 rows={4}
@@ -354,7 +395,23 @@ export default function AdminAlumniFormPage() {
               />
             </Field>
 
-            <Field id="alumni-skills" label="Skills" error={errors.skills?.message} hint="Comma- or space-separated, e.g. TypeScript, Node.js, AWS">
+            <Field
+              id="alumni-skills"
+              label="Skills"
+              error={errors.skills?.message}
+              hint="Comma- or space-separated, e.g. TypeScript, Node.js, AWS"
+              ai={
+                <AiFillButton
+                  kind="skills"
+                  label="Skills"
+                  context="alumni profile"
+                  title={watch("name")}
+                  apply={(result) =>
+                    setValue("skills", (result.items ?? []).join(", "), { shouldValidate: true })
+                  }
+                />
+              }
+            >
               <input
                 id="alumni-skills"
                 type="text"
@@ -364,7 +421,23 @@ export default function AdminAlumniFormPage() {
               />
             </Field>
 
-            <Field id="alumni-highlights" label="Career highlights" error={errors.careerHighlights?.message} hint="One highlight per line.">
+            <Field
+              id="alumni-highlights"
+              label="Career highlights"
+              error={errors.careerHighlights?.message}
+              hint="One highlight per line."
+              ai={
+                <AiFillButton
+                  kind="highlights"
+                  label="Career highlights"
+                  context="alumni profile"
+                  title={watch("name")}
+                  apply={(result) =>
+                    setValue("careerHighlights", (result.items ?? []).join("\n"), { shouldValidate: true })
+                  }
+                />
+              }
+            >
               <textarea
                 id="alumni-highlights"
                 rows={3}
@@ -398,7 +471,20 @@ export default function AdminAlumniFormPage() {
                   />
                 </div>
               </Field>
-              <Field id="alumni-image-alt" label="Portrait alt text" error={errors.imageAlt?.message}>
+              <Field
+                id="alumni-image-alt"
+                label="Portrait alt text"
+                error={errors.imageAlt?.message}
+                ai={
+                  <AiFillButton
+                    kind="alt"
+                    label="Portrait alt text"
+                    context="alumni portrait"
+                    title={watch("name")}
+                    apply={(result) => setValue("imageAlt", result.value ?? "", { shouldValidate: true })}
+                  />
+                }
+              >
                 <input
                   id="alumni-image-alt"
                   type="text"
@@ -522,5 +608,6 @@ export default function AdminAlumniFormPage() {
         </p>
       )}
     </div>
+    </AiAssistantProvider>
   );
 }

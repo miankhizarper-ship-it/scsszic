@@ -55,6 +55,42 @@ export interface MediaUploadResult {
   size: number;
 }
 
+/** Which form field the AI assistant should generate (server-validated). */
+export type AiFieldKind =
+  | "title"
+  | "excerpt"
+  | "tagline"
+  | "achievement"
+  | "description"
+  | "content"
+  | "bio"
+  | "tags"
+  | "technologies"
+  | "skills"
+  | "interests"
+  | "highlights"
+  | "alt"
+  | "seoTitle"
+  | "seoDescription";
+
+/** Body of POST /api/admin/ai/field. */
+export interface AiFieldGenerateInput {
+  kind: AiFieldKind;
+  /** Raw material pasted into the AI panel — the model works only from this. */
+  source: string;
+  /** Optional page-level hint, e.g. "event" or "blog article". */
+  context?: string;
+  /** Optional existing title (improves excerpt/alt generation). */
+  title?: string;
+}
+
+/** Response payload — list kinds carry `items`, text kinds carry `value`. */
+export interface AiFieldGenerateResult {
+  kind: AiFieldKind;
+  value: string | null;
+  items: string[] | null;
+}
+
 /**
  * Admin service — the client's single boundary to /api/admin/* (Phase 9B/9C/9D).
  *
@@ -905,6 +941,20 @@ export const adminService = {
       `/admin/categories/${section}/${encodeURIComponent(id)}`,
       { method: "DELETE" },
     );
+    return response.data;
+  },
+
+  /**
+   * POST /api/admin/ai/field — AI field-fill assistant (Task 28). Generates
+   * ONE form field from the source material pasted into the AI panel. The
+   * Groq API key stays server-side; this call rides the normal admin session
+   * cookie. List kinds return `items`, text kinds return `value`.
+   */
+  async generateAiField(body: AiFieldGenerateInput): Promise<AiFieldGenerateResult> {
+    const response = await apiFetch<{ data: AiFieldGenerateResult }>("/admin/ai/field", {
+      method: "POST",
+      body,
+    });
     return response.data;
   },
 };

@@ -10,6 +10,11 @@ import { UploadMediaButton } from "@/components/admin/UploadMediaButton";
 import { TagsInput } from "@/components/admin/TagsInput";
 import { CategoryField } from "@/components/admin/CategoryField";
 import {
+  AiAssistantProvider,
+  AiFillButton,
+  AiSourcePanel,
+} from "@/components/admin/AiAssistant";
+import {
   useAdminProject,
   useCreateProject,
   useUpdateProject,
@@ -53,6 +58,7 @@ function Field({
   required,
   children,
   className,
+  ai,
 }: {
   id: string;
   label: string;
@@ -61,12 +67,15 @@ function Field({
   required?: boolean;
   children: React.ReactNode;
   className?: string;
+  /** Optional AI fill button rendered inside the label row (Task 28). */
+  ai?: React.ReactNode;
 }) {
   return (
     <div className={className}>
       <label htmlFor={id} className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted">
         {label}
         {required && <span aria-hidden="true" className="ml-0.5 text-error">*</span>}
+        {ai}
       </label>
       {children}
       {hint && !error && <p className="mt-1.5 text-xs text-muted">{hint}</p>}
@@ -125,6 +134,7 @@ export default function AdminProjectFormPage() {
     handleSubmit,
     reset,
     setValue,
+    watch,
     control,
     setError,
     formState: { errors, isSubmitting },
@@ -237,6 +247,7 @@ export default function AdminProjectFormPage() {
   const isPublic = project ? project.status !== "archived" : true;
 
   return (
+    <AiAssistantProvider>
     <div className="mx-auto w-full max-w-3xl">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -270,11 +281,26 @@ export default function AdminProjectFormPage() {
         )}
       </div>
 
+      <AiSourcePanel className="mt-6" />
+
       <form onSubmit={onSubmit} noValidate className="mt-6 flex flex-col gap-5">
         {/* ---------- Basics ---------- */}
         <Section id="project-basics" title="Basics" description="The project's identity, pitch, and showcase state.">
           <div className="grid grid-cols-1 gap-4">
-            <Field id="project-title" label="Title" required error={errors.title?.message}>
+            <Field
+              id="project-title"
+              label="Title"
+              required
+              error={errors.title?.message}
+              ai={
+                <AiFillButton
+                  kind="title"
+                  label="Title"
+                  context="project"
+                  apply={(result) => setValue("title", result.value ?? "", { shouldValidate: true })}
+                />
+              }
+            >
               <input
                 id="project-title"
                 type="text"
@@ -291,7 +317,22 @@ export default function AdminProjectFormPage() {
               variant. Nothing to fill in.
             </p>
 
-            <Field id="project-tagline" label="Tagline" required error={errors.tagline?.message} hint="One-line pitch shown under the title.">
+            <Field
+              id="project-tagline"
+              label="Tagline"
+              required
+              error={errors.tagline?.message}
+              hint="One-line pitch shown under the title."
+              ai={
+                <AiFillButton
+                  kind="tagline"
+                  label="Tagline"
+                  context="project"
+                  title={watch("title")}
+                  apply={(result) => setValue("tagline", result.value ?? "", { shouldValidate: true })}
+                />
+              }
+            >
               <textarea
                 id="project-tagline"
                 rows={2}
@@ -301,7 +342,22 @@ export default function AdminProjectFormPage() {
               />
             </Field>
 
-            <Field id="project-description" label="Description" required error={errors.description?.message} hint="Long-form overview — paragraphs separated by blank lines.">
+            <Field
+              id="project-description"
+              label="Description"
+              required
+              error={errors.description?.message}
+              hint="Long-form overview — paragraphs separated by blank lines."
+              ai={
+                <AiFillButton
+                  kind="description"
+                  label="Description"
+                  context="project"
+                  title={watch("title")}
+                  apply={(result) => setValue("description", result.value ?? "", { shouldValidate: true })}
+                />
+              }
+            >
               <textarea
                 id="project-description"
                 rows={6}
@@ -461,7 +517,21 @@ export default function AdminProjectFormPage() {
                   />
                 </div>
               </Field>
-              <Field id="project-cover-alt" label="Cover image alt text" required error={errors.coverImageAlt?.message}>
+              <Field
+                id="project-cover-alt"
+                label="Cover image alt text"
+                required
+                error={errors.coverImageAlt?.message}
+                ai={
+                  <AiFillButton
+                    kind="alt"
+                    label="Cover image alt text"
+                    context="project cover image"
+                    title={watch("title")}
+                    apply={(result) => setValue("coverImageAlt", result.value ?? "", { shouldValidate: true })}
+                  />
+                }
+              >
                 <input
                   id="project-cover-alt"
                   type="text"
@@ -472,7 +542,24 @@ export default function AdminProjectFormPage() {
               </Field>
             </div>
 
-            <Field id="project-technologies" label="Technologies" required error={errors.technologies?.message} hint="Comma- or space-separated, e.g. React, TypeScript, Node.js">
+            <Field
+              id="project-technologies"
+              label="Technologies"
+              required
+              error={errors.technologies?.message}
+              hint="Comma- or space-separated, e.g. React, TypeScript, Node.js"
+              ai={
+                <AiFillButton
+                  kind="technologies"
+                  label="Technologies"
+                  context="project"
+                  title={watch("title")}
+                  apply={(result) =>
+                    setValue("technologies", (result.items ?? []).join(", "), { shouldValidate: true })
+                  }
+                />
+              }
+            >
               <input
                 id="project-technologies"
                 type="text"
@@ -482,7 +569,20 @@ export default function AdminProjectFormPage() {
               />
             </Field>
 
-            <Field id="project-tags" label="Tags" error={errors.tags?.message}>
+            <Field
+              id="project-tags"
+              label="Tags"
+              error={errors.tags?.message}
+              ai={
+                <AiFillButton
+                  kind="tags"
+                  label="Tags"
+                  context="project"
+                  title={watch("title")}
+                  apply={(result) => setValue("tags", result.items ?? [], { shouldValidate: true })}
+                />
+              }
+            >
               <TagsInput
                 id="project-tags"
                 tags={tagsValue ?? []}
@@ -539,5 +639,6 @@ export default function AdminProjectFormPage() {
         </p>
       )}
     </div>
+    </AiAssistantProvider>
   );
 }

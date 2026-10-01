@@ -8,6 +8,11 @@ import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/CollectionState";
 import { UploadMediaButton } from "@/components/admin/UploadMediaButton";
 import {
+  AiAssistantProvider,
+  AiFillButton,
+  AiSourcePanel,
+} from "@/components/admin/AiAssistant";
+import {
   useAdminMember,
   useCreateMember,
   useUpdateMember,
@@ -51,6 +56,7 @@ function Field({
   required,
   children,
   className,
+  ai,
 }: {
   id: string;
   label: string;
@@ -59,12 +65,15 @@ function Field({
   required?: boolean;
   children: React.ReactNode;
   className?: string;
+  /** Optional AI fill button rendered inside the label row (Task 28). */
+  ai?: React.ReactNode;
 }) {
   return (
     <div className={className}>
       <label htmlFor={id} className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted">
         {label}
         {required && <span aria-hidden="true" className="ml-0.5 text-error">*</span>}
+        {ai}
       </label>
       {children}
       {hint && !error && <p className="mt-1.5 text-xs text-muted">{hint}</p>}
@@ -114,6 +123,7 @@ export default function AdminMemberFormPage() {
     handleSubmit,
     reset,
     setValue,
+    watch,
     control,
     setError,
     formState: { errors, isSubmitting },
@@ -252,6 +262,7 @@ export default function AdminMemberFormPage() {
   const isPublic = member ? member.status !== "archived" : true;
 
   return (
+    <AiAssistantProvider>
     <div className="mx-auto w-full max-w-3xl">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -284,6 +295,8 @@ export default function AdminMemberFormPage() {
           </span>
         )}
       </div>
+
+      <AiSourcePanel className="mt-6" />
 
       <form onSubmit={onSubmit} noValidate className="mt-6 flex flex-col gap-5">
         {/* ---------- Basics ---------- */}
@@ -419,7 +432,21 @@ export default function AdminMemberFormPage() {
         {/* ---------- Profile detail ---------- */}
         <Section id="member-detail" title="Profile detail" description="The bio, skills, and interests shown on the profile page.">
           <div className="grid grid-cols-1 gap-4">
-            <Field id="member-bio" label="Bio" required error={errors.bio?.message}>
+            <Field
+              id="member-bio"
+              label="Bio"
+              required
+              error={errors.bio?.message}
+              ai={
+                <AiFillButton
+                  kind="bio"
+                  label="Bio"
+                  context="member profile"
+                  title={watch("name")}
+                  apply={(result) => setValue("bio", result.value ?? "", { shouldValidate: true })}
+                />
+              }
+            >
               <textarea
                 id="member-bio"
                 rows={4}
@@ -450,7 +477,23 @@ export default function AdminMemberFormPage() {
               </Field>
             </div>
 
-            <Field id="member-skills" label="Skills" error={errors.skills?.message} hint="Comma- or space-separated, e.g. React, TypeScript">
+            <Field
+              id="member-skills"
+              label="Skills"
+              error={errors.skills?.message}
+              hint="Comma- or space-separated, e.g. React, TypeScript"
+              ai={
+                <AiFillButton
+                  kind="skills"
+                  label="Skills"
+                  context="member profile"
+                  title={watch("name")}
+                  apply={(result) =>
+                    setValue("skills", (result.items ?? []).join(", "), { shouldValidate: true })
+                  }
+                />
+              }
+            >
               <input
                 id="member-skills"
                 type="text"
@@ -460,7 +503,23 @@ export default function AdminMemberFormPage() {
               />
             </Field>
 
-            <Field id="member-interests" label="Interests" error={errors.interests?.message} hint="Comma- or space-separated, e.g. EdTech, Mentoring">
+            <Field
+              id="member-interests"
+              label="Interests"
+              error={errors.interests?.message}
+              hint="Comma- or space-separated, e.g. EdTech, Mentoring"
+              ai={
+                <AiFillButton
+                  kind="interests"
+                  label="Interests"
+                  context="member profile"
+                  title={watch("name")}
+                  apply={(result) =>
+                    setValue("interests", (result.items ?? []).join(", "), { shouldValidate: true })
+                  }
+                />
+              }
+            >
               <input
                 id="member-interests"
                 type="text"
@@ -494,7 +553,20 @@ export default function AdminMemberFormPage() {
                   />
                 </div>
               </Field>
-              <Field id="member-avatar-alt" label="Avatar alt text" error={errors.avatarAlt?.message}>
+              <Field
+                id="member-avatar-alt"
+                label="Avatar alt text"
+                error={errors.avatarAlt?.message}
+                ai={
+                  <AiFillButton
+                    kind="alt"
+                    label="Avatar alt text"
+                    context="member avatar"
+                    title={watch("name")}
+                    apply={(result) => setValue("avatarAlt", result.value ?? "", { shouldValidate: true })}
+                  />
+                }
+              >
                 <input
                   id="member-avatar-alt"
                   type="text"
@@ -562,5 +634,6 @@ export default function AdminMemberFormPage() {
         </p>
       )}
     </div>
+    </AiAssistantProvider>
   );
 }

@@ -83,6 +83,16 @@ const brevoSenderEmail = process.env.BREVO_SENDER_EMAIL?.trim() ?? "";
 const googleClientId = process.env.GOOGLE_CLIENT_ID?.trim() ?? "";
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim() ?? "";
 
+/* --------------------------- AI assistant (Groq) --------------------------- */
+/* Field-fill assistant for the admin panel (Task 28). OPTIONAL by design,
+   exactly like Brevo/Google: with no GROQ_API_KEY the endpoint answers 503
+   "unconfigured" and the rest of the platform keeps working. The API key is
+   server-side ONLY — it never ships to the browser; the client talks to our
+   own /api/admin/ai endpoint with its normal session cookie. GROQ_API_URL is
+   the same QA seam pattern as BREVO_API_URL: point it at a local mock to
+   test the full path without spending tokens. */
+const groqApiKey = process.env.GROQ_API_KEY?.trim() ?? "";
+
 export const env = {
   nodeEnv,
   isProduction,
@@ -131,6 +141,20 @@ export const env = {
     process.env.GOOGLE_USERINFO_URL?.trim() || "https://www.googleapis.com/oauth2/v3/userinfo",
   /** OAuth flow activates only when BOTH credentials are present. */
   googleOAuthEnabled: Boolean(googleClientId && googleClientSecret),
+
+  // --- Admin AI assistant (Groq) ---
+  groqApiKey,
+  /** Default model: fast, high-quality general purpose chat on Groq's free tier. */
+  groqModel: process.env.GROQ_MODEL?.trim() || "llama-3.3-70b-versatile",
+  /** API base override — QA can point the assistant at a local mock Groq. */
+  groqApiUrl: process.env.GROQ_API_URL?.trim() || "https://api.groq.com/openai/v1",
+  /** AI field generation activates only when the API key is present. */
+  aiFieldEnabled: Boolean(groqApiKey),
+  /** Per-user sliding-window rate limit (soft guard for the shared key). */
+  aiFieldRateLimitMax: intOr(process.env.AI_FIELD_RATE_LIMIT_MAX, 20),
+  aiFieldRateWindowSeconds: intOr(process.env.AI_FIELD_RATE_WINDOW_SECONDS, 300),
+  /** Upstream call budget — must stay under Vercel's function timeout. */
+  aiFieldTimeoutMs: intOr(process.env.AI_FIELD_TIMEOUT_MS, 20_000),
 } as const;
 
 export type Env = typeof env;

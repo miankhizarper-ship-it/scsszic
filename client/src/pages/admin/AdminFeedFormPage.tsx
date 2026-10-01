@@ -9,6 +9,11 @@ import { ErrorState } from "@/components/ui/CollectionState";
 import { UploadMediaButton } from "@/components/admin/UploadMediaButton";
 import { TagsInput } from "@/components/admin/TagsInput";
 import {
+  AiAssistantProvider,
+  AiFillButton,
+  AiSourcePanel,
+} from "@/components/admin/AiAssistant";
+import {
   useAdminFeedPost,
   useCreateFeedPost,
   useUpdateFeedPost,
@@ -59,6 +64,7 @@ function Field({
   required,
   children,
   className,
+  ai,
 }: {
   id: string;
   label: string;
@@ -67,12 +73,15 @@ function Field({
   required?: boolean;
   children: React.ReactNode;
   className?: string;
+  /** Optional AI fill button rendered inside the label row (Task 28). */
+  ai?: React.ReactNode;
 }) {
   return (
     <div className={className}>
       <label htmlFor={id} className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted">
         {label}
         {required && <span aria-hidden="true" className="ml-0.5 text-error">*</span>}
+        {ai}
       </label>
       {children}
       {hint && !error && <p className="mt-1.5 text-xs text-muted">{hint}</p>}
@@ -133,6 +142,7 @@ export default function AdminFeedFormPage() {
     handleSubmit,
     reset,
     setValue,
+    watch,
     control,
     setError,
     formState: { errors, isSubmitting },
@@ -230,6 +240,7 @@ export default function AdminFeedFormPage() {
   const post = postQuery.data;
 
   return (
+    <AiAssistantProvider>
     <div className="mx-auto w-full max-w-3xl">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -246,6 +257,8 @@ export default function AdminFeedFormPage() {
           </p>
         </div>
       </div>
+
+      <AiSourcePanel className="mt-6" />
 
       <form onSubmit={onSubmit} noValidate className="mt-6 flex flex-col gap-5">
         {/* ---------- Basics ---------- */}
@@ -283,7 +296,20 @@ export default function AdminFeedFormPage() {
               </Field>
             </div>
 
-            <Field id="feed-title" label="Title" required error={errors.title?.message}>
+            <Field
+              id="feed-title"
+              label="Title"
+              required
+              error={errors.title?.message}
+              ai={
+                <AiFillButton
+                  kind="title"
+                  label="Title"
+                  context="feed post"
+                  apply={(result) => setValue("title", result.value ?? "", { shouldValidate: true })}
+                />
+              }
+            >
               <input
                 id="feed-title"
                 type="text"
@@ -300,7 +326,22 @@ export default function AdminFeedFormPage() {
               variant. Nothing to fill in.
             </p>
 
-            <Field id="feed-excerpt" label="Excerpt" required error={errors.excerpt?.message} hint="Short card description shown on the feed.">
+            <Field
+              id="feed-excerpt"
+              label="Excerpt"
+              required
+              error={errors.excerpt?.message}
+              hint="Short card description shown on the feed."
+              ai={
+                <AiFillButton
+                  kind="excerpt"
+                  label="Excerpt"
+                  context="feed post"
+                  title={watch("title")}
+                  apply={(result) => setValue("excerpt", result.value ?? "", { shouldValidate: true })}
+                />
+              }
+            >
               <textarea
                 id="feed-excerpt"
                 rows={2}
@@ -310,7 +351,21 @@ export default function AdminFeedFormPage() {
               />
             </Field>
 
-            <Field id="feed-content" label="Content" error={errors.content?.message} hint="Full post body — paragraphs separated by blank lines.">
+            <Field
+              id="feed-content"
+              label="Content"
+              error={errors.content?.message}
+              hint="Full post body — paragraphs separated by blank lines."
+              ai={
+                <AiFillButton
+                  kind="content"
+                  label="Content"
+                  context="feed post"
+                  title={watch("title")}
+                  apply={(result) => setValue("content", result.value ?? "", { shouldValidate: true })}
+                />
+              }
+            >
               <textarea
                 id="feed-content"
                 rows={6}
@@ -480,7 +535,20 @@ export default function AdminFeedFormPage() {
                   />
                 </div>
               </Field>
-              <Field id="feed-image-alt" label="Image alt text" error={errors.imageAlt?.message}>
+              <Field
+                id="feed-image-alt"
+                label="Image alt text"
+                error={errors.imageAlt?.message}
+                ai={
+                  <AiFillButton
+                    kind="alt"
+                    label="Image alt text"
+                    context="feed post image"
+                    title={watch("title")}
+                    apply={(result) => setValue("imageAlt", result.value ?? "", { shouldValidate: true })}
+                  />
+                }
+              >
                 <input
                   id="feed-image-alt"
                   type="text"
@@ -523,7 +591,20 @@ export default function AdminFeedFormPage() {
               </Field>
             </div>
 
-            <Field id="feed-tags" label="Tags" error={errors.tags?.message}>
+            <Field
+              id="feed-tags"
+              label="Tags"
+              error={errors.tags?.message}
+              ai={
+                <AiFillButton
+                  kind="tags"
+                  label="Tags"
+                  context="feed post"
+                  title={watch("title")}
+                  apply={(result) => setValue("tags", result.items ?? [], { shouldValidate: true })}
+                />
+              }
+            >
               <TagsInput
                 id="feed-tags"
                 tags={tagsValue ?? []}
@@ -559,5 +640,6 @@ export default function AdminFeedFormPage() {
         </p>
       )}
     </div>
+    </AiAssistantProvider>
   );
 }

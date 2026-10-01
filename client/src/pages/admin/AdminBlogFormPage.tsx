@@ -8,6 +8,11 @@ import { ContentBlockEditor } from "@/components/admin/ContentBlockEditor";
 import { UploadMediaButton } from "@/components/admin/UploadMediaButton";
 import { TagsInput } from "@/components/admin/TagsInput";
 import { CategoryField } from "@/components/admin/CategoryField";
+import {
+  AiAssistantProvider,
+  AiFillButton,
+  AiSourcePanel,
+} from "@/components/admin/AiAssistant";
 import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/CollectionState";
 import { useAdminBlogs, useAdminBlog, useCreateBlog, useUpdateBlog } from "@/hooks/admin";
@@ -50,6 +55,7 @@ function Field({
   required,
   children,
   className,
+  ai,
 }: {
   id: string;
   label: string;
@@ -58,12 +64,15 @@ function Field({
   required?: boolean;
   children: React.ReactNode;
   className?: string;
+  /** Optional AI fill button rendered inside the label row (Task 28). */
+  ai?: React.ReactNode;
 }) {
   return (
     <div className={className}>
       <label htmlFor={id} className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted">
         {label}
         {required && <span aria-hidden="true" className="ml-0.5 text-error">*</span>}
+        {ai}
       </label>
       {children}
       {hint && !error && <p className="mt-1.5 text-xs text-muted">{hint}</p>}
@@ -195,7 +204,19 @@ function AuthorFields({ control, register, errors, setValue }: {
             {...register("authorAvatar")}
           />
         </Field>
-        <Field id="blog-author-bio" label="Author bio" error={errors.authorBio?.message}>
+        <Field
+          id="blog-author-bio"
+          label="Author bio"
+          error={errors.authorBio?.message}
+          ai={
+            <AiFillButton
+              kind="bio"
+              label="Author bio"
+              context="blog author snapshot"
+              apply={(result) => setValue("authorBio", result.value ?? "", { shouldValidate: true })}
+            />
+          }
+        >
           <input
             id="blog-author-bio"
             type="text"
@@ -224,6 +245,7 @@ export default function AdminBlogFormPage() {
     handleSubmit,
     reset,
     setValue,
+    watch,
     control,
     setError,
     formState: { errors, isSubmitting },
@@ -322,6 +344,7 @@ export default function AdminBlogFormPage() {
   const blog = blogQuery.data;
 
   return (
+    <AiAssistantProvider>
     <div className="mx-auto w-full max-w-3xl">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -355,11 +378,26 @@ export default function AdminBlogFormPage() {
         )}
       </div>
 
+      <AiSourcePanel className="mt-6" />
+
       <form onSubmit={onSubmit} noValidate className="mt-6 flex flex-col gap-5">
         {/* ---------- Basics ---------- */}
         <Section id="basics" title="Basics" description="The article's identity, category, and publication state.">
           <div className="grid grid-cols-1 gap-4">
-            <Field id="blog-title" label="Title" required error={errors.title?.message}>
+            <Field
+              id="blog-title"
+              label="Title"
+              required
+              error={errors.title?.message}
+              ai={
+                <AiFillButton
+                  kind="title"
+                  label="Title"
+                  context="blog article"
+                  apply={(result) => setValue("title", result.value ?? "", { shouldValidate: true })}
+                />
+              }
+            >
               <input
                 id="blog-title"
                 type="text"
@@ -376,7 +414,22 @@ export default function AdminBlogFormPage() {
               variant. Nothing to fill in.
             </p>
 
-            <Field id="blog-excerpt" label="Excerpt" required error={errors.excerpt?.message} hint="Short card description shown on listings.">
+            <Field
+              id="blog-excerpt"
+              label="Excerpt"
+              required
+              error={errors.excerpt?.message}
+              hint="Short card description shown on listings."
+              ai={
+                <AiFillButton
+                  kind="excerpt"
+                  label="Excerpt"
+                  context="blog article"
+                  title={watch("title")}
+                  apply={(result) => setValue("excerpt", result.value ?? "", { shouldValidate: true })}
+                />
+              }
+            >
               <textarea
                 id="blog-excerpt"
                 rows={2}
@@ -485,7 +538,21 @@ export default function AdminBlogFormPage() {
                   />
                 </div>
               </Field>
-              <Field id="blog-cover-alt" label="Cover image alt text" required error={errors.coverImageAlt?.message}>
+              <Field
+                id="blog-cover-alt"
+                label="Cover image alt text"
+                required
+                error={errors.coverImageAlt?.message}
+                ai={
+                  <AiFillButton
+                    kind="alt"
+                    label="Cover image alt text"
+                    context="blog cover image"
+                    title={watch("title")}
+                    apply={(result) => setValue("coverImageAlt", result.value ?? "", { shouldValidate: true })}
+                  />
+                }
+              >
                 <input
                   id="blog-cover-alt"
                   type="text"
@@ -496,7 +563,20 @@ export default function AdminBlogFormPage() {
               </Field>
             </div>
 
-            <Field id="blog-tags" label="Tags" error={errors.tags?.message}>
+            <Field
+              id="blog-tags"
+              label="Tags"
+              error={errors.tags?.message}
+              ai={
+                <AiFillButton
+                  kind="tags"
+                  label="Tags"
+                  context="blog article"
+                  title={watch("title")}
+                  apply={(result) => setValue("tags", result.items ?? [], { shouldValidate: true })}
+                />
+              }
+            >
               <TagsInput
                 id="blog-tags"
                 tags={tagsValue ?? []}
@@ -506,7 +586,20 @@ export default function AdminBlogFormPage() {
             </Field>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field id="blog-seo-title" label="SEO title" error={errors.seoTitle?.message}>
+              <Field
+                id="blog-seo-title"
+                label="SEO title"
+                error={errors.seoTitle?.message}
+                ai={
+                  <AiFillButton
+                    kind="seoTitle"
+                    label="SEO title"
+                    context="blog article"
+                    title={watch("title")}
+                    apply={(result) => setValue("seoTitle", result.value ?? "", { shouldValidate: true })}
+                  />
+                }
+              >
                 <input
                   id="blog-seo-title"
                   type="text"
@@ -515,7 +608,20 @@ export default function AdminBlogFormPage() {
                   {...register("seoTitle")}
                 />
               </Field>
-              <Field id="blog-seo-description" label="SEO description" error={errors.seoDescription?.message}>
+              <Field
+                id="blog-seo-description"
+                label="SEO description"
+                error={errors.seoDescription?.message}
+                ai={
+                  <AiFillButton
+                    kind="seoDescription"
+                    label="SEO description"
+                    context="blog article"
+                    title={watch("title")}
+                    apply={(result) => setValue("seoDescription", result.value ?? "", { shouldValidate: true })}
+                  />
+                }
+              >
                 <input
                   id="blog-seo-description"
                   type="text"
@@ -553,5 +659,6 @@ export default function AdminBlogFormPage() {
         </p>
       )}
     </div>
+    </AiAssistantProvider>
   );
 }

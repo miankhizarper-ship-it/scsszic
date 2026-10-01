@@ -8,6 +8,11 @@ import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/CollectionState";
 import { UploadMediaButton } from "@/components/admin/UploadMediaButton";
 import {
+  AiAssistantProvider,
+  AiFillButton,
+  AiSourcePanel,
+} from "@/components/admin/AiAssistant";
+import {
   useAdminTeamCard,
   useCreateTeamCard,
   useUpdateTeamCard,
@@ -86,6 +91,7 @@ function Field({
   required,
   children,
   className,
+  ai,
 }: {
   id: string;
   label: string;
@@ -94,12 +100,15 @@ function Field({
   required?: boolean;
   children: React.ReactNode;
   className?: string;
+  /** Optional AI fill button rendered inside the label row (Task 28). */
+  ai?: React.ReactNode;
 }) {
   return (
     <div className={className}>
       <label htmlFor={id} className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted">
         {label}
         {required && <span aria-hidden="true" className="ml-0.5 text-error">*</span>}
+        {ai}
       </label>
       {children}
       {hint && !error && <p className="mt-1.5 text-xs text-muted">{hint}</p>}
@@ -154,6 +163,7 @@ export default function AdminTeamFormPage() {
     handleSubmit,
     reset,
     setValue,
+    watch,
     control,
     setError,
     formState: { errors, isSubmitting },
@@ -284,6 +294,7 @@ export default function AdminTeamFormPage() {
   const card = cardQuery.data;
 
   return (
+    <AiAssistantProvider>
     <div className="mx-auto w-full max-w-3xl">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -308,6 +319,8 @@ export default function AdminTeamFormPage() {
           </p>
         </div>
       </div>
+
+      <AiSourcePanel className="mt-6" />
 
       <form onSubmit={onSubmit} noValidate className="mt-6 flex flex-col gap-5">
         {/* ---------- Basics ---------- */}
@@ -389,6 +402,15 @@ export default function AdminTeamFormPage() {
               label="Short description"
               error={errors.description?.message}
               hint="One or two lines shown under the name on the card."
+              ai={
+                <AiFillButton
+                  kind="excerpt"
+                  label="Short description"
+                  context="team card"
+                  title={watch("name")}
+                  apply={(result) => setValue("description", result.value ?? "", { shouldValidate: true })}
+                />
+              }
             >
               <textarea
                 id="team-description"
@@ -423,7 +445,20 @@ export default function AdminTeamFormPage() {
                   />
                 </div>
               </Field>
-              <Field id="team-image-alt" label="Portrait alt text" error={errors.imageAlt?.message}>
+              <Field
+                id="team-image-alt"
+                label="Portrait alt text"
+                error={errors.imageAlt?.message}
+                ai={
+                  <AiFillButton
+                    kind="alt"
+                    label="Portrait alt text"
+                    context="team card portrait"
+                    title={watch("name")}
+                    apply={(result) => setValue("imageAlt", result.value ?? "", { shouldValidate: true })}
+                  />
+                }
+              >
                 <input
                   id="team-image-alt"
                   type="text"
@@ -580,5 +615,6 @@ export default function AdminTeamFormPage() {
         </p>
       )}
     </div>
+    </AiAssistantProvider>
   );
 }

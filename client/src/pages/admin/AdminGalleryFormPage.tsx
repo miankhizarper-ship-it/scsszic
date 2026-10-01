@@ -10,6 +10,11 @@ import { UploadMediaButton, UploadMediaFilesButton } from "@/components/admin/Up
 import { TagsInput } from "@/components/admin/TagsInput";
 import { CategoryField } from "@/components/admin/CategoryField";
 import {
+  AiAssistantProvider,
+  AiFillButton,
+  AiSourcePanel,
+} from "@/components/admin/AiAssistant";
+import {
   useAdminAlbum,
   useCreateAlbum,
   useUpdateAlbum,
@@ -58,6 +63,7 @@ function Field({
   required,
   children,
   className,
+  ai,
 }: {
   id: string;
   label: string;
@@ -66,12 +72,15 @@ function Field({
   required?: boolean;
   children: React.ReactNode;
   className?: string;
+  /** Optional AI fill button rendered inside the label row (Task 28). */
+  ai?: React.ReactNode;
 }) {
   return (
     <div className={className}>
       <label htmlFor={id} className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted">
         {label}
         {required && <span aria-hidden="true" className="ml-0.5 text-error">*</span>}
+        {ai}
       </label>
       {children}
       {hint && !error && <p className="mt-1.5 text-xs text-muted">{hint}</p>}
@@ -156,6 +165,7 @@ export default function AdminGalleryFormPage() {
     handleSubmit,
     reset,
     setValue,
+    watch,
     control,
     setError,
     formState: { errors, isSubmitting },
@@ -263,6 +273,7 @@ export default function AdminGalleryFormPage() {
   const isPublic = album ? album.status === "published" : true;
 
   return (
+    <AiAssistantProvider>
     <div className="mx-auto w-full max-w-3xl">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -296,11 +307,26 @@ export default function AdminGalleryFormPage() {
         )}
       </div>
 
+      <AiSourcePanel className="mt-6" />
+
       <form onSubmit={onSubmit} noValidate className="mt-6 flex flex-col gap-5">
         {/* ---------- Basics ---------- */}
         <Section id="album-basics" title="Basics" description="The album's identity, story, and publication state.">
           <div className="grid grid-cols-1 gap-4">
-            <Field id="album-title" label="Title" required error={errors.title?.message}>
+            <Field
+              id="album-title"
+              label="Title"
+              required
+              error={errors.title?.message}
+              ai={
+                <AiFillButton
+                  kind="title"
+                  label="Title"
+                  context="gallery album"
+                  apply={(result) => setValue("title", result.value ?? "", { shouldValidate: true })}
+                />
+              }
+            >
               <input
                 id="album-title"
                 type="text"
@@ -321,7 +347,22 @@ export default function AdminGalleryFormPage() {
               </div>
             </Field>
 
-            <Field id="album-description" label="Description" required error={errors.description?.message} hint="The album's story — shown on the public album page.">
+            <Field
+              id="album-description"
+              label="Description"
+              required
+              error={errors.description?.message}
+              hint="The album's story — shown on the public album page."
+              ai={
+                <AiFillButton
+                  kind="description"
+                  label="Description"
+                  context="gallery album"
+                  title={watch("title")}
+                  apply={(result) => setValue("description", result.value ?? "", { shouldValidate: true })}
+                />
+              }
+            >
               <textarea
                 id="album-description"
                 rows={4}
@@ -398,7 +439,20 @@ export default function AdminGalleryFormPage() {
             </Field>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field id="album-tags" label="Tags" error={errors.tags?.message}>
+              <Field
+                id="album-tags"
+                label="Tags"
+                error={errors.tags?.message}
+                ai={
+                  <AiFillButton
+                    kind="tags"
+                    label="Tags"
+                    context="gallery album"
+                    title={watch("title")}
+                    apply={(result) => setValue("tags", result.items ?? [], { shouldValidate: true })}
+                  />
+                }
+              >
                 <TagsInput
                   id="album-tags"
                   tags={tagsValue ?? []}
@@ -631,5 +685,6 @@ export default function AdminGalleryFormPage() {
         </p>
       )}
     </div>
+    </AiAssistantProvider>
   );
 }

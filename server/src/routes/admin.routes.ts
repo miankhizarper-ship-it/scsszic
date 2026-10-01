@@ -99,6 +99,7 @@ import {
   renameAdminCategory,
 } from "../controllers/admin/adminCategories.controller.js";
 import { getAdminSlugCheck } from "../controllers/admin/adminSlug.controller.js";
+import { generateAdminAiField } from "../controllers/admin/adminAi.controller.js";
 import { isSlugCheckSection } from "../repositories/content/slugAvailabilityRepository.js";
 import { uploadSingleFile } from "../services/storage/multipart.js";
 
@@ -230,6 +231,12 @@ adminRouter.use("/admin/audit", requireAdminSection);
 // an administrator responsibility, exactly like Users/Audit/Uploads.
 adminRouter.use("/admin/settings", requireAdminSection);
 
+// AI field-fill assistant (Task 28) — any panel user (admin, or a manage
+// user with any grant) may generate text for the CMS forms they can reach.
+// The endpoint only produces text (writes nothing); GROQ_API_KEY gates it
+// server-side and the controller rate-limits per user.
+adminRouter.use("/admin/ai", requirePanelAccess);
+
 // CMS sections — permission-gated (admin always; manage per-user grants).
 adminRouter.use("/admin/events", requireAdminOrPermission("events"));
 adminRouter.use("/admin/blogs", requireAdminOrPermission("blogs"));
@@ -350,6 +357,10 @@ adminRouter.get("/admin/audit", listAdminAudit);
 // editor submits the FULL link list (the settings doc is one small record).
 adminRouter.get("/admin/settings", getAdminSettings);
 adminRouter.put("/admin/settings", updateAdminSettings);
+
+// AI field-fill assistant (Task 28) — guarded by requirePanelAccess above.
+// One endpoint: kind (which field) + source (pasted material) → text/items.
+adminRouter.post("/admin/ai/field", generateAdminAiField);
 
 // Category vocabulary (Phase 10C) — guarded per section above. The section
 // enum is re-validated inside the controller for defense in depth.

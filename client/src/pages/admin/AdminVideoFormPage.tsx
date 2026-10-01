@@ -10,6 +10,11 @@ import { UploadMediaButton } from "@/components/admin/UploadMediaButton";
 import { TagsInput } from "@/components/admin/TagsInput";
 import { CategoryField } from "@/components/admin/CategoryField";
 import {
+  AiAssistantProvider,
+  AiFillButton,
+  AiSourcePanel,
+} from "@/components/admin/AiAssistant";
+import {
   useAdminVideo,
   useCreateVideo,
   useUpdateVideo,
@@ -58,6 +63,7 @@ function Field({
   required,
   children,
   className,
+  ai,
 }: {
   id: string;
   label: string;
@@ -66,12 +72,15 @@ function Field({
   required?: boolean;
   children: React.ReactNode;
   className?: string;
+  /** Optional AI fill button rendered inside the label row (Task 28). */
+  ai?: React.ReactNode;
 }) {
   return (
     <div className={className}>
       <label htmlFor={id} className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted">
         {label}
         {required && <span aria-hidden="true" className="ml-0.5 text-error">*</span>}
+        {ai}
       </label>
       {children}
       {hint && !error && <p className="mt-1.5 text-xs text-muted">{hint}</p>}
@@ -125,6 +134,7 @@ export default function AdminVideoFormPage() {
     handleSubmit,
     reset,
     setValue,
+    watch,
     control,
     setError,
     formState: { errors, isSubmitting },
@@ -223,6 +233,7 @@ export default function AdminVideoFormPage() {
   const isPublic = video ? video.status === "published" : true;
 
   return (
+    <AiAssistantProvider>
     <div className="mx-auto w-full max-w-3xl">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -256,11 +267,26 @@ export default function AdminVideoFormPage() {
         )}
       </div>
 
+      <AiSourcePanel className="mt-6" />
+
       <form onSubmit={onSubmit} noValidate className="mt-6 flex flex-col gap-5">
         {/* ---------- Basics ---------- */}
         <Section id="video-basics" title="Basics" description="The video's identity, blurb, and publication state.">
           <div className="grid grid-cols-1 gap-4">
-            <Field id="video-title" label="Title" required error={errors.title?.message}>
+            <Field
+              id="video-title"
+              label="Title"
+              required
+              error={errors.title?.message}
+              ai={
+                <AiFillButton
+                  kind="title"
+                  label="Title"
+                  context="watch video"
+                  apply={(result) => setValue("title", result.value ?? "", { shouldValidate: true })}
+                />
+              }
+            >
               <input
                 id="video-title"
                 type="text"
@@ -277,7 +303,22 @@ export default function AdminVideoFormPage() {
               variant. Nothing to fill in.
             </p>
 
-            <Field id="video-excerpt" label="Excerpt" required error={errors.excerpt?.message} hint="Short card description shown on the Watch grid.">
+            <Field
+              id="video-excerpt"
+              label="Excerpt"
+              required
+              error={errors.excerpt?.message}
+              hint="Short card description shown on the Watch grid."
+              ai={
+                <AiFillButton
+                  kind="excerpt"
+                  label="Excerpt"
+                  context="watch video"
+                  title={watch("title")}
+                  apply={(result) => setValue("excerpt", result.value ?? "", { shouldValidate: true })}
+                />
+              }
+            >
               <textarea
                 id="video-excerpt"
                 rows={2}
@@ -287,7 +328,22 @@ export default function AdminVideoFormPage() {
               />
             </Field>
 
-            <Field id="video-description" label="Description" required error={errors.description?.message} hint="Long-form overview — paragraphs separated by blank lines.">
+            <Field
+              id="video-description"
+              label="Description"
+              required
+              error={errors.description?.message}
+              hint="Long-form overview — paragraphs separated by blank lines."
+              ai={
+                <AiFillButton
+                  kind="description"
+                  label="Description"
+                  context="watch video"
+                  title={watch("title")}
+                  apply={(result) => setValue("description", result.value ?? "", { shouldValidate: true })}
+                />
+              }
+            >
               <textarea
                 id="video-description"
                 rows={5}
@@ -374,7 +430,20 @@ export default function AdminVideoFormPage() {
                   {...register("duration")}
                 />
               </Field>
-              <Field id="video-tags" label="Tags" error={errors.tags?.message}>
+              <Field
+                id="video-tags"
+                label="Tags"
+                error={errors.tags?.message}
+                ai={
+                  <AiFillButton
+                    kind="tags"
+                    label="Tags"
+                    context="watch video"
+                    title={watch("title")}
+                    apply={(result) => setValue("tags", result.items ?? [], { shouldValidate: true })}
+                  />
+                }
+              >
                 <TagsInput
                   id="video-tags"
                   tags={tagsValue ?? []}
@@ -424,7 +493,21 @@ export default function AdminVideoFormPage() {
                   />
                 </div>
               </Field>
-              <Field id="video-thumbnail-alt" label="Thumbnail alt text" required error={errors.thumbnailAlt?.message}>
+              <Field
+                id="video-thumbnail-alt"
+                label="Thumbnail alt text"
+                required
+                error={errors.thumbnailAlt?.message}
+                ai={
+                  <AiFillButton
+                    kind="alt"
+                    label="Thumbnail alt text"
+                    context="video thumbnail"
+                    title={watch("title")}
+                    apply={(result) => setValue("thumbnailAlt", result.value ?? "", { shouldValidate: true })}
+                  />
+                }
+              >
                 <input
                   id="video-thumbnail-alt"
                   type="text"
@@ -501,5 +584,6 @@ export default function AdminVideoFormPage() {
         </p>
       )}
     </div>
+    </AiAssistantProvider>
   );
 }

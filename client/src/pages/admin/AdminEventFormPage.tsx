@@ -10,6 +10,11 @@ import { UploadMediaButton } from "@/components/admin/UploadMediaButton";
 import { TagsInput } from "@/components/admin/TagsInput";
 import { EventGalleryEditor } from "@/components/admin/EventGalleryEditor";
 import { CategoryField } from "@/components/admin/CategoryField";
+import {
+  AiAssistantProvider,
+  AiFillButton,
+  AiSourcePanel,
+} from "@/components/admin/AiAssistant";
 import { useAdminEvent, useCreateEvent, useUpdateEvent } from "@/hooks/admin";
 import { eventFormSchema, type EventFormValues } from "@/lib/adminEventForm";
 import { ApiError } from "@/services/apiClient";
@@ -41,6 +46,7 @@ function Field({
   required,
   children,
   className,
+  ai,
 }: {
   id: string;
   label: string;
@@ -49,12 +55,15 @@ function Field({
   required?: boolean;
   children: React.ReactNode;
   className?: string;
+  /** Optional AI fill button rendered inside the label row (Task 28). */
+  ai?: React.ReactNode;
 }) {
   return (
     <div className={className}>
       <label htmlFor={id} className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted">
         {label}
         {required && <span aria-hidden="true" className="ml-0.5 text-error">*</span>}
+        {ai}
       </label>
       {children}
       {hint && !error && <p className="mt-1.5 text-xs text-muted">{hint}</p>}
@@ -323,6 +332,7 @@ export default function AdminEventFormPage() {
   const event = eventQuery.data;
 
   return (
+    <AiAssistantProvider>
     <div className="mx-auto w-full max-w-3xl">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -351,11 +361,26 @@ export default function AdminEventFormPage() {
         )}
       </div>
 
+      <AiSourcePanel className="mt-6" />
+
       <form onSubmit={onSubmit} noValidate className="mt-6 flex flex-col gap-5">
         {/* ---------- Basics ---------- */}
         <Section id="basics" title="Basics" description="The event's identity and lifecycle.">
           <div className="grid grid-cols-1 gap-4">
-            <Field id="event-title" label="Title" required error={errors.title?.message}>
+            <Field
+              id="event-title"
+              label="Title"
+              required
+              error={errors.title?.message}
+              ai={
+                <AiFillButton
+                  kind="title"
+                  label="Title"
+                  context="event"
+                  apply={(result) => setValue("title", result.value ?? "", { shouldValidate: true })}
+                />
+              }
+            >
               <input
                 id="event-title"
                 type="text"
@@ -477,7 +502,22 @@ export default function AdminEventFormPage() {
         {/* ---------- Content & media ---------- */}
         <Section id="content" title="Content & media" description="What appears on the public detail page.">
           <div className="grid grid-cols-1 gap-4">
-            <Field id="event-excerpt" label="Excerpt" required error={errors.excerpt?.message} hint="Short card description shown on listings.">
+            <Field
+              id="event-excerpt"
+              label="Excerpt"
+              required
+              error={errors.excerpt?.message}
+              hint="Short card description shown on listings."
+              ai={
+                <AiFillButton
+                  kind="excerpt"
+                  label="Excerpt"
+                  context="event"
+                  title={watch("title")}
+                  apply={(result) => setValue("excerpt", result.value ?? "", { shouldValidate: true })}
+                />
+              }
+            >
               <textarea
                 id="event-excerpt"
                 rows={2}
@@ -488,7 +528,21 @@ export default function AdminEventFormPage() {
               />
             </Field>
 
-            <Field id="event-description" label="Description" required error={errors.description?.message}>
+            <Field
+              id="event-description"
+              label="Description"
+              required
+              error={errors.description?.message}
+              ai={
+                <AiFillButton
+                  kind="description"
+                  label="Description"
+                  context="event"
+                  title={watch("title")}
+                  apply={(result) => setValue("description", result.value ?? "", { shouldValidate: true })}
+                />
+              }
+            >
               <textarea
                 id="event-description"
                 rows={8}
@@ -519,7 +573,21 @@ export default function AdminEventFormPage() {
                   />
                 </div>
               </Field>
-              <Field id="event-cover-alt" label="Cover image alt text" required error={errors.coverImageAlt?.message}>
+              <Field
+                id="event-cover-alt"
+                label="Cover image alt text"
+                required
+                error={errors.coverImageAlt?.message}
+                ai={
+                  <AiFillButton
+                    kind="alt"
+                    label="Cover image alt text"
+                    context="event cover image"
+                    title={watch("title")}
+                    apply={(result) => setValue("coverImageAlt", result.value ?? "", { shouldValidate: true })}
+                  />
+                }
+              >
                 <input
                   id="event-cover-alt"
                   type="text"
@@ -535,6 +603,15 @@ export default function AdminEventFormPage() {
               id="event-tags"
               label="Tags"
               error={errors.tags?.message}
+              ai={
+                <AiFillButton
+                  kind="tags"
+                  label="Tags"
+                  context="event"
+                  title={watch("title")}
+                  apply={(result) => setValue("tags", result.items ?? [], { shouldValidate: true })}
+                />
+              }
             >
               <TagsInput
                 id="event-tags"
@@ -802,5 +879,6 @@ export default function AdminEventFormPage() {
         </p>
       )}
     </div>
+    </AiAssistantProvider>
   );
 }
