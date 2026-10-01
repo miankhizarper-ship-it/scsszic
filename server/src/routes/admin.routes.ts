@@ -34,6 +34,7 @@ import {
   createAdminMember,
   deleteAdminMember,
   getAdminMember,
+  listAdminMemberCandidates,
   listAdminMembers,
   updateAdminMember,
   updateAdminMemberStatus,
@@ -303,6 +304,9 @@ adminRouter.patch("/admin/alumni/:id", updateAdminAlumnus);
 adminRouter.delete("/admin/alumni/:id", deleteAdminAlumnus);
 
 adminRouter.get("/admin/members", listAdminMembers);
+// Task 29 — candidates BEFORE /:id (Express matches in registration order;
+// the static path must win over the parameterized one).
+adminRouter.get("/admin/members/candidates", listAdminMemberCandidates);
 adminRouter.get("/admin/members/:id", getAdminMember);
 adminRouter.post("/admin/members", createAdminMember);
 adminRouter.patch("/admin/members/:id", updateAdminMember);

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ArrowUpRight, Rss, SearchX } from "lucide-react";
+import { ArrowUpRight, PenLine, Rss, SearchX } from "lucide-react";
 
 import { Container } from "@/components/ui/Container";
 import { SearchInput } from "@/components/ui/SearchInput";
@@ -17,6 +17,7 @@ import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { hasActiveFilters } from "@/lib/feedSearch";
 import { CTASection } from "@/components/sections/CTASection";
 import { buildPageTitle, usePageMetadata } from "@/lib/seo";
+import { ROUTES } from "@/routes/paths";
 
 /**
  * Community feed filter options — derived from the API's facet block
@@ -38,8 +39,9 @@ const TYPE_LABELS: Record<(typeof FEED_TYPES)[number], string> = {
  *
  * Server-side search + type + tag filtering (the API owns the query — the
  * page only sends parameters and renders results). Cross-references arrive
- * pre-resolved on each post, so cards never issue per-card lookups. Real
- * posting/reactions arrive with member publishing in a later phase.
+ * pre-resolved on each post, so cards never issue per-card lookups. Since
+ * Task 29, society members share posts via /member/feed/new and every
+ * signed-in account can like + comment.
  */
 export default function FeedPage() {
   usePageMetadata({
@@ -129,8 +131,20 @@ export default function FeedPage() {
           </p>
           <p className="mx-auto mt-7 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-xs font-medium text-slate-200">
             <Rss size={13} aria-hidden="true" className="text-gold-400" />
-            Newest first · curated by the core team for now
+            {user?.role === "member"
+              ? "You post as your public member profile"
+              : "Members share posts · everyone can like and comment"}
           </p>
+          {/* Task 29 — society members post from here; the copy reflects the
+              real role split (members publish, every account engages). */}
+          {user?.role === "member" && (
+            <div className="mx-auto mt-6 flex justify-center">
+              <Button to={ROUTES.member.feedNew} variant="gold">
+                <PenLine size={15} aria-hidden="true" className="mr-1.5" />
+                Share a post
+              </Button>
+            </div>
+          )}
         </Container>
       </section>
 

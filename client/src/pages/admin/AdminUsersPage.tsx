@@ -47,7 +47,16 @@ import type { AdminPermission, AdminUser, AdminUserSort, Member } from "@/types"
 
 const PAGE_SIZE = 10;
 
-const ROLE_OPTIONS = ["member", "manage", "admin"] as const;
+/**
+ * Task 29 — roles an admin may assign by hand. "member" is NOT here: it's
+ * earned through the member-linkage flow (Users → "Add to members", or the
+ * member form's account picker), which also stamps members.userId. Demote
+ * a member by deleting their member record, or by assigning "user" here.
+ */
+const ROLE_OPTIONS = ["user", "manage", "admin"] as const;
+
+/** Every role that can appear in the table — includes the derived "member". */
+const ROLE_FILTERS = ["user", "member", "manage", "admin"] as const;
 
 const SORT_OPTIONS: Array<{ value: AdminUserSort; label: string }> = [
   { value: "created_desc", label: "Newest accounts first" },
@@ -59,11 +68,15 @@ const SORT_OPTIONS: Array<{ value: AdminUserSort; label: string }> = [
 ];
 
 function formatRole(role: string): string {
-  return role.charAt(0).toUpperCase() + role.slice(1);
+  if (role === "member") return "Society member";
+  if (role === "manage") return "Content manager";
+  if (role === "admin") return "Administrator";
+  return "User";
 }
 
 function roleChipStyle(role: string): { variant: BadgeVariant; className?: string } {
   if (role === "admin") return { variant: "goldSoft" };
+  if (role === "member") return { variant: "solidGold" };
   if (role === "manage") return { variant: "navySoft" };
   return { variant: "navySoft", className: "border-line bg-surface text-muted" };
 }
@@ -190,7 +203,9 @@ function UserEditDialog({
         id: user.id,
         body: {
           displayName: displayName.trim(),
-          role,
+          // Task 29 — linked members get their role from the record; the
+          // server refuses role edits on them, so the key is omitted.
+          ...(user.role === "member" ? {} : { role }),
           permissions: role === "manage" ? permissions : [],
         },
       },
@@ -268,14 +283,27 @@ function UserEditDialog({
               id="admin-user-edit-role"
               value={role}
               onChange={(changeEvent) => setRole(changeEvent.target.value as AdminUser["role"])}
-              className="h-11 w-full rounded-lg border border-line bg-white px-3 text-sm text-ink shadow-sm transition-colors focus:outline-2 focus:outline-offset-1 focus:outline-gold-500"
+              disabled={user.role === "member"}
+              className="h-11 w-full rounded-lg border border-line bg-white px-3 text-sm text-ink shadow-sm transition-colors focus:outline-2 focus:outline-offset-1 focus:outline-gold-500 disabled:cursor-not-allowed disabled:bg-surface disabled:text-muted"
             >
               {ROLE_OPTIONS.map((option) => (
                 <option key={option} value={option}>
                   {formatRole(option)}
                 </option>
               ))}
+              {user.role === "member" && (
+                /* Task 29 — linked members read their role from the member
+                 * record linkage; it's shown here but not assignable (only
+                 * the "Add to members" flow grants it). */
+                <option value="member">Society member (via member record)</option>
+              )}
             </select>
+            {user.role === "member" && (
+              <p className="mt-1.5 text-xs leading-relaxed text-muted" role="note">
+                The role comes from the linked member record — remove the record in the Members
+                section to change this account's role.
+              </p>
+            )}
             {isSelf && user.role === "admin" && role !== "admin" && (
               <p className="mt-1.5 text-xs leading-relaxed text-error" role="note">
                 You are stepping down from administration. This is rejected while you are the
@@ -425,6 +453,9 @@ function AddMemberDialog({ user, onClose }: { user: AdminUser; onClose: () => vo
     const trimmedHandle = handle.trim();
     createMember.mutate(
       {
+        // Task 29 — the linkage is the whole point: this record is created
+        // FROM the account, which grants it the society-member role.
+        userId: user.id,
         name: name.trim(),
         initials: initialsFromName(name) || name.trim().charAt(0).toUpperCase(),
         ...(trimmedHandle ? { username: trimmedHandle } : {}),
@@ -524,7 +555,8 @@ function AddMemberDialog({ user, onClose }: { user: AdminUser; onClose: () => vo
             <p id="admin-add-member-description" className="mt-1.5 text-sm leading-relaxed text-muted">
               Create a public member-directory record for{" "}
               <span className="font-semibold text-navy-900">@{user.username}</span> ({user.email}).
-              The account itself is unchanged.
+              The account becomes a society member — they can share feed posts and edit their
+              public profile from their account.
             </p>
 
             <div className="mt-5 flex flex-col gap-4">
@@ -561,8 +593,9 @@ function AddMemberDialog({ user, onClose }: { user: AdminUser; onClose: () => vo
                   className="h-11 w-full rounded-lg border border-line bg-white px-3 font-mono text-sm text-ink shadow-sm transition-colors focus:outline-2 focus:outline-offset-1 focus:outline-gold-500"
                 />
                 <p className="mt-1.5 text-xs leading-relaxed text-muted">
-                  When it matches the account's handle, the account page links to the public
-                  profile. Lowercase letters, numbers, and hyphens only.
+                  The record's handle — derived from the account when left empty, so the public
+                  profile lives at <span className="font-mono">/profile/…</span> using the account's
+                  handle. Lowercase letters, numbers, and hyphens only.
                 </p>
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -747,15 +780,17 @@ function UserRowActions({ user, isSelf, onEdit, onDelete, onAddMember }: UserRow
   return (
     <td className="px-4 py-3.5">
       <div className="flex flex-wrap items-center justify-end gap-1.5">
-        <button
-          type="button"
-          onClick={() => onAddMember(user)}
-          aria-label={`Add ${user.displayName} to the member directory`}
-          title="Add to members"
-          className="grid size-8 place-items-center rounded-lg text-navy-700 transition-colors hover:bg-gold-50 hover:text-gold-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500"
-        >
-          <UserPlus size={15} aria-hidden="true" />
-        </button>
+        {user.role !== "member" && (
+          <button
+            type="button"
+            onClick={() => onAddMember(user)}
+            aria-label={`Add ${user.displayName} to the member directory`}
+            title="Add to members"
+            className="grid size-8 place-items-center rounded-lg text-navy-700 transition-colors hover:bg-gold-50 hover:text-gold-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500"
+          >
+            <UserPlus size={15} aria-hidden="true" />
+          </button>
+        )}
         <button
           type="button"
           onClick={() => onEdit(user)}
@@ -811,15 +846,17 @@ function UserCard({ user, isSelf, onEdit, onDelete, onAddMember }: UserRowProps)
       </dl>
 
       <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line pt-3">
-        <button
-          type="button"
-          onClick={() => onAddMember(user)}
-          aria-label={`Add ${user.displayName} to the member directory`}
-          className="inline-flex h-8 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-navy-700 transition-colors hover:bg-gold-50 hover:text-gold-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500"
-        >
-          <UserPlus size={14} aria-hidden="true" />
-          Add to members
-        </button>
+        {user.role !== "member" && (
+          <button
+            type="button"
+            onClick={() => onAddMember(user)}
+            aria-label={`Add ${user.displayName} to the member directory`}
+            className="inline-flex h-8 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-navy-700 transition-colors hover:bg-gold-50 hover:text-gold-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500"
+          >
+            <UserPlus size={14} aria-hidden="true" />
+            Add to members
+          </button>
+        )}
         <button
           type="button"
           onClick={() => onEdit(user)}
@@ -970,14 +1007,22 @@ export default function AdminUsersPage() {
                     {
                       id: "role",
                       label: "Role",
-                      options: ["All", ...ROLE_OPTIONS.map(formatRole)],
+                      options: ["All", ...ROLE_FILTERS.map(formatRole)],
                     },
                   ]}
                   values={{
                     role: role ? formatRole(role) : "All",
                   }}
                   onToggle={(groupId, value) => {
-                    if (groupId === "role") setRole(value === "All" ? undefined : value.toLowerCase());
+                    if (groupId === "role") {
+                      // Reverse-lookup through the SAME label map (labels
+                      // like "Society member" are not 1:1 with role keys).
+                      setRole(
+                        value === "All"
+                          ? undefined
+                          : ROLE_FILTERS.find((entry) => formatRole(entry) === value),
+                      );
+                    }
                   }}
                   onClear={clearFilters}
                   clearLabel="Reset filters"

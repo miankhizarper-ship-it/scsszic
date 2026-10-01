@@ -13,11 +13,25 @@
  */
 
 /**
- * Phase 10B roles. "manage" is the content-manager role: no user management,
+ * Task 29 roles. "user" is the DEFAULT role for every signup — an account
+ * from OUTSIDE the society directory that can browse, like, and comment.
+ * "member" is a society member: the account owns a LINKED member-directory
+ * record (members.userId == account id) and gains the community powers —
+ * creating feed posts and editing its own public profile — but NEVER admin
+ * panel access. "manage" is the content-manager role: no user management,
  * no audit access — only the CMS sections explicitly granted to that account
  * via `permissions` (admin always bypasses permission checks).
+ *
+ * Legacy accounts created before Task 29 carry role "member" without any
+ * linked record — the repository mapping + the boot migration
+ * (normalizeLegacyMemberRoles) treat those as plain "user" accounts.
  */
-export type AuthUserRole = "member" | "manage" | "admin";
+export type AuthUserRole = "user" | "member" | "manage" | "admin";
+
+/** Role granted to an account when a member record is linked to it. */
+export const MEMBER_ROLE: AuthUserRole = "member";
+/** Role of every fresh signup (and of accounts demoted from "member"). */
+export const USER_ROLE: AuthUserRole = "user";
 
 /**
  * Phase 10B granular CMS permissions + Phase 12 "team" — the admin content

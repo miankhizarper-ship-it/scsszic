@@ -61,6 +61,11 @@ export interface UserRepository {
   clearEmailVerification(userId: string): Promise<void>;
   /** Store or replace the Google avatar URL captured at OAuth time. */
   updateGooglePicture(userId: string, picture: string): Promise<void>;
+  /** Task 29 — set the account role. Used by the member↔account linkage:
+   *  linking a member record grants "member"; deleting the record hands the
+   *  account back to "user". The boot migration also uses this indirectly
+   *  (bulk normalization happens in the Mongo repository layer). */
+  setRole(userId: string, role: AuthUserRole): Promise<void>;
 }
 
 /** A user + the expiry of their pending verification token (null = none). */
@@ -128,7 +133,7 @@ export class InMemoryUserRepository implements UserRepository {
       ...(input.googleId ? { googleId: input.googleId } : {}),
       ...(input.picture ? { picture: input.picture } : {}),
       displayName: input.displayName.trim(),
-      role: input.role ?? "member",
+      role: input.role ?? "user",
       permissions: toAdminPermissions(input.permissions),
       isVerified: input.isVerified ?? true,
       ...(input.memberProfileId ? { memberProfileId: input.memberProfileId } : {}),
@@ -177,6 +182,16 @@ export class InMemoryUserRepository implements UserRepository {
     const user = this.users.get(userId);
     if (!user) return;
     user.picture = picture;
+    user.updatedAt = new Date().toISOString();
+  }
+
+  async setRole(userId: string, role: AuthUserRole): Promise<void> {
+    const user = this.users.get(userId);
+    if (!user) return;
+    user.role = role;
+    // Keep the linkage marker in lockstep with the Mongo implementation so
+    // both stores share the "real member vs legacy default" semantics.
+    (user as AuthUser & { memberLinked?: boolean }).memberLinked = role === "member";
     user.updatedAt = new Date().toISOString();
   }
 }

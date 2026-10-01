@@ -8,6 +8,7 @@ import { Reveal } from "@/components/ui/Reveal";
 import { Badge } from "@/components/ui/Badge";
 import { BlogContent } from "@/components/blogs/BlogContent";
 import { BlogAuthor } from "@/components/blogs/BlogAuthor";
+import { BlogComments } from "@/components/blogs/BlogComments";
 import { ShareButtons } from "@/components/blogs/ShareButtons";
 import { RelatedBlogs } from "@/components/blogs/RelatedBlogs";
 import { CTASection } from "@/components/sections/CTASection";
@@ -220,6 +221,9 @@ export default function BlogDetailPage() {
         </Container>
       </section>
 
+      {/* ---------- Conversation (Task 30) ---------- */}
+      <BlogComments slug={blog.slug} />
+
       {/* ---------- Related articles ---------- */}
       <RelatedBlogs blogs={related} />
 
@@ -234,7 +238,7 @@ export default function BlogDetailPage() {
         note={
           <span className="inline-flex items-center gap-1.5">
             <ArrowRight size={13} aria-hidden="true" />
-            Demo content — the publishing platform arrives in a later phase.
+            Log in to join the conversation — every article has a comment thread.
           </span>
         }
       />

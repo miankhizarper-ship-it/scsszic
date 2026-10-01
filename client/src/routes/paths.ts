@@ -22,6 +22,13 @@ export const ROUTES = {
   videoDetail: (slug: string) => `/watch/${slug}`,
   profile: (username: string) => `/profile/${username}`,
   account: "/account",
+  /* ---------- Member self-service (Task 29) ---------- */
+  /** Society members share feed posts + edit their public profile here —
+   *  deliberately OUTSIDE the admin panel (plain users get 403 gates). */
+  member: {
+    feedNew: "/member/feed/new",
+    profileEdit: "/member/profile",
+  },
   contact: "/contact",
   login: "/login",
   signup: "/signup",

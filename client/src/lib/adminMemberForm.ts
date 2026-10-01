@@ -49,7 +49,10 @@ const listText = (label: string, maxEntries: number) =>
  *  instead of surfacing as an invisible server-side 400 (Task 25). */
 const PROJECT_SLUG_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
 
-export const memberFormSchema = z.object({
+export const memberFormBaseSchema = z.object({
+  /** Task 29 — the account this member record belongs to (user picker).
+   *  REQUIRED on create (see memberFormSchema(mode)); never sent on edit. */
+  userId: z.string(),
   name: requiredText("Name", 120),
   initials: z
     .string()
@@ -141,7 +144,25 @@ export const memberFormSchema = z.object({
   featured: z.boolean(),
 });
 
-export type MemberFormValues = z.infer<typeof memberFormSchema>;
+export type MemberFormValues = z.infer<typeof memberFormBaseSchema>;
+
+/**
+ * Mode-aware form schema — Task 29 makes the ACCOUNT selection a hard
+ * requirement when CREATING a member record (every member must be created
+ * from a user account; the server enforces the same rule). Editing keeps
+ * the existing linkage untouched (the server rejects userId on PATCH).
+ */
+export function memberFormSchema(mode: "create" | "edit") {
+  return memberFormBaseSchema.superRefine((values, ctx) => {
+    if (mode === "create" && values.userId.trim().length < 8) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["userId"],
+        message: "Select the account this member record belongs to.",
+      });
+    }
+  });
+}
 
 /** "Ahmad Shah" → "AS" — up to the first two words' initials. */
 export function initialsFromName(value: string): string {
@@ -188,9 +209,12 @@ export function formFieldForServerError(key: string): keyof MemberFormValues | n
 }
 
 /** Fetched member → form values (map/arrays become editable text areas).
- *  The username is server-generated (Task 16) and never shown in the form. */
+ *  The username is server-generated (Task 16) and never shown in the form.
+ *  Task 29 — the account linkage (userId) rides along for the edit view's
+ *  "linked account" panel (and is never re-sent on PATCH). */
 export function toMemberFormValues(member: Member): MemberFormValues {
   return {
+    userId: member.userId ?? "",
     name: member.name,
     initials: member.initials,
     avatar: member.avatar ?? "",
@@ -218,6 +242,7 @@ export function toMemberFormValues(member: Member): MemberFormValues {
 /** Create defaults — active member, this year's batch. */
 export function memberFormDefaults(): MemberFormValues {
   return {
+    userId: "",
     name: "",
     initials: "",
     avatar: "",
@@ -263,14 +288,19 @@ function parseSocialMap(text: string | undefined): Record<string, string> | unde
 }
 
 /** Form values → API payload (exact Member model shape). The username is
- *  server-generated (Task 16) and never sent from the form. */
-export function toMemberPayload(values: MemberFormValues): Partial<Member> {
+ *  server-generated (Task 16) and never sent from the form. Task 29 —
+ *  userId travels ONLY on create (the server's PATCH schema rejects it). */
+export function toMemberPayload(
+  values: MemberFormValues,
+  mode: "create" | "edit" = "create",
+): Partial<Member> {
   const skills = splitList(values.skills);
   const interests = splitList(values.interests);
   const projectSlugs = splitList(values.projectSlugsText);
   const social = parseSocialMap(values.socialText);
 
   return {
+    ...(mode === "create" && values.userId ? { userId: values.userId } : {}),
     name: values.name,
     initials: values.initials,
     ...(values.avatar ? { avatar: values.avatar } : {}),

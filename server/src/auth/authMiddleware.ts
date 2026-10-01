@@ -5,7 +5,7 @@ import { getUserFromToken } from "./session.js";
 import { SESSION_COOKIE_NAME } from "./cookies.js";
 import { clearSessionCookie } from "./cookies.js";
 import { toAdminPermissions, toPublicUser } from "./types.js";
-import type { AdminPermission } from "./types.js";
+import type { AdminPermission, AuthUserRole } from "./types.js";
 
 /**
  * Authentication middleware.
@@ -66,7 +66,7 @@ export async function optionalAuth(
 }
 
 /** Authorization foundation (spec §26). Usage: requireRole("admin"). */
-export function requireRole(role: "member" | "admin") {
+export function requireRole(role: AuthUserRole) {
   return (req: Request, res: Response, next: NextFunction): void => {
     if (!req.user) {
       res.status(401).json({ message: "Authentication required." });

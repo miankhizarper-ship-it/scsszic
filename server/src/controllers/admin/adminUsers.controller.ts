@@ -3,6 +3,7 @@ import type { Request, RequestHandler, Response } from "express";
 import { withErrorBoundary } from "../content/content.controller.js";
 import type { AdminPermission } from "../../auth/types.js";
 import { adminUsersRepository } from "../../repositories/adminUsersRepository.js";
+import { adminMembersRepository } from "../../repositories/content/adminMembersRepository.js";
 import {
   adminUserListQuerySchema,
   adminUserUpdateSchema,
@@ -117,6 +118,23 @@ export const updateAdminUser: RequestHandler = withErrorBoundary(
     }
 
     const effectiveRole = parsed.data.role ?? existing.role;
+
+    // Task 29 — a society member's role comes from the member-record
+    // linkage (members.userId). Changing it here would strand the record
+    // (or the role), so role edits on linked accounts are refused: delete
+    // the member record first (Members CMS), or re-link via "Add to
+    // members". displayName/permissions edits stay allowed.
+    if (parsed.data.role !== undefined && parsed.data.role !== existing.role) {
+      const ownedRecord = await adminMembersRepository.findByUserId(id);
+      if (ownedRecord) {
+        res.status(409).json({
+          message:
+            "This account owns a member record, so its role comes from that linkage. Delete the member record first to change the account's role.",
+          errors: { role: "Remove the linked member record before changing this role." },
+        });
+        return;
+      }
+    }
 
     // Safeguard: demoting the LAST administrator (to member OR manage —
     // anything that strips the admin role) is always rejected, self or

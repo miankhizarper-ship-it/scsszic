@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, LogOut, X } from "lucide-react";
+import { ChevronDown, LogOut, Rss, UserRound, X } from "lucide-react";
 
 import { NAV_LINKS, SOCIAL_LINKS } from "@/data/navigation";
 import { useAuth } from "@/context/AuthProvider";
@@ -31,7 +31,7 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
   const { pathname } = useLocation();
   const closeRef = useRef<HTMLButtonElement>(null);
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated, user, logout } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -203,11 +203,37 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
             <div className="border-t border-white/10 p-4">
               {isAuthenticated ? (
                 <div className="flex flex-col gap-2.5">
+                  {/* Task 29 — society members get their self-service links
+                      right in the menu (feed posting + profile editing). */}
+                  {user?.role === "member" && (
+                    <div className="grid grid-cols-1 gap-2.5">
+                      <Button
+                        to={ROUTES.member.feedNew}
+                        variant="gold"
+                        size="lg"
+                        className="w-full"
+                        onClick={onClose}
+                      >
+                        <Rss size={16} aria-hidden="true" />
+                        Share a Post
+                      </Button>
+                      <Button
+                        to={ROUTES.member.profileEdit}
+                        variant="outline"
+                        size="lg"
+                        className="w-full border-white/25 text-white hover:border-gold-400 hover:text-gold-300"
+                        onClick={onClose}
+                      >
+                        <UserRound size={16} aria-hidden="true" />
+                        Edit My Profile
+                      </Button>
+                    </div>
+                  )}
                   <Button
                     to={ROUTES.account}
-                    variant="gold"
+                    variant={user?.role === "member" ? "outline" : "gold"}
                     size="lg"
-                    className="w-full"
+                    className={user?.role === "member" ? "w-full border-white/25 text-white hover:border-gold-400 hover:text-gold-300" : "w-full"}
                     onClick={onClose}
                   >
                     My Account

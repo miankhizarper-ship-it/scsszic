@@ -283,6 +283,21 @@ export interface FeedComment {
   createdAt: string;
 }
 
+/**
+ * A real comment on a published blog article (Task 30). Same safe shape as
+ * feed comments but keyed by the article's URL slug; any signed-in account
+ * may write, anonymous visitors read only.
+ */
+export interface BlogComment {
+  id: string;
+  blogSlug: string;
+  authorUsername: string;
+  authorName: string;
+  body: string;
+  /** ISO 8601 timestamp. */
+  createdAt: string;
+}
+
 /* ---------- Members ---------- */
 
 /** Directory lifecycle — archived members are excluded at the query layer. */
@@ -328,6 +343,12 @@ export interface Member {
   status: MemberStatus;
   /** Members highlighted on /members. */
   featured?: boolean;
+  /**
+   * Task 29 — the id of the auth account that OWNS this record (admin
+   * surface only; the public API never includes it). Present on records
+   * created through the account-linkage flow.
+   */
+  userId?: string;
 }
 
 /* ---------- Projects ---------- */
@@ -668,8 +689,17 @@ export interface ListEnvelope<T> {
 
 /* ---------- Auth (Phase 7) ---------- */
 
-/** Phase 10B — "manage" is the content-manager role (per-user CMS grants). */
-export type AuthUserRole = "member" | "manage" | "admin";
+/**
+ * Task 29 roles — "user" is the DEFAULT signup role (an account from
+ * outside the society directory: browse, like, comment). "member" is a
+ * society member whose account owns a linked directory record: it can
+ * create feed posts and self-edit its public profile (dedicated member
+ * pages — NEVER the admin panel). "manage" is the content-manager role
+ * (per-user CMS grants). Legacy accounts that pre-date Task 29 carry the
+ * old default "member" without a linkage; the server normalizes those to
+ * "user" on every read.
+ */
+export type AuthUserRole = "user" | "member" | "manage" | "admin";
 
 /**
  * Phase 10B + 12 — the CMS sections a "manage" user can be granted,
@@ -1283,12 +1313,25 @@ export interface AdminUser {
   username: string;
   email: string;
   displayName: string;
-  role: "member" | "manage" | "admin";
+  role: AuthUserRole;
   /** Phase 10B — per-user CMS grants ([] for member/admin accounts). */
   permissions: AdminPermission[];
   memberProfileId?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * Task 29 — an account that does NOT yet own a member record; feeds the
+ * user picker in the admin member form (GET /api/admin/members/candidates).
+ */
+export interface MemberCandidate {
+  id: string;
+  username: string;
+  email: string;
+  displayName: string;
+  role: AuthUserRole;
+  createdAt: string;
 }
 
 /** Write payload for PATCH /api/admin/users/:id — the model's editable fields. */

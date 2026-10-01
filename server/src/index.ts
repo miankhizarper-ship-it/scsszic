@@ -2,6 +2,7 @@ import { createApp } from "./app.js";
 import { closeDatabase, connectDatabase, getDatabase } from "./db/client.js";
 import { ensureDatabaseIndexes } from "./db/indexes.js";
 import { ensureDefaultCategories } from "./repositories/content/categoriesRepository.js";
+import { normalizeLegacyMemberRoles } from "./repositories/mongoUserRepository.js";
 import { env } from "./config/env.js";
 import { logger } from "./utils/logger.js";
 
@@ -25,6 +26,13 @@ async function main(): Promise<void> {
 
   await connectDatabase();
   await ensureDatabaseIndexes(getDatabase());
+  // Task 29 — one-time role normalization: pre-Task-29 accounts defaulted
+  // to role "member" without a linked directory record; under the new
+  // semantics they are plain "user" accounts. Idempotent (see the repository).
+  const migrated = await normalizeLegacyMemberRoles();
+  if (migrated > 0) {
+    logger.info(`[boot] normalized ${migrated} legacy "member" account(s) to "user"`);
+  }
   // Phase 10C — seed the managed category vocabulary for sections that have
   // none (idempotent; admin-maintained lists are never overwritten).
   await ensureDefaultCategories();

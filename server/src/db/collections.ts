@@ -49,7 +49,16 @@ export interface UserDoc {
    *  Google-OAuth-only accounts (they have no password at all). */
   passwordHash?: string;
   displayName: string;
-  role: "member" | "manage" | "admin";
+  /** Task 29 — "user" (default, outside the society) | "member" (society
+   *  member with a linked directory record) | "manage" | "admin". Legacy
+   *  documents may still carry the pre-Task-29 default "member"; the boot
+   *  migration + repository mapping normalize those to "user". */
+  role: "user" | "member" | "manage" | "admin";
+  /** Task 29 — set TRUE only by the member-linkage flow. Distinguishes a
+   *  real society member (role "member" + linked record) from a legacy
+   *  pre-Task-29 document whose default role happened to be "member": the
+   *  repository mapping demotes "member"-without-flag to "user". */
+  memberLinked?: boolean;
   /** Google subject id (`sub`) for OAuth-created/linked accounts. */
   googleId?: string;
   /** Google avatar URL — https-validated at capture time; refreshed on
@@ -112,7 +121,9 @@ export interface AuditLogDoc {
   actorId: string;
   /** Actor identity snapshot — readable even if the account changes/deletes. */
   actorUsername: string;
-  actorRole: "member" | "manage" | "admin";
+  /** Task 29 — the AuthUserRole union (actors may be plain "user" accounts
+   *  too: member self-service mutations are audited). */
+  actorRole: "user" | "member" | "manage" | "admin";
   /** Dotted action, e.g. "event.created" / "user.role.updated". */
   action: string;
   /** Resource family, e.g. "event" / "blog" / "user" / "gallery". */
@@ -151,12 +162,40 @@ export interface FeedCommentDoc {
   createdAt: string;
 }
 
+/**
+ * A real comment on a published blog article (Task 30). Mirrors the feed
+ * comment shape but keyed by the article's URL slug; author identity is a
+ * snapshot from the verified session. Any signed-in account (user, member,
+ * manage, admin) may join the conversation; anonymous visitors read only.
+ */
+export interface BlogCommentDoc {
+  _id: string;
+  /** The article this comment belongs to (blogs.slug, published only). */
+  blogSlug: string;
+  /** Author account id — snapshot from the verified session. */
+  userId: string;
+  /** Account username at posting time (profile links resolve client-side). */
+  authorUsername: string;
+  /** Display-name snapshot — stays readable even if the account changes. */
+  authorName: string;
+  body: string;
+  createdAt: string;
+}
+
 export type EventDoc = SerializedEvent & { _id: string };
 export type BlogDoc = Blog & { _id: string };
 export type AlumnusDoc = SerializedAlumnus & { _id: string };
 export type GalleryAlbumDoc = GalleryAlbum & { _id: string };
 export type VideoDoc = WatchVideo & { _id: string; durationMinutes: number };
-export type MemberDoc = Member & { _id: string };
+/**
+ * MemberDoc — adds the Task 29 account LINKAGE: `userId` holds the id of
+ * the auth account that owns this directory record. Set at creation (every
+ * new member must be created FROM a user account), stripped from every
+ * PUBLIC payload by strip.ts (the linkage is server-internal; the public
+ * site links profiles by handle). Optional so pre-Task-29 documents stay
+ * valid with zero migration.
+ */
+export type MemberDoc = Member & { _id: string; userId?: string };
 export type ProjectDoc = Project & { _id: string };
 /**
  * TeamCardDoc — admin-managed Leadership/Developers cards (Phase 12). Adds
@@ -230,6 +269,8 @@ export const collections = {
   feedPosts: (): Collection<FeedPostDoc> => getDatabase().collection("feed_posts"),
   feedComments: (): Collection<FeedCommentDoc> =>
     getDatabase().collection("feed_comments"),
+  blogComments: (): Collection<BlogCommentDoc> =>
+    getDatabase().collection("blog_comments"),
   contactMessages: (): Collection<ContactMessageDoc> =>
     getDatabase().collection("contact_messages"),
   categories: (): Collection<CategoryDoc> => getDatabase().collection("categories"),
@@ -252,6 +293,7 @@ export const COLLECTION_NAMES = [
   "projects",
   "feed_posts",
   "feed_comments",
+  "blog_comments",
   "contact_messages",
   "categories",
   "site_settings",

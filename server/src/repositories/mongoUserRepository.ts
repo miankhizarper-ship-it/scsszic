@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { collections } from "../db/collections.js";
 import { duplicateKeyField, isDuplicateKeyError } from "../db/errors.js";
-import type { AuthUser } from "../auth/types.js";
+import type { AuthUser, AuthUserRole } from "../auth/types.js";
 import { toAdminPermissions } from "../auth/types.js";
 import type { CreateUserInput, UserRepository, VerificationTarget } from "../auth/userRepository.js";
 import { DuplicateUserError, normalizeEmail, normalizeUsername } from "../auth/userRepository.js";
@@ -66,7 +66,7 @@ export class MongoUserRepository implements UserRepository {
       ...(input.googleId ? { googleId: input.googleId } : {}),
       ...(input.picture ? { picture: input.picture } : {}),
       displayName: input.displayName.trim(),
-      role: input.role ?? "member",
+      role: input.role ?? "user",
       permissions: toAdminPermissions(input.permissions),
       isVerified: input.isVerified ?? true,
       ...(input.memberProfileId ? { memberProfileId: input.memberProfileId } : {}),
@@ -142,6 +142,42 @@ export class MongoUserRepository implements UserRepository {
       { $set: { picture, updatedAt: new Date().toISOString() } },
     );
   }
+
+  async setRole(userId: string, role: AuthUserRole): Promise<void> {
+    // Same id plausibility guard as findById — malformed ids fail safely.
+    if (typeof userId !== "string" || userId.length < 8 || userId.length > 128) return;
+    // The linkage marker travels with the role: only the member-linkage
+    // flow grants "member", and it always pairs the role with the flag so
+    // the read mapping can tell real members from legacy defaults.
+    await collections.users().updateOne(
+      { _id: userId },
+      {
+        $set: {
+          role,
+          memberLinked: role === "member",
+          updatedAt: new Date().toISOString(),
+        },
+      },
+    );
+  }
+}
+
+/**
+ * Task 29 boot migration — pre-Task-29 accounts defaulted to role "member"
+ * WITHOUT any linked directory record. Under the new semantics that role
+ * means "society member with a linked record", so legacy documents are
+ * normalized to "user" once at startup. Accounts genuinely promoted to
+ * members AFTER this deployment carry the linkage (members.userId) and are
+ * re-granted by the linkage flow, never by this migration.
+ *
+ * Idempotent by construction: after the first run no document matches.
+ */
+export async function normalizeLegacyMemberRoles(): Promise<number> {
+  const result = await collections.users().updateMany(
+    { role: "member" },
+    { $set: { role: "user", updatedAt: new Date().toISOString() } },
+  );
+  return result.modifiedCount ?? 0;
 }
 
 /**
@@ -149,6 +185,11 @@ export class MongoUserRepository implements UserRepository {
  * shaped; passwordHash stays on the record (the auth layer needs it to
  * verify logins) but NEVER reaches a response — controllers emit
  * toPublicUser(user) exclusively.
+ *
+ * Task 29 — the legacy default role "member" (pre-linkage accounts) is
+ * mapped to "user" on read as defense in depth alongside the boot
+ * migration: a document written by a stale pre-deploy server instance
+ * between migration and cutover still resolves to the correct role.
  */
 function toAuthUser(doc: UserDoc): AuthUser {
   return {
@@ -159,7 +200,10 @@ function toAuthUser(doc: UserDoc): AuthUser {
     ...(doc.googleId ? { googleId: doc.googleId } : {}),
     ...(doc.picture ? { picture: doc.picture } : {}),
     displayName: doc.displayName,
-    role: doc.role,
+    // Task 29 — "member" is only real when the linkage flow set its marker;
+    // a bare legacy "member" (pre-Task-29 default, never linked) reads as
+    // "user". Defense in depth alongside the boot migration.
+    role: doc.role === "member" && doc.memberLinked !== true ? "user" : doc.role,
     // Pre-10B documents have no permissions field — normalize to [] so the
     // auth middleware can always treat it as an array. Existing users need
     // no migration (spec: existing users must remain valid).

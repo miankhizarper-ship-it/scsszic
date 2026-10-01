@@ -9,6 +9,7 @@ import {
   LogOut,
   Mail,
   MailWarning,
+  PenLine,
   Rss,
   Send,
   ShieldCheck,
@@ -24,9 +25,18 @@ import { Reveal } from "@/components/ui/Reveal";
 import { useAuth } from "@/context/AuthProvider";
 import { authService } from "@/services/authService";
 import { useMember } from "@/hooks/content";
+import { useMyMemberProfile } from "@/hooks/me";
 import { formatDateLong } from "@/lib/format";
 import { ROUTES } from "@/routes/paths";
 import { buildPageTitle, usePageMetadata } from "@/lib/seo";
+
+/** Role → display label (Task 29 — "user" is the default account role). */
+function roleLabel(role: string): string {
+  if (role === "admin") return "Administrator";
+  if (role === "manage") return "Content manager";
+  if (role === "member") return "Society member";
+  return "User";
+}
 
 /**
  * AccountPage — the authenticated account surface at /account (spec §21).
@@ -52,12 +62,15 @@ export default function AccountPage() {
     description: "Your Society of Computer Science account — identity, linked public profile, and sign-in.",
   });
 
-  // AuthUser → Member compatibility (spec §25): the account links to the
-  // public community profile when the directory knows the username. The
-  // lookup now runs against the API (MongoDB members collection).
-  // Hooks stay unconditional; the type guard below may early-return.
-  const memberQuery = useMember(user?.username);
-  const memberProfile = memberQuery.data;
+  // Public profile resolution (Task 29): society members read their own
+  // directory record through the members-only self endpoint — the account
+  // OWNS the record, so no handle matching is involved. Other accounts keep
+  // the legacy username-match lookup (an account whose handle equals a
+  // directory handle still links — e.g. the seeded demo persona).
+  const isMember = user?.role === "member";
+  const selfQuery = useMyMemberProfile({ enabled: isMember });
+  const legacyQuery = useMember(isMember ? undefined : user?.username);
+  const memberProfile = isMember ? selfQuery.data : legacyQuery.data;
 
   // ProtectedRoute guarantees an authenticated user; this is a type guard.
   if (!user) return null;
@@ -116,11 +129,7 @@ export default function AccountPage() {
             <div className="min-w-0">
               <Badge variant="onDark">
                 <ShieldCheck size={12} aria-hidden="true" className="mr-1" />
-                {user.role === "admin"
-                  ? "Administrator"
-                  : user.role === "manage"
-                    ? "Content manager"
-                    : "Member account"}
+                {roleLabel(user.role)}
               </Badge>
               <h1 className="mt-3 font-display text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
                 {user.displayName}
@@ -196,16 +205,11 @@ export default function AccountPage() {
                   {
                     icon: ShieldCheck,
                     term: "Role",
-                    detail:
-                      user.role === "admin"
-                        ? "Administrator"
-                        : user.role === "manage"
-                          ? "Content manager"
-                          : "Member",
+                    detail: roleLabel(user.role),
                   },
                   {
                     icon: CalendarDays,
-                    term: "Member since",
+                    term: user.role === "member" ? "Member since" : "Joined",
                     detail: formatDateLong(user.createdAt),
                   },
                 ].map(({ icon: Icon, term, detail }) => (
@@ -274,6 +278,28 @@ export default function AccountPage() {
                       <ExternalLink size={12} aria-hidden="true" className="text-muted" />
                     </Link>
                   </li>
+                )}
+                {user.role === "member" && (
+                  <>
+                    <li>
+                      <Link
+                        to={ROUTES.member.feedNew}
+                        className="inline-flex items-center gap-1.5 font-semibold text-navy-900 transition-colors hover:text-gold-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500"
+                      >
+                        <PenLine size={14} aria-hidden="true" className="text-gold-600" />
+                        Share a post
+                      </Link>
+                    </li>
+                    <li>
+                      <Link
+                        to={ROUTES.member.profileEdit}
+                        className="inline-flex items-center gap-1.5 font-semibold text-navy-900 transition-colors hover:text-gold-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500"
+                      >
+                        <UserRound size={14} aria-hidden="true" className="text-gold-600" />
+                        Edit public profile
+                      </Link>
+                    </li>
+                  </>
                 )}
                 <li>
                   <Link

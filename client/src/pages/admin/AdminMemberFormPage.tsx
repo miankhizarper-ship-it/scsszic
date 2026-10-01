@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, ExternalLink, Save, UserPlus } from "lucide-react";
+import { ArrowLeft, CheckCircle2, ExternalLink, Link2, Save, Search, UserPlus, X } from "lucide-react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -15,8 +15,10 @@ import {
 import {
   useAdminMember,
   useCreateMember,
+  useMemberCandidates,
   useUpdateMember,
 } from "@/hooks/admin";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import {
   MEMBER_STATUSES,
   formFieldForServerError,
@@ -29,6 +31,7 @@ import {
 } from "@/lib/adminMemberForm";
 import { ApiError } from "@/services/apiClient";
 import { ROUTES } from "@/routes/paths";
+import type { MemberCandidate } from "@/types";
 
 /**
  * Admin Member form (Phase 9E) — one reusable form for create AND edit
@@ -108,6 +111,156 @@ function Section({
   );
 }
 
+/**
+ * AccountLinkSection (Task 29) — the user-first creation flow.
+ *
+ * CREATE: a searchable picker over accounts WITHOUT a member record
+ * (GET /api/admin/members/candidates). Selecting one stamps the form's
+ * `userId`, prefills the name, and — server-side — grants the account the
+ * "member" role on save. The submit stays disabled until an account is
+ * picked (schema-enforced; the server re-verifies).
+ *
+ * EDIT: the linkage is read-only — the panel states whether the record is
+ * account-linked (self-service capable) or a legacy record.
+ */
+function AccountLinkSection({
+  mode,
+  userId,
+  error,
+  account,
+  onSelect,
+  onClear,
+}: {
+  mode: "create" | "edit";
+  userId: string;
+  error?: string;
+  account?: MemberCandidate | null;
+  onSelect: (candidate: MemberCandidate) => void;
+  onClear: () => void;
+}) {
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search);
+  const candidatesQuery = useMemberCandidates(debouncedSearch, {
+    enabled: mode === "create" && !userId,
+  });
+  const candidates = candidatesQuery.data ?? [];
+
+  if (mode === "edit") {
+    return (
+      <Section
+        id="member-account"
+        title="Linked account"
+        description="The account that owns this profile — it decides who can self-edit these fields."
+      >
+        {userId ? (
+          <p className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-50 px-3.5 py-2.5 text-xs font-medium text-emerald-700">
+            <Link2 size={14} aria-hidden="true" />
+            Linked to a user account — that member can share feed posts and edit this profile from
+            their account pages.
+          </p>
+        ) : (
+          <p className="flex items-center gap-2 rounded-lg border border-dashed border-line px-3.5 py-2.5 text-xs font-medium text-muted">
+            <Link2 size={14} aria-hidden="true" />
+            Not linked to an account (a record from before account linkage) — the member cannot
+            self-edit. Delete and re-create it from an account to link them.
+          </p>
+        )}
+      </Section>
+    );
+  }
+
+  return (
+    <Section
+      id="member-account"
+      title="Linked account"
+      description="Every member must be created from a user account. Pick the account — its owner can then post in the feed and edit this profile."
+    >
+      {userId && account ? (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-emerald-50 text-emerald-600">
+              <CheckCircle2 size={18} aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <p className="truncate font-display text-sm font-bold text-navy-900">
+                {account.displayName}{" "}
+                <span className="font-mono font-medium text-muted">@{account.username}</span>
+              </p>
+              <p className="truncate text-xs text-muted">{account.email}</p>
+            </div>
+          </div>
+          <Button type="button" variant="outline" size="sm" onClick={onClear}>
+            <X size={14} aria-hidden="true" />
+            Change
+          </Button>
+        </div>
+      ) : (
+        <div>
+          <label htmlFor="member-account-search" className="sr-only">
+            Search accounts
+          </label>
+          <div className="relative">
+            <Search
+              size={16}
+              aria-hidden="true"
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted"
+            />
+            <input
+              id="member-account-search"
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search accounts by name, @username, or email…"
+              className="h-11 w-full rounded-lg border border-line bg-white pl-9 pr-3 text-sm text-ink shadow-sm transition-colors placeholder:text-muted focus:outline-2 focus:outline-offset-1 focus:outline-gold-500"
+            />
+          </div>
+          {candidatesQuery.isError ? (
+            <p role="alert" className="mt-2 text-xs font-medium text-error">
+              Couldn't load accounts — check your connection and try again.
+            </p>
+          ) : candidatesQuery.isPending ? (
+            <p className="mt-3 text-xs text-muted">Loading accounts…</p>
+          ) : candidates.length === 0 ? (
+            <p className="mt-3 text-xs text-muted">
+              {debouncedSearch
+                ? "No unlinked accounts match that search."
+                : "Every account already has a member record — accounts appear here after they sign up."}
+            </p>
+          ) : (
+            <ul className="mt-3 flex max-h-64 flex-col divide-y divide-line overflow-y-auto rounded-lg border border-line">
+              {candidates.map((candidate) => (
+                <li key={candidate.id}>
+                  <button
+                    type="button"
+                    onClick={() => onSelect(candidate)}
+                    className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left transition-colors hover:bg-gold-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gold-500"
+                  >
+                    <UserPlus size={15} aria-hidden="true" className="shrink-0 text-gold-600" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold text-navy-900">
+                        {candidate.displayName}{" "}
+                        <span className="font-mono text-xs font-normal text-muted">
+                          @{candidate.username}
+                        </span>
+                      </span>
+                      <span className="block truncate text-xs text-muted">{candidate.email}</span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+      {error && (
+        <p id="member-account-error" role="alert" className="mt-2 text-xs font-medium text-error">
+          {error}
+        </p>
+      )}
+    </Section>
+  );
+}
+
 export default function AdminMemberFormPage() {
   const { id } = useParams();
   const isEdit = Boolean(id);
@@ -128,7 +281,7 @@ export default function AdminMemberFormPage() {
     setError,
     formState: { errors, isSubmitting },
   } = useForm<MemberFormValues>({
-    resolver: zodResolver(memberFormSchema),
+    resolver: zodResolver(memberFormSchema(isEdit ? "edit" : "create")),
     defaultValues: memberFormDefaults(),
     mode: "onTouched",
   });
@@ -168,6 +321,23 @@ export default function AdminMemberFormPage() {
   }, [batchYear, batch, batchDirty, setValue]);
 
   const pending = isSubmitting || createMember.isPending || updateMember.isPending;
+
+  /* --------------------- Task 29: account picker --------------------- */
+  const userIdValue = useWatch({ control, name: "userId" });
+  const [selectedAccount, setSelectedAccount] = useState<MemberCandidate | null>(null);
+
+  function selectAccount(candidate: MemberCandidate) {
+    setSelectedAccount(candidate);
+    setValue("userId", candidate.id, { shouldValidate: true });
+    // Prefill the directory name from the account (the admin can adjust it,
+    // but identity should start from the real account holder).
+    setValue("name", candidate.displayName, { shouldValidate: false });
+  }
+
+  function clearAccount() {
+    setSelectedAccount(null);
+    setValue("userId", "", { shouldValidate: true });
+  }
 
   // Keep the display label in sync with the numeric year until manually edited.
   function handleBatchYearChange(nextYear: string) {
@@ -213,9 +383,9 @@ export default function AdminMemberFormPage() {
     setFormError(null);
     try {
       if (isEdit && id) {
-        await updateMember.mutateAsync(toMemberPayload(values));
+        await updateMember.mutateAsync(toMemberPayload(values, "edit"));
       } else {
-        await createMember.mutateAsync(toMemberPayload(values));
+        await createMember.mutateAsync(toMemberPayload(values, "create"));
       }
       navigate(ROUTES.admin.members);
     } catch (error) {
@@ -275,7 +445,7 @@ export default function AdminMemberFormPage() {
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
             {isEdit
               ? "Update this member profile — active and alumni-status profiles are public immediately; archived profiles stay private."
-              : "Add a new member to the directory. The profile appears on the public members page as soon as it is saved (unless archived)."}
+              : "Pick the member's user account first, then complete the directory profile. The account gains member powers (feed posting + self-service profile editing) when the record is saved."}
           </p>
         </div>
         {isEdit && member && isPublic && (
@@ -299,6 +469,16 @@ export default function AdminMemberFormPage() {
       <AiSourcePanel className="mt-6" />
 
       <form onSubmit={onSubmit} noValidate className="mt-6 flex flex-col gap-5">
+        {/* ---------- Linked account (Task 29 — user-first flow) ---------- */}
+        <AccountLinkSection
+          mode={isEdit ? "edit" : "create"}
+          userId={userIdValue ?? ""}
+          error={errors.userId?.message}
+          account={selectedAccount}
+          onSelect={selectAccount}
+          onClear={clearAccount}
+        />
+
         {/* ---------- Basics ---------- */}
         <Section id="member-basics" title="Basics" description="The member's identity, directory status, and role.">
           <div className="grid grid-cols-1 gap-4">

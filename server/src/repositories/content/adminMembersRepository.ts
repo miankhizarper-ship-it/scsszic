@@ -56,8 +56,17 @@ export interface AdminMemberListMeta {
 }
 
 export interface AdminMemberListResult {
-  items: Member[];
+  items: AdminMemberPayload[];
   meta: AdminMemberListMeta;
+}
+
+/**
+ * Task 29 — the ADMIN surface re-attaches the stripped account linkage:
+ * `userId` is the owning auth account's id (an opaque uuid, safe for the
+ * admin CMS; still stripped from every PUBLIC payload by strip.ts).
+ */
+export interface AdminMemberPayload extends Member {
+  userId?: string;
 }
 
 /* ------------------------------ searchText ------------------------------ */
@@ -107,6 +116,12 @@ function generateMemberId(): string {
 
 function toDomain(doc: WithId<MemberDoc>): Member {
   return stripInternals(doc) as unknown as Member;
+}
+
+/** Admin mapping — the domain member PLUS the account linkage (userId). */
+function toAdminDomain(doc: WithId<MemberDoc>): AdminMemberPayload {
+  const member = toDomain(doc);
+  return doc.userId ? { ...member, userId: doc.userId } : member;
 }
 
 /* ------------------------------- repository ------------------------------ */
@@ -175,7 +190,7 @@ class AdminMembersRepository {
     ]);
 
     return {
-      items: docs.map(toDomain),
+      items: docs.map(toAdminDomain),
       meta: {
         total,
         page,
@@ -197,9 +212,29 @@ class AdminMembersRepository {
   }
 
   /** Single member by canonical id (any status — admins see everything). */
-  async getById(id: string): Promise<Member | null> {
+  async getById(id: string): Promise<AdminMemberPayload | null> {
     const doc = await this.coll().findOne({ _id: id } as Filter<MemberDoc>);
-    return doc ? toDomain(doc) : null;
+    return doc ? toAdminDomain(doc) : null;
+  }
+
+  /**
+   * Task 29 — the owning account of a member record (raw read; the public
+   * projection strips the linkage). Used by the delete flow to demote the
+   * account's role back to "user" and by the self-service surface.
+   */
+  async getLinkById(id: string): Promise<{ id: string; name: string; userId?: string } | null> {
+    const doc = await this.coll().findOne(
+      { _id: id } as Filter<MemberDoc>,
+      { projection: { _id: 1, name: 1, userId: 1 } },
+    );
+    return doc ? { id: doc._id, name: doc.name, ...(doc.userId ? { userId: doc.userId } : {}) } : null;
+  }
+
+  /** Task 29 — the member record owned by the given account, if any. */
+  async findByUserId(userId: string): Promise<AdminMemberPayload | null> {
+    if (typeof userId !== "string" || userId.length < 8 || userId.length > 128) return null;
+    const doc = await this.coll().findOne({ userId } as Filter<MemberDoc>);
+    return doc ? toAdminDomain(doc) : null;
   }
 
   /** Username availability check (create/update pre-check; DB index is the guard). */
@@ -211,7 +246,9 @@ class AdminMembersRepository {
   }
 
   /** Insert a real member document — canonical id + searchText set. */
-  async create(input: Omit<AdminMemberCreateInput, "username"> & { username: string }): Promise<Member> {
+  async create(
+    input: Omit<AdminMemberCreateInput, "username"> & { username: string },
+  ): Promise<AdminMemberPayload> {
     const _id = generateMemberId();
     const doc: MemberDoc & Document = {
       ...input,
@@ -222,11 +259,11 @@ class AdminMembersRepository {
     };
 
     await this.coll().insertOne(doc);
-    return toDomain(doc as WithId<MemberDoc>);
+    return toAdminDomain(doc as WithId<MemberDoc>);
   }
 
   /** Partial update — merges onto the existing doc, recomputes searchText. */
-  async update(id: string, input: AdminMemberUpdateInput): Promise<Member | null> {
+  async update(id: string, input: AdminMemberUpdateInput): Promise<AdminMemberPayload | null> {
     const existing = await this.coll().findOne({ _id: id } as Filter<MemberDoc>);
     if (!existing) return null;
 
@@ -239,20 +276,20 @@ class AdminMembersRepository {
       { returnDocument: "after" },
     );
 
-    return result ? toDomain(result) : null;
+    return result ? toAdminDomain(result) : null;
   }
 
   /** Safe lifecycle transition — validated against the model's own statuses. */
   async updateStatus(
     id: string,
     status: (typeof MEMBER_STATUSES)[number],
-  ): Promise<Member | null> {
+  ): Promise<AdminMemberPayload | null> {
     const result = await this.coll().findOneAndUpdate(
       { _id: id } as Filter<MemberDoc>,
       { $set: { status } },
       { returnDocument: "after" },
     );
-    return result ? toDomain(result) : null;
+    return result ? toAdminDomain(result) : null;
   }
 
   /** Delete exactly one member by canonical id — never a batch, never silent. */

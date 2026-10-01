@@ -16,6 +16,10 @@ import {
   listFeedComments,
   toggleFeedLike,
 } from "../controllers/content/feedSocial.controller.js";
+import {
+  addBlogComment,
+  listBlogComments,
+} from "../controllers/content/blogSocial.controller.js";
 import { createContactMessage } from "../controllers/content/contact.controller.js";
 import { optionalAuth, requireAuth } from "../auth/authMiddleware.js";
 import { alumniRepository } from "../repositories/content/alumniRepository.js";
@@ -67,6 +71,20 @@ contentRouter.get(
     "Article not found",
   ),
 );
+
+/* --------------------- Blog engagement (Task 30) -------------------- */
+/**
+ * Real conversation on published articles:
+ *   GET  /api/blogs/:slug/comments   thread, oldest first (public)
+ *   POST /api/blogs/:slug/comments   add a comment        (requireAuth —
+ *                                    any signed-in account: user, member,
+ *                                    manage, admin)
+ *
+ * Drafts/archived articles accept nothing (published gate lives in the
+ * repository); unknown slugs 404 exactly like the detail endpoint.
+ */
+contentRouter.get("/blogs/:slug/comments", listBlogComments);
+contentRouter.post("/blogs/:slug/comments", requireAuth, addBlogComment);
 
 /* ------------------------------ Alumni ------------------------------ */
 contentRouter.get("/alumni", createListHandler("alumni", alumniRepository));

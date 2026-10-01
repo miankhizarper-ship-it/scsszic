@@ -58,9 +58,23 @@ const isoDateSchema = z
 
 /** The full create payload — every Member-model field, nothing more.
  *  `username` is OPTIONAL (Task 16): when absent the controller
- *  auto-generates a unique handle from the name via generateUniqueHandle(). */
+ *  auto-generates a unique handle from the name via generateUniqueHandle().
+ *
+ *  Task 29 — `userId` is REQUIRED: every member record must be created
+ *  FROM an existing account (the account↔member linkage). The controller
+ *  verifies the account exists, is not already linked, derives the handle
+ *  from the account when possible, and grants the account the "member"
+ *  role after the record is created. */
 export const adminMemberCreateSchema = z
   .object({
+    /** Opaque account id (UUID-shaped today) of the account this member
+     *  record belongs to. Validated against the users collection by the
+     *  controller; one account can own at most one member record. */
+    userId: z
+      .string()
+      .trim()
+      .min(8, "Select the account this member belongs to.")
+      .max(128),
     username: usernameSchema.optional(),
     name: z.string().trim().min(1, "Name is required.").max(120),
     initials: z.string().trim().min(1, "Initials are required.").max(4),
@@ -104,13 +118,63 @@ export const adminMemberCreateSchema = z
   })
   .strict();
 
-/** PATCH — same shape, every field optional. System fields never pass. */
-export const adminMemberUpdateSchema = adminMemberCreateSchema.partial();
+/** PATCH — same shape, every field optional. System fields never pass.
+ *  Task 29 — the account linkage (userId) is NOT editable here: relinking
+ *  a directory record to a different account is a delete + re-create, so
+ *  a stale PATCH can never silently move a member's profile ownership. */
+export const adminMemberUpdateSchema = adminMemberCreateSchema
+  .partial()
+  .omit({ userId: true });
 
 /** Dedicated status transition — the "safe status update" surface. */
 export const adminMemberStatusSchema = z.object({
   status: z.enum(MEMBER_STATUSES, { message: "Choose a valid status." }),
 });
+
+/* -------------------------- member self-service (29) ---------------------- */
+
+/**
+ * Task 29 — fields a SIGNED-IN MEMBER may edit on its OWN directory record
+ * (PUT /api/me/member-profile). Everything identity/admin-owned (name,
+ * username, role-in-society, batch, batchYear, domain, status, featured,
+ * joinedAt) is deliberately absent: the society admin owns those. `.strict()`
+ * so an attempted name/handle/status change is a visible 400, never silent.
+ */
+export const memberSelfUpdateSchema = z
+  .object({
+    /** About/description — the profile bio. */
+    bio: z.string().trim().min(1, "Bio is required.").max(4000).optional(),
+    avatar: z.string().trim().max(500).optional(),
+    avatarAlt: z.string().trim().max(200).optional(),
+    location: z.string().trim().max(120).optional(),
+    department: z.string().trim().max(120).optional(),
+    skills: z
+      .array(
+        z
+          .string()
+          .trim()
+          .min(1, "Skills cannot be empty.")
+          .max(60, "Skills must be at most 60 characters."),
+      )
+      .max(30)
+      .optional(),
+    interests: z
+      .array(
+        z
+          .string()
+          .trim()
+          .min(1, "Interests cannot be empty.")
+          .max(60, "Interests must be at most 60 characters."),
+      )
+      .max(30)
+      .optional(),
+    social: socialMapSchema.optional(),
+    /** Showcase cross-references — existence verified by the controller. */
+    projectSlugs: z.array(projectSlugSchema).max(20).optional(),
+  })
+  .strict();
+
+export type MemberSelfUpdateInput = z.infer<typeof memberSelfUpdateSchema>;
 
 /** Admin list query — only filters backed by actual model fields. */
 export const adminMemberListQuerySchema = z.object({

@@ -12,7 +12,19 @@ import { fieldErrorsFromZod } from "./querySchemas.js";
  * `{ message, errors }`.
  */
 
-export const ADMIN_USER_ROLES = ["member", "manage", "admin"] as const;
+/**
+ * Task 29 — roles an ADMIN may set manually. "member" is deliberately NOT
+ * here: the society-member role is earned through the member↔account
+ * linkage (creating a member record from the account, which also stamps
+ * members.userId and the memberLinked marker) — hand-granting it without a
+ * linked record would create an account that claims to be a member but has
+ * no profile to edit and no directory presence. Demoting a member happens
+ * by deleting their member record, or by setting "user" here.
+ */
+export const ADMIN_USER_ROLES = ["user", "manage", "admin"] as const;
+
+/** Filter facet — includes the derived "member" role (linked accounts). */
+export const ADMIN_USER_ROLE_FILTERS = ["user", "member", "manage", "admin"] as const;
 
 /**
  * Permissions are accepted ONLY as exact section keys, deduplicated and
@@ -61,7 +73,7 @@ export const adminUserListQuerySchema = z.object({
   page: z.coerce.number().int().min(1).max(10_000).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(10),
   search: z.string().trim().max(200).default(""),
-  role: z.enum(ADMIN_USER_ROLES).optional(),
+  role: z.enum(ADMIN_USER_ROLE_FILTERS).optional(),
   sort: z.enum(ADMIN_USER_SORTS).default("created_desc"),
 });
 

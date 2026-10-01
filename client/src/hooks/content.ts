@@ -19,7 +19,7 @@ import type { GalleryFilters } from "@/lib/gallerySearch";
 import type { MemberFilters } from "@/lib/memberSearch";
 import type { ProjectFilters } from "@/lib/projectSearch";
 import type { WatchFilters } from "@/lib/watchSearch";
-import type { CategorySection, FeedComment, TeamGroup } from "@/types";
+import type { BlogComment, CategorySection, FeedComment, TeamGroup } from "@/types";
 
 /**
  * TanStack Query hooks over the Phase 8 content services (spec §17).
@@ -435,6 +435,36 @@ export function useAddFeedComment(postId: string) {
     onSuccess: (comment) => {
       queryClient.setQueryData<FeedComment[]>(
         ["feed", "comments", postId],
+        (existing) => [...(existing ?? []), comment],
+      );
+    },
+  });
+}
+
+/* ------------------------- Blog engagement (Task 30) --------------------- */
+
+/**
+ * Comment thread for one article — fetched eagerly on the detail page (the
+ * conversation is part of the reading experience, not a hidden panel).
+ */
+export function useBlogComments(slug: string | undefined) {
+  return useQuery({
+    queryKey: ["blogs", "comments", slug ?? null],
+    queryFn: () => blogService.listComments(slug!),
+    enabled: Boolean(slug),
+    staleTime: 30 * 1000,
+    retry: 0,
+  });
+}
+
+/** Add an article comment as the signed-in viewer; appends to the cache. */
+export function useAddBlogComment(slug: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: string) => blogService.addComment(slug, body),
+    onSuccess: (comment) => {
+      queryClient.setQueryData<BlogComment[]>(
+        ["blogs", "comments", slug],
         (existing) => [...(existing ?? []), comment],
       );
     },

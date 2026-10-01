@@ -92,6 +92,9 @@ export async function ensureDatabaseIndexes(db: Db): Promise<void> {
   // ---- members ----------------------------------------------------------
   await db.collection("members").createIndexes([
     { key: { username: 1 }, unique: true, name: "uniq_username" },
+    // Task 29 — ONE member record per account. Sparse: legacy records (and
+    // the seeded directory) have no userId and must keep indexing fine.
+    { key: { userId: 1 }, unique: true, sparse: true, name: "uniq_userId" },
     { key: { status: 1 }, name: "by_status" },
     { key: { domain: 1 }, name: "by_domain" },
     { key: { batchYear: -1 }, name: "by_batchYear_desc" },
@@ -129,6 +132,14 @@ export async function ensureDatabaseIndexes(db: Db): Promise<void> {
   // per-user likes through the compound (userId, postId) shape.
   await db.collection("feed_comments").createIndexes([
     { key: { postId: 1, createdAt: 1 }, name: "by_postId_createdAt" },
+    { key: { userId: 1, createdAt: -1 }, name: "by_userId_createdAt" },
+  ]);
+
+  // ---- blog comments (Task 30 — article conversations) ---------------------
+  // Threads read oldest-first per article slug; moderation/digestion queries
+  // by author use the compound (userId, createdAt) shape.
+  await db.collection("blog_comments").createIndexes([
+    { key: { blogSlug: 1, createdAt: 1 }, name: "by_blogSlug_createdAt" },
     { key: { userId: 1, createdAt: -1 }, name: "by_userId_createdAt" },
   ]);
 

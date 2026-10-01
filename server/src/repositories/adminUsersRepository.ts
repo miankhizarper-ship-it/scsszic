@@ -38,6 +38,9 @@ export interface SafeAdminUser {
 /**
  * Document → safe user. Mirrors the auth layer's toPublicUser contract and
  * adds updatedAt (non-sensitive account metadata the management table shows).
+ *
+ * Task 29 — same legacy-role normalization as the auth mapping: a bare
+ * "member" without the linkage marker reads as "user".
  */
 function toSafeAdminUser(doc: WithId<UserDoc>): SafeAdminUser {
   return {
@@ -45,7 +48,7 @@ function toSafeAdminUser(doc: WithId<UserDoc>): SafeAdminUser {
     username: doc.username,
     email: doc.email,
     displayName: doc.displayName,
-    role: doc.role,
+    role: doc.role === "member" && doc.memberLinked !== true ? "user" : doc.role,
     permissions: toAdminPermissions(doc.permissions),
     ...(doc.memberProfileId ? { memberProfileId: doc.memberProfileId } : {}),
     createdAt: doc.createdAt,
@@ -165,9 +168,17 @@ class AdminUsersRepository {
    * Partial update (displayName/role/permissions — validated + normalized
    * upstream), bumps updatedAt. Keys absent from the input are left as-is;
    * permissions: [] explicitly clears the grants.
+   *
+   * Task 29 — an explicit role change away from "member" also clears the
+   * linkage marker so the stored state stays consistent ("member" can only
+   * be re-granted through the member↔account linkage flow).
    */
   async update(id: string, input: AdminUserUpdateInput): Promise<SafeAdminUser | null> {
     const set: Record<string, unknown> = { ...input, updatedAt: new Date().toISOString() };
+    // Task 29 — "member" is never hand-granted here (enum excludes it), so
+    // any explicit role change clears the linkage marker; the role can only
+    // be re-granted through the member-record creation flow.
+    if (input.role !== undefined) set.memberLinked = false;
     const result = await this.coll().findOneAndUpdate(
       { _id: id } as Filter<UserDoc>,
       { $set: set },
@@ -180,6 +191,40 @@ class AdminUsersRepository {
   async remove(id: string): Promise<boolean> {
     const result = await this.coll().deleteOne({ _id: id } as Filter<UserDoc>);
     return result.deletedCount === 1;
+  }
+
+  /**
+   * Task 29 — member-creation candidates: accounts that do NOT yet own a
+   * member-directory record (members.userId), optional case-insensitive
+   * search over username/email/display name. Safe fields only — this feeds
+   * the admin member-form user picker and the "Add to members" flow.
+   */
+  async listCandidates(options: { search: string; limit: number }): Promise<SafeAdminUser[]> {
+    const linked = await collections
+      .members()
+      .find({ userId: { $exists: true, $type: "string" } }, { projection: { userId: 1 } })
+      .toArray();
+    const linkedIds = linked
+      .map((doc) => doc.userId)
+      .filter((id): id is string => typeof id === "string" && id.length > 0);
+
+    const filter: Filter<UserDoc> = { _id: { $nin: linkedIds } };
+    const search = options.search.trim();
+    if (search) {
+      const pattern = escapeRegExp(search);
+      filter.$or = [
+        { username: { $regex: pattern, $options: "i" } },
+        { email: { $regex: pattern, $options: "i" } },
+        { displayName: { $regex: pattern, $options: "i" } },
+      ];
+    }
+
+    const docs = await this.coll()
+      .find(filter)
+      .sort({ createdAt: -1, username: 1 })
+      .limit(Math.min(Math.max(options.limit, 1), 25))
+      .toArray();
+    return docs.map(toSafeAdminUser);
   }
 }
 

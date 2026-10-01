@@ -25,6 +25,7 @@ import type {
   GalleryAlbum,
   GalleryAlbumWrite,
   Member,
+  MemberCandidate,
   Project,
   SerializedSocialLink,
   SocietyEvent,
@@ -496,6 +497,17 @@ export const adminService = {
     const response = await apiFetch<{ data: Member }>("/admin/members", {
       method: "POST",
       body,
+    });
+    return response.data;
+  },
+
+  /**
+   * GET /api/admin/members/candidates — accounts WITHOUT a member record
+   * (Task 29's user-first creation flow). Bounded page; safe fields only.
+   */
+  async listMemberCandidates(search: string, limit = 10): Promise<MemberCandidate[]> {
+    const response = await apiFetch<{ data: MemberCandidate[] }>("/admin/members/candidates", {
+      params: { search, limit: String(limit) },
     });
     return response.data;
   },

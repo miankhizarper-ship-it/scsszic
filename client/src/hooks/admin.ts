@@ -373,6 +373,20 @@ export function useCreateMember() {
   });
 }
 
+/**
+ * Task 29 — accounts WITHOUT a member record, for the member form's
+ * user picker. The search term is part of the key; the query stays idle
+ * when the caller disables it (e.g. edit mode needs no picker).
+ */
+export function useMemberCandidates(search: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: ["admin", "members", "candidates", search],
+    queryFn: () => adminService.listMemberCandidates(search, 10),
+    staleTime: 15_000,
+    enabled: options?.enabled ?? true,
+  });
+}
+
 export function useUpdateMember(id: string) {
   const invalidate = useInvalidateMemberSurfaces();
   return useMutation({

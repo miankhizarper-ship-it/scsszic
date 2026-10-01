@@ -2,6 +2,7 @@ import { env } from "../config/env.js";
 import { logger } from "../utils/logger.js";
 import { hashPassword } from "./password.js";
 import { userRepository } from "./store.js";
+import { collections } from "../db/collections.js";
 
 /**
  * Demo user fixtures (spec §8–9).
@@ -28,7 +29,7 @@ interface SeedUserSpec {
   username: string;
   email: string;
   displayName: string;
-  role: "member" | "admin";
+  role: "user" | "admin";
   password: string;
   memberProfileId?: string;
 }
@@ -36,20 +37,23 @@ interface SeedUserSpec {
 export async function seedDevelopmentUsers(): Promise<void> {
   const fixtures: SeedUserSpec[] = [
     {
+      // Task 29 — a plain "user" account (outside the society directory).
+      // Demonstrates the default role: browsing, liking, commenting.
       username: "demo-member",
       email: "demo-member@example.com",
       displayName: "Demo Member",
-      role: "member",
+      role: "user",
       password: env.devSeedMemberPassword,
     },
     {
       // Fictional persona shared with the Phase 6 community dataset — the
-      // account username matches the public member handle so the account
-      // surface can link to /profile/hira-anwar.
+      // account is LINKED to the mem-004 directory record below, making it
+      // a real "member": it can post in the feed and self-edit its public
+      // profile at /profile/hira-anwar.
       username: "hira-anwar",
       email: "hira.anwar@example.com",
       displayName: "Hira Anwar",
-      role: "member",
+      role: "user",
       password: env.devSeedHiraPassword,
       memberProfileId: "mem-004",
     },
@@ -78,5 +82,19 @@ export async function seedDevelopmentUsers(): Promise<void> {
     logger.info(
       `[auth-seed] dev fixture ready: ${spec.username} (${spec.role}) — development only`,
     );
+  }
+
+  // Task 29 — link the hira-anwar fixture to its directory record so the
+  // demo exercises the REAL linkage (members.userId + role "member"),
+  // exactly like the admin "create member from account" flow produces.
+  // Idempotent: already-linked records are left untouched.
+  const hira = await userRepository.findByUsername("hira-anwar");
+  if (hira) {
+    const memberDoc = await collections.members().findOne({ _id: "mem-004" });
+    if (memberDoc && !memberDoc.userId) {
+      await collections.members().updateOne({ _id: "mem-004" }, { $set: { userId: hira.id } });
+      await userRepository.setRole(hira.id, "member");
+      logger.info("[auth-seed] linked hira-anwar → member mem-004 (role: member)");
+    }
   }
 }

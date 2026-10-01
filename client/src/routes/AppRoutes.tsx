@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from "react-router-dom";
 
 import { RootLayout } from "@/components/layout/RootLayout";
 import { GuestRoute, ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { MemberRoute } from "@/components/auth/MemberRoute";
 import { AdminOnlyRoute, AdminPermissionRoute, AdminRoute } from "@/components/admin/AdminRoute";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { ROUTES } from "@/routes/paths";
@@ -24,6 +25,8 @@ import WatchPage from "@/pages/WatchPage";
 import WatchVideoPage from "@/pages/WatchVideoPage";
 import ProfilePage from "@/pages/ProfilePage";
 import AccountPage from "@/pages/AccountPage";
+import MemberFeedFormPage from "@/pages/member/MemberFeedFormPage";
+import MemberProfileEditPage from "@/pages/member/MemberProfileEditPage";
 import AdminDashboardPage from "@/pages/admin/AdminDashboardPage";
 import AdminEventsPage from "@/pages/admin/AdminEventsPage";
 import AdminEventFormPage from "@/pages/admin/AdminEventFormPage";
@@ -125,6 +128,28 @@ export const appRouter = createBrowserRouter([
           </ProtectedRoute>
         ),
         path: ROUTES.account,
+      },
+      /*
+       * Task 29 — member self-service pages, OUTSIDE the admin panel.
+       * MemberRoute renders an upgrade panel for "user" accounts (and a
+       * staff-pointer for manage/admin); every /api/me/* call behind these
+       * pages is independently re-verified server-side.
+       */
+      {
+        element: (
+          <MemberRoute>
+            <MemberFeedFormPage />
+          </MemberRoute>
+        ),
+        path: ROUTES.member.feedNew,
+      },
+      {
+        element: (
+          <MemberRoute>
+            <MemberProfileEditPage />
+          </MemberRoute>
+        ),
+        path: ROUTES.member.profileEdit,
       },
       { path: ROUTES.terms, element: <TermsPage /> },
       { path: ROUTES.privacy, element: <PrivacyPage /> },

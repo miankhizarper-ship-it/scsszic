@@ -1,7 +1,7 @@
 import { apiFetch } from "@/services/apiClient";
 import { fetchList, fetchSingle } from "@/services/contentApi";
 import type { BlogFilters } from "@/lib/blogSearch";
-import type { Blog, FacetEntry, ListEnvelope } from "@/types";
+import type { Blog, BlogComment, FacetEntry, ListEnvelope } from "@/types";
 
 /**
  * Blog service — API-backed (Phase 8).
@@ -67,5 +67,22 @@ export const blogService = {
     return ((meta.facets.tags ?? []) as FacetEntry[])
       .map((entry) => String(entry.value))
       .filter(Boolean);
+  },
+
+  /* ------------------- Engagement (Task 30) ------------------- */
+
+  /** Full comment thread for one article, oldest first (public). */
+  async listComments(slug: string): Promise<BlogComment[]> {
+    return apiFetch<{ data: BlogComment[] }>(
+      `/blogs/${encodeURIComponent(slug)}/comments`,
+    ).then((r) => r.data);
+  },
+
+  /** Add a comment as the signed-in viewer (any account role). */
+  async addComment(slug: string, body: string): Promise<BlogComment> {
+    return apiFetch<{ data: BlogComment }>(
+      `/blogs/${encodeURIComponent(slug)}/comments`,
+      { method: "POST", body: { body } },
+    ).then((r) => r.data);
   },
 };
