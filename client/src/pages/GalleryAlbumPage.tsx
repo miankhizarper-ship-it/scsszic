@@ -6,7 +6,6 @@ import {
   CalendarDays,
   Camera,
   ChevronRight,
-  Info,
   MapPin,
   SearchX,
 } from "lucide-react";
@@ -176,16 +175,6 @@ export default function GalleryAlbumPage() {
               )}
             </div>
           </Reveal>
-
-          {/* Demo disclaimer */}
-          <p className="mt-8 flex max-w-3xl items-start gap-2 text-xs leading-relaxed text-muted">
-            <Info size={14} aria-hidden="true" className="mt-0.5 shrink-0" />
-            <span>
-              Demo note: the imagery in this album is abstract placeholder
-              artwork, and the moments described are fictional development
-              content — not photos of real people or events.
-            </span>
-          </p>
         </Container>
 
         {/* Photo mosaic */}
@@ -210,12 +199,6 @@ export default function GalleryAlbumPage() {
         description="The people in these photos met through the Society of Computer Science — at workshops, contests, and ceremonies worth remembering. Join the community and make the archive yourself."
         primary={{ label: "Join the Community", to: ROUTES.signup }}
         secondary={{ label: "Browse All Albums", to: ROUTES.gallery }}
-        note={
-          <span className="inline-flex items-center gap-1.5">
-            <Camera size={13} aria-hidden="true" />
-            Demo content — the real photo archive arrives with media hosting.
-          </span>
-        }
       />
 
       {/* ---------- Lightbox (outside the page flow) ---------- */}

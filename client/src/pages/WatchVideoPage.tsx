@@ -210,16 +210,6 @@ export default function WatchVideoPage() {
                 </ul>
               </div>
             )}
-
-            {/* Demo disclaimer */}
-            <p className="mt-8 flex items-start gap-2 text-xs leading-relaxed text-muted">
-              <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-gold-500" aria-hidden="true" />
-              <span>
-                Demo note: this video entry, its speaker, and its footage are
-                fictional development content with placeholder media — not a
-                real recording of a real event.
-              </span>
-            </p>
           </div>
         </Container>
       </section>
@@ -235,12 +225,6 @@ export default function WatchVideoPage() {
         description="Every session in this hub started as a room full of students learning together. Join the Society of Computer Science to attend live workshops, find teammates, and put what you watch into practice."
         primary={{ label: "Join the Community", to: ROUTES.signup }}
         secondary={{ label: "Browse All Videos", to: ROUTES.watch }}
-        note={
-          <span className="inline-flex items-center gap-1.5">
-            <Clock3 size={13} aria-hidden="true" />
-            Demo content — the real media hub arrives with the hosting phase.
-          </span>
-        }
       />
     </>
   );

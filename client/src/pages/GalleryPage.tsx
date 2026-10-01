@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Images, SearchX, Sparkles } from "lucide-react";
+import { SearchX, Sparkles } from "lucide-react";
 
 import { PageHero } from "@/components/ui/PageHero";
 import { Container } from "@/components/ui/Container";
@@ -225,12 +225,6 @@ export default function GalleryPage() {
         description="Every album in this archive started with members showing up — to build, compete, learn, and celebrate together. Join the society and be in the next frame."
         primary={{ label: "Join the Community", to: ROUTES.signup }}
         secondary={{ label: "Explore Upcoming Events", to: ROUTES.events }}
-        note={
-          <span className="inline-flex items-center gap-1.5">
-            <Images size={13} aria-hidden="true" />
-            Albums shown here are fictional demo content with placeholder artwork.
-          </span>
-        }
       />
     </>
   );

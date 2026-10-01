@@ -111,7 +111,7 @@ export function FeaturedEvent({ event }: FeaturedEventProps) {
                   href={registration.externalUrl ?? "#"}
                   variant="gold"
                   size="lg"
-                  title="Demo placeholder — registration opens in a later phase"
+                  title="Opens the event's external registration page"
                 >
                   {registration.label}
                 </Button>

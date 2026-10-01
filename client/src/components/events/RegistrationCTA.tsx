@@ -1,4 +1,4 @@
-import { ArrowRight, Info, Users } from "lucide-react";
+import { ArrowRight, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/Button";
 import {
@@ -61,7 +61,7 @@ export function RegistrationCTA({ event, className }: RegistrationCTAProps) {
               <Button
                 href={action.externalUrl ?? "#"}
                 variant="gold"
-                title="Demo placeholder — registration opens in a later phase"
+                title="Opens the event's external registration page"
               >
                 {action.label}
                 <ArrowRight size={16} aria-hidden="true" />
@@ -76,12 +76,6 @@ export function RegistrationCTA({ event, className }: RegistrationCTAProps) {
                 </p>
               )}
             </div>
-
-            <p className="mt-4 flex items-start gap-1.5 text-[11px] leading-relaxed text-slate-500">
-              <Info size={13} aria-hidden="true" className="mt-0.5 shrink-0" />
-              Demo phase — registration becomes functional in a later release. No
-              data is collected yet.
-            </p>
           </>
         ) : (
           <>

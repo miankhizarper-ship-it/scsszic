@@ -7,7 +7,6 @@ import {
   FolderGit2,
   Github,
   Globe,
-  Info,
   RefreshCw,
   SearchX,
   Users,
@@ -196,15 +195,6 @@ export default function ProjectDetailPage() {
                 ))}
               </ul>
             </div>
-
-            {/* Demo disclaimer */}
-            <p className="mt-6 flex max-w-3xl items-start gap-2 text-xs leading-relaxed text-muted">
-              <Info size={14} aria-hidden="true" className="mt-0.5 shrink-0" />
-              <span>
-                Demo note: this project page shows fictional demo content created to
-                design the showcase — the project, its team, and its story are not real.
-              </span>
-            </p>
           </Reveal>
         </Container>
       </section>

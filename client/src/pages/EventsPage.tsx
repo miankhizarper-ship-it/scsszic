@@ -271,12 +271,6 @@ export default function EventsPage() {
         description="Join the Society of Computer Science to get early access to workshops, hackathons, and community sessions — and help shape what we host next."
         primary={{ label: "Join the Community", to: ROUTES.signup }}
         secondary={{ label: "Suggest an Event", to: ROUTES.contact }}
-        note={
-          <span className="inline-flex items-center gap-1.5">
-            <Sparkles size={13} aria-hidden="true" />
-            Events shown here are demo content during development.
-          </span>
-        }
       />
     </>
   );

@@ -1,5 +1,5 @@
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, ArrowUpRight, CalendarDays, Info, Lock, MapPin, SearchX, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, CalendarDays, Lock, MapPin, SearchX, Sparkles } from "lucide-react";
 
 import { Container } from "@/components/ui/Container";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -177,14 +177,11 @@ export default function EventDetailPage() {
                       href={registration.externalUrl ?? "#"}
                       variant="gold"
                       size="lg"
-                      title="Demo placeholder — registration opens in a later phase"
+                      title="Opens the event's external registration page"
                     >
                       {registration.label}
                       <ArrowUpRight size={17} aria-hidden="true" />
                     </Button>
-                    <span className="text-xs text-slate-500">
-                      Demo phase — registration is not functional yet.
-                    </span>
                   </div>
                 ) : (
                   <p className="inline-flex items-center gap-2 rounded-lg border border-white/20 bg-white/5 px-4 py-2.5 text-sm font-medium text-slate-300">
@@ -281,12 +278,6 @@ export default function EventDetailPage() {
                   </h2>
                 </div>
               </div>
-
-              <p className="mt-3 flex items-center gap-1.5 text-xs text-muted">
-                <Info size={13} aria-hidden="true" className="shrink-0" />
-                Speaker profiles shown here are fictional demo personas during
-                development — not confirmed society speakers.
-              </p>
 
               <ul className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
                 {event.speakers.map((speaker) => (

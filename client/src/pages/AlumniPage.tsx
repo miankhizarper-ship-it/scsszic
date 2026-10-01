@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { GraduationCap, SearchX, Users } from "lucide-react";
+import { SearchX, Users } from "lucide-react";
 
 import { PageHero } from "@/components/ui/PageHero";
 import { Container } from "@/components/ui/Container";
@@ -85,7 +85,7 @@ export default function AlumniPage() {
       >
         <dl className="mx-auto mt-10 grid max-w-2xl grid-cols-3 gap-3">
           {[
-            { value: `${total}`, label: "Demo profiles" },
+            { value: `${total}`, label: "Alumni profiles" },
             { value: `${fields.length}`, label: "Professional fields" },
             { value: `${batches.length}`, label: "Batch years" },
           ].map(({ value, label }) => (
@@ -221,12 +221,6 @@ export default function AlumniPage() {
         description="Graduated from SZIC? We would love to feature your journey — alumni profiles help current students see what is possible and keep the network growing."
         primary={{ label: "Get in Touch", to: ROUTES.contact }}
         secondary={{ label: "Join the Community", to: ROUTES.signup }}
-        note={
-          <span className="inline-flex items-center gap-1.5">
-            <GraduationCap size={13} aria-hidden="true" />
-            Alumni profiles shown here are demo data during development.
-          </span>
-        }
       />
     </>
   );

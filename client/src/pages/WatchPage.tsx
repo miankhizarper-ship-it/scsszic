@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { MonitorPlay, SearchX, Sparkles } from "lucide-react";
+import { SearchX, Sparkles } from "lucide-react";
 
 import { PageHero } from "@/components/ui/PageHero";
 import { Container } from "@/components/ui/Container";
@@ -225,12 +225,6 @@ export default function WatchPage() {
         description="The videos here came out of real rooms full of curious students. Join the Society of Computer Science to attend the next workshop, ask your own questions, and build alongside the community."
         primary={{ label: "Join the Community", to: ROUTES.signup }}
         secondary={{ label: "See Upcoming Events", to: ROUTES.events }}
-        note={
-          <span className="inline-flex items-center gap-1.5">
-            <MonitorPlay size={13} aria-hidden="true" />
-            Videos shown here are fictional demo entries with placeholder media.
-          </span>
-        }
       />
     </>
   );

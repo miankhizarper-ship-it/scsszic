@@ -104,8 +104,8 @@ export function VideoPlayer({ video, className }: VideoPlayerProps) {
                     Recording not available yet
                   </span>
                   <span className="text-xs leading-relaxed text-slate-300">
-                    This entry has no playable source in the demo dataset —
-                    real media arrives with the upcoming media-hosting phase.
+                    The recording for this session isn't available yet —
+                    please check back later.
                   </span>
                 </span>
               )}
@@ -120,7 +120,7 @@ export function VideoPlayer({ video, className }: VideoPlayerProps) {
         <span>
           {hasVideoUrl || hasEmbedUrl
             ? "Recording shared by the society — press play to watch."
-            : "Demo footage — placeholder media, not a real SCS recording."}
+            : "Recording coming soon — check back later."}
         </span>
       </figcaption>
     </figure>

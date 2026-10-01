@@ -176,11 +176,6 @@ export default function AlumniDetailPage() {
               About {person.name.split(" ")[0]}
             </h2>
             <p className="mt-3.5 text-[15px] leading-relaxed text-muted">{person.bio}</p>
-
-            <p className="mt-5 rounded-lg border border-gold-200 bg-gold-50 px-4 py-3 text-xs text-gold-800">
-              This is a demo profile with fictional details, shown during development
-              to illustrate the alumni directory experience.
-            </p>
           </Reveal>
         )}
 

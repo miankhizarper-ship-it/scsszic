@@ -5,6 +5,7 @@ import {
   ChevronRight,
   FolderGit2,
   GraduationCap,
+  PenLine,
   SearchX,
   Sparkles,
   UserRound,
@@ -17,7 +18,9 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { CollectionLoading, ErrorState } from "@/components/ui/CollectionState";
 import { ProjectCard } from "@/components/projects/ProjectCard";
+import { useAuth } from "@/context/AuthProvider";
 import { useMember, useProjectsByMember } from "@/hooks/content";
+import { useMyMemberProfile } from "@/hooks/me";
 import { resolveSocialIcon } from "@/lib/socialIcons";
 import { ROUTES } from "@/routes/paths";
 import { buildPageTitle, usePageMetadata } from "@/lib/seo";
@@ -36,9 +39,20 @@ import { buildPageTitle, usePageMetadata } from "@/lib/seo";
  */
 export default function ProfilePage() {
   const { username } = useParams<{ username: string }>();
+  const { user } = useAuth();
 
   const memberQuery = useMember(username);
   const member = memberQuery.data;
+
+  // Owner affordance — the signed-in member viewing their OWN public profile
+  // gets a direct "Edit public profile" action (self-service fields live on
+  // /member/profile: about, skills, interests, projects, social links…).
+  // Enabled only for member-role accounts; identity compared by record id,
+  // never by URL handle.
+  const myProfileQuery = useMyMemberProfile({ enabled: user?.role === "member" });
+  const ownsProfile =
+    user?.role === "member" &&
+    Boolean(member && myProfileQuery.data && myProfileQuery.data.id === member.id);
 
   // Hooks stay unconditional; early returns come after them.
   const projectsQuery = useProjectsByMember(member?.username);
@@ -172,6 +186,15 @@ export default function ProfilePage() {
                   })}
                 </div>
               )}
+
+              {ownsProfile && (
+                <div className="mt-5 flex justify-center sm:justify-start">
+                  <Button to={ROUTES.member.profileEdit} variant="gold" size="sm">
+                    <PenLine size={15} aria-hidden="true" />
+                    Edit public profile
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </Container>
@@ -206,14 +229,6 @@ export default function ProfilePage() {
                   </span>
                 ))}
               </div>
-
-              <p className="mt-6 flex items-start gap-2 rounded-lg border border-gold-500/30 bg-gold-50/70 px-4 py-3 text-xs leading-relaxed text-gold-800/90">
-                <span aria-hidden="true" className="mt-0.5">
-                  ⓘ
-                </span>
-                This is a demo profile with fictional details, shown during development to
-                illustrate the community experience.
-              </p>
             </div>
 
             {/* ---------- Sidebar ---------- */}

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Newspaper, SearchX, Sparkles } from "lucide-react";
+import { SearchX, Sparkles } from "lucide-react";
 
 import { PageHero } from "@/components/ui/PageHero";
 import { Container } from "@/components/ui/Container";
@@ -224,12 +224,6 @@ export default function BlogsPage() {
         description="From first-semester lessons to deep technical dives — the SCS blog is written by students, for students. Pitch an article and add your voice to the community."
         primary={{ label: "Join the Community", to: ROUTES.signup }}
         secondary={{ label: "Pitch an Article", to: ROUTES.contact }}
-        note={
-          <span className="inline-flex items-center gap-1.5">
-            <Newspaper size={13} aria-hidden="true" />
-            Articles shown here are fictional demo content during development.
-          </span>
-        }
       />
     </>
   );

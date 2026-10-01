@@ -1,5 +1,5 @@
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, ArrowRight, CalendarDays, Clock, Info, RefreshCcw, SearchX } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarDays, Clock, RefreshCcw, SearchX } from "lucide-react";
 
 import { Container } from "@/components/ui/Container";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -202,16 +202,6 @@ export default function BlogDetailPage() {
               <h2 className="sr-only">Share this article</h2>
               <ShareButtons title={blog.title} />
             </div>
-
-            {/* Demo disclaimer */}
-            <p className="mt-8 flex items-start gap-2 text-xs leading-relaxed text-muted">
-              <Info size={14} aria-hidden="true" className="mt-0.5 shrink-0" />
-              <span>
-                Articles and authors on this blog are fictional demo content
-                created for development — they do not represent real members or
-                official positions of the Society of Computer Science.
-              </span>
-            </p>
 
             {/* Author card */}
             <div className="mt-10">

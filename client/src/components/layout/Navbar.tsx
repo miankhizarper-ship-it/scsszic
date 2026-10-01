@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { LogIn, LogOut, Menu, PenLine } from "lucide-react";
+import { LogIn, LogOut, Menu } from "lucide-react";
 
 import { MobileMenu } from "@/components/layout/MobileMenu";
 import { NavDropdown } from "@/components/layout/NavDropdown";
@@ -125,18 +125,6 @@ export function Navbar() {
               />
             ) : isAuthenticated && user ? (
               <>
-                {/* Task 29 — society members share posts straight from the nav. */}
-                {user.role === "member" && (
-                  <Button
-                    to={ROUTES.member.feedNew}
-                    variant="gold"
-                    size="sm"
-                    className="hidden lg:inline-flex"
-                  >
-                    <PenLine size={15} aria-hidden="true" />
-                    Share a post
-                  </Button>
-                )}
                 <NavLink
                   to={ROUTES.account}
                   aria-label={`My account — ${user.displayName}`}
