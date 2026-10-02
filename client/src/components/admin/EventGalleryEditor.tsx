@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp, Film, ImagePlus, Link2, Trash2 } from "lucide-react
 
 import { Button } from "@/components/ui/Button";
 import { UploadMediaFilesButton } from "@/components/admin/UploadMediaButton";
+import { classifyMediaRef, youtubeThumbUrl } from "@/lib/mediaRef";
 import { cn } from "@/lib/utils";
 
 /**
@@ -15,6 +16,9 @@ import { cn } from "@/lib/utils";
  *    (the server allows video in the events library since Task 16) and the
  *    whole batch appends in selection order;
  *  - VIDEO entries render a real <video> preview tile with a clip badge;
+ *    Task 34: YouTube/Vimeo links render their poster (YouTube serves a
+ *    thumbnail without an API key) with the same clip badge — they play
+ *    through the watch player after the sync, never as a broken <img>;
  *  - entries can be reordered (move up / down) and removed;
  *  - a path/URL can still be pasted in by hand for existing media.
  *
@@ -22,12 +26,6 @@ import { cn } from "@/lib/utils";
  */
 
 const MAX_GALLERY_ITEMS = 50;
-
-/** Video entries are recognised by their file extension (mp4/webm — the
- *  only direct-video types the storage layer issues). */
-export function isVideoMediaRef(src: string): boolean {
-  return /\.(mp4|webm)(\?|$)/i.test(src.trim());
-}
 
 function GalleryTile({
   src,
@@ -47,37 +45,57 @@ function GalleryTile({
   index: number;
 }) {
   const [failed, setFailed] = useState(false);
-  const video = isVideoMediaRef(src);
+  const kind = classifyMediaRef(src);
+  const embedThumb = kind === "video-embed" ? youtubeThumbUrl(src) : null;
+  const [embedThumbFailed, setEmbedThumbFailed] = useState(false);
 
   return (
     <li className="group relative overflow-hidden rounded-xl border border-line bg-surface">
       <div className="relative aspect-[4/3] bg-navy-950">
-        {video ? (
+        {kind === "video-file" && (
           <video
             src={src}
             controls
             preload="metadata"
-            className="h-full w-full object-cover"
+            onError={() => setFailed(true)}
+            className={cn("h-full w-full object-cover", failed && "hidden")}
             aria-label={`Event gallery clip ${index + 1}`}
           />
-        ) : (
+        )}
+        {kind === "video-embed" && embedThumb !== null && !embedThumbFailed && (
+          <img
+            src={embedThumb}
+            alt={`Event gallery video ${index + 1}`}
+            loading="lazy"
+            onError={() => setEmbedThumbFailed(true)}
+            className="h-full w-full object-cover"
+          />
+        )}
+        {kind === "video-file" && failed && (
+          <div className="grid h-full w-full place-items-center px-2 text-center text-[11px] font-medium text-white/70">
+            Preview unavailable — check the media path
+          </div>
+        )}
+        {kind === "video-embed" && (embedThumb === null || embedThumbFailed) && (
+          <div className="grid h-full w-full place-items-center px-2 text-center">
+            <Film size={22} aria-hidden="true" className="text-white/40" />
+          </div>
+        )}
+        {kind === "image" && (
           <img
             src={src}
             alt={`Event gallery photo ${index + 1}`}
             loading="lazy"
             onError={() => setFailed(true)}
-            className={cn(
-              "h-full w-full object-cover",
-              failed && "hidden",
-            )}
+            className={cn("h-full w-full object-cover", failed && "hidden")}
           />
         )}
-        {failed && (
+        {kind === "image" && failed && (
           <div className="grid h-full w-full place-items-center px-2 text-center text-[11px] font-medium text-white/70">
             Preview unavailable — check the media path
           </div>
         )}
-        {video && (
+        {kind !== "image" && (
           <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-md bg-navy-950/85 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-gold-300">
             <Film size={10} aria-hidden="true" />
             Video

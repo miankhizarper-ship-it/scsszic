@@ -150,6 +150,35 @@ interface GroqChatResponse {
   choices?: Array<{ message?: { content?: string } }>;
 }
 
+/** Groq error bodies: { error: { message, code?, type? } } — logs only. */
+interface GroqErrorBody {
+  error?: { message?: string; code?: string; type?: string };
+}
+
+/**
+ * Read the upstream error body for LOGGING and failure classification.
+ * The key never appears in a body; the extracted excerpt is safe to log and
+ * (status + class only) to mirror back to the admin in a fixed message.
+ */
+async function readUpstreamError(response: Response): Promise<string> {
+  try {
+    const payload = (await response.json()) as GroqErrorBody | null;
+    const code = payload?.error?.code ?? payload?.error?.type ?? "";
+    const message = payload?.error?.message ?? "";
+    return `${code} ${message}`.trim().slice(0, 300);
+  } catch {
+    return "";
+  }
+}
+
+/** The configured GROQ_MODEL was rejected (unknown id, decommissioned, …). */
+function isModelRejection(status: number, upstream: string): boolean {
+  if (status === 404) return true;
+  return /model[_ -]?(not[_ ]?found|decommissioned|deprecated)|does not exist|unknown model|invalid model/i.test(
+    upstream,
+  );
+}
+
 /** Strip markdown fences, wrapping quotes and stray whitespace from answers. */
 function cleanAnswer(raw: string): string {
   let text = raw.trim();
@@ -257,13 +286,27 @@ export async function generateFieldText(request: AiFieldRequest): Promise<AiFiel
   }
 
   if (!response.ok) {
-    // 401/403 → the deployment's key is bad; 429 → quota/velocity. Log the
-    // upstream status, return a SAFE message (never the key, never the body).
-    logger.error(`[admin-ai] Groq answered ${response.status}`);
+    // Read the upstream body for LOGGING/classification (never the key, and
+    // only fixed safe messages reach the client — but precise enough that a
+    // misconfigured deployment can be fixed from the panel message alone).
+    const upstream = await readUpstreamError(response);
+    logger.error(
+      `[admin-ai] Groq answered ${response.status}${upstream ? ` — ${upstream}` : ""}`,
+    );
     if (response.status === 401 || response.status === 403) {
       throw new AiProviderError(
         502,
-        "The AI assistant is misconfigured (invalid provider key). Contact an administrator.",
+        "The AI assistant is misconfigured — the provider rejected the API key. " +
+          "Set a valid GROQ_API_KEY on the SERVER project (Vercel → Settings → " +
+          "Environment Variables) and redeploy the server.",
+      );
+    }
+    if (isModelRejection(response.status, upstream)) {
+      throw new AiProviderError(
+        502,
+        `The AI model "${env.groqModel}" was rejected by the provider. ` +
+          "Set GROQ_MODEL to a valid Groq model id on the SERVER project " +
+          "(e.g. llama-3.3-70b-versatile) and redeploy the server.",
       );
     }
     if (response.status === 429) {
@@ -274,7 +317,7 @@ export async function generateFieldText(request: AiFieldRequest): Promise<AiFiel
     }
     throw new AiProviderError(
       502,
-      "The AI provider failed to answer. Please try again shortly.",
+      `The AI provider failed to answer (HTTP ${response.status}). Please try again shortly.`,
     );
   }
 

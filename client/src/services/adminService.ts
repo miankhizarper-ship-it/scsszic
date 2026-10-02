@@ -92,6 +92,16 @@ export interface AiFieldGenerateResult {
   items: string[] | null;
 }
 
+/** GET /api/admin/ai/status — the deployment's effective AI configuration. */
+export interface AiStatusInfo {
+  /** True when GROQ_API_KEY is present in the server environment. */
+  enabled: boolean;
+  /** The effective model id (GROQ_MODEL or the built-in default). */
+  model: string;
+  /** The provider API base (overridable for QA). */
+  apiUrl: string;
+}
+
 /**
  * Admin service — the client's single boundary to /api/admin/* (Phase 9B/9C/9D).
  *
@@ -966,6 +976,18 @@ export const adminService = {
     const response = await apiFetch<{ data: AiFieldGenerateResult }>("/admin/ai/field", {
       method: "POST",
       body,
+    });
+    return response.data;
+  },
+
+  /**
+   * GET /api/admin/ai/status — the deployment's live AI configuration
+   * (Task 34). Surfaced in the AI panel so an env var that was added but
+   * not applied (no redeploy / wrong Vercel project) is immediately visible.
+   */
+  async getAiStatus(): Promise<AiStatusInfo> {
+    const response = await apiFetch<{ data: AiStatusInfo }>("/admin/ai/status", {
+      method: "GET",
     });
     return response.data;
   },

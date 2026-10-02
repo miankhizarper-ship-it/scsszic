@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -13,6 +14,7 @@ import {
   adminService,
   type AiFieldGenerateResult,
   type AiFieldKind,
+  type AiStatusInfo,
 } from "@/services/adminService";
 import { cn } from "@/lib/utils";
 
@@ -144,6 +146,61 @@ export function AiAssistantProvider({ children }: { children: ReactNode }) {
 }
 
 /**
+ * Live deployment config (Task 34) — one line inside the open drawer, fed
+ * by GET /api/admin/ai/status. Makes "I set the env var but nothing changed"
+ * visible in the UI: the effective model id and key presence are shown, so
+ * a missed redeploy or a var added to the wrong Vercel project is obvious.
+ */
+function AiConfigLine() {
+  const [status, setStatus] = useState<AiStatusInfo | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    adminService
+      .getAiStatus()
+      .then((data) => {
+        if (!cancelled) setStatus(data);
+      })
+      .catch(() => {
+        if (!cancelled) setFailed(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (failed) return null;
+
+  return (
+    <p
+      className={cn(
+        "mt-2 rounded-lg border px-3 py-2 text-xs leading-relaxed",
+        status === null && "border-line bg-surface text-muted",
+        status?.enabled === true && "border-gold-300 bg-gold-50 text-navy-700",
+        status?.enabled === false && "border-error/30 bg-error/5 text-navy-700",
+      )}
+    >
+      {status === null ? (
+        "Checking the AI configuration…"
+      ) : status.enabled ? (
+        <>
+          Provider ready — model <span className="font-semibold">{status.model}</span>. The
+          key/model come from the SERVER environment (Vercel) and apply after the server is
+          redeployed.
+        </>
+      ) : (
+        <>
+          Not configured on this deployment — set GROQ_API_KEY (and optionally GROQ_MODEL) on
+          the SERVER project in Vercel → Settings → Environment Variables, then redeploy the
+          server.
+        </>
+      )}
+    </p>
+  );
+}
+
+/**
  * The per-page "provide material" drawer. Lives at the top of each admin
  * form page, above the form sections. Collapsed by default so the form
  * stays the hero; opens itself when a sparkle click needs material.
@@ -201,7 +258,8 @@ export function AiSourcePanel({ className }: { className?: string }) {
 
       {panelOpen && (
         <div className="border-t border-line px-4 pb-4 pt-3 sm:px-5">
-          <label htmlFor="ai-source" className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted">
+          <AiConfigLine />
+          <label htmlFor="ai-source" className="mb-1.5 mt-3 block text-xs font-semibold uppercase tracking-wider text-muted">
             Source material
           </label>
           <textarea

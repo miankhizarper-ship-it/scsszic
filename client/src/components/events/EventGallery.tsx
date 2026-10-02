@@ -1,14 +1,9 @@
 import { useMemo, useState } from "react";
-import { Expand } from "lucide-react";
+import { Expand, Film } from "lucide-react";
 
 import { Lightbox, type LightboxItem } from "@/components/gallery/Lightbox";
+import { classifyMediaRef, youtubeThumbUrl } from "@/lib/mediaRef";
 import { cn } from "@/lib/utils";
-
-/** Video entries are recognised by their file extension — the storage layer
- *  only issues .mp4/.webm keys for direct video uploads (Task 16). */
-function isVideoRef(src: string): boolean {
-  return /\.(mp4|webm)(\?|$)/i.test(src.trim());
-}
 
 interface EventGalleryProps {
   /** Ordered media URLs from the event data (photos and video clips). */
@@ -29,6 +24,9 @@ interface EventGalleryProps {
  * video — opens the shared Lightbox (the same full-screen viewer the
  * gallery albums use); videos play inside the viewer exactly like they do
  * on the watch pages, while the grid keeps a poster frame with a badge.
+ * Task 34: YouTube/Vimeo links are videos too — their tile shows the video's
+ * poster (YouTube thumbnails need no API key) and the viewer plays them in
+ * a privacy-mode iframe, mirroring the watch player's embed support.
  */
 export function EventGallery({ media, eventTitle, className }: EventGalleryProps) {
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
@@ -36,14 +34,16 @@ export function EventGallery({ media, eventTitle, className }: EventGalleryProps
   const items = useMemo<LightboxItem[]>(
     () =>
       media.map((src, index) => {
-        const video = isVideoRef(src);
+        const kind = classifyMediaRef(src);
+        const video = kind !== "image";
         return {
           id: `event-media-${index}`,
           src,
           alt: video
             ? `${eventTitle} — event video ${index + 1} of ${media.length}`
             : `${eventTitle} — event photo ${index + 1} of ${media.length}`,
-          ...(video ? { videoUrl: src } : {}),
+          ...(kind === "video-file" ? { videoUrl: src } : {}),
+          ...(kind === "video-embed" ? { embedUrl: src } : {}),
         };
       }),
     [media, eventTitle],
@@ -61,7 +61,9 @@ export function EventGallery({ media, eventTitle, className }: EventGalleryProps
           const isHero = index === 0;
           /* Fill the final full-width row when the count leaves one orphan tile. */
           const isWideLast = index === items.length - 1 && items.length % 3 === 1;
-          const video = Boolean(item.videoUrl);
+          const kind = classifyMediaRef(item.src);
+          const video = kind !== "image";
+          const embedThumb = kind === "video-embed" ? youtubeThumbUrl(item.src) : null;
 
           return (
             <li
@@ -81,7 +83,7 @@ export function EventGallery({ media, eventTitle, className }: EventGalleryProps
                   video ? "cursor-pointer" : "cursor-zoom-in",
                 )}
               >
-                {video ? (
+                {kind === "video-file" && (
                   <video
                     src={item.src}
                     playsInline
@@ -95,7 +97,36 @@ export function EventGallery({ media, eventTitle, className }: EventGalleryProps
                     )}
                     aria-hidden="true"
                   />
-                ) : (
+                )}
+                {kind === "video-embed" && embedThumb !== null && (
+                  <img
+                    src={embedThumb}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    className={cn(
+                      "h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]",
+                      isHero
+                        ? "aspect-[16/9] md:aspect-auto md:absolute md:inset-0"
+                        : "aspect-[4/3]",
+                    )}
+                    aria-hidden="true"
+                  />
+                )}
+                {kind === "video-embed" && embedThumb === null && (
+                  <div
+                    className={cn(
+                      "grid h-full w-full place-items-center bg-navy-950",
+                      isHero
+                        ? "aspect-[16/9] md:aspect-auto md:absolute md:inset-0"
+                        : "aspect-[4/3]",
+                    )}
+                    aria-hidden="true"
+                  >
+                    <Film size={24} className="text-white/30" />
+                  </div>
+                )}
+                {kind === "image" && (
                   <img
                     src={item.src}
                     alt={item.alt}

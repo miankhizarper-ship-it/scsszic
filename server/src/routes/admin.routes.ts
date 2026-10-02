@@ -100,7 +100,10 @@ import {
   renameAdminCategory,
 } from "../controllers/admin/adminCategories.controller.js";
 import { getAdminSlugCheck } from "../controllers/admin/adminSlug.controller.js";
-import { generateAdminAiField } from "../controllers/admin/adminAi.controller.js";
+import {
+  generateAdminAiField,
+  getAdminAiStatus,
+} from "../controllers/admin/adminAi.controller.js";
 import { isSlugCheckSection } from "../repositories/content/slugAvailabilityRepository.js";
 import { uploadSingleFile } from "../services/storage/multipart.js";
 
@@ -364,6 +367,9 @@ adminRouter.put("/admin/settings", updateAdminSettings);
 
 // AI field-fill assistant (Task 28) — guarded by requirePanelAccess above.
 // One endpoint: kind (which field) + source (pasted material) → text/items.
+// GET /status shows the deployment's effective AI env config (Task 34) —
+// makes a missed redeploy / wrong-project env var visible in the panel.
+adminRouter.get("/admin/ai/status", getAdminAiStatus);
 adminRouter.post("/admin/ai/field", generateAdminAiField);
 
 // Category vocabulary (Phase 10C) — guarded per section above. The section

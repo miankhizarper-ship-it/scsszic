@@ -2,14 +2,17 @@ import { useCallback, useEffect, useRef } from "react";
 import { ChevronLeft, ChevronRight, Expand, X } from "lucide-react";
 
 import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
+import { toEmbeddableUrl } from "@/lib/videoEmbed";
 import type { GalleryPhoto } from "@/types";
 
 /**
- * One viewer entry — a photo, or (Task 33) a video clip carrying its own
- * source URL. Plain GalleryPhoto[] remains assignable, so existing album
- * pages keep passing their photos untouched.
+ * One viewer entry — a photo, a direct video clip carrying `videoUrl`, or
+ * (Task 34) a YouTube/Vimeo link carrying `embedUrl` (rendered as a
+ * privacy-mode iframe, mirroring the watch player). Plain GalleryPhoto[]
+ * remains assignable, so existing album pages keep passing their photos
+ * untouched.
  */
-export type LightboxItem = GalleryPhoto & { videoUrl?: string };
+export type LightboxItem = GalleryPhoto & { videoUrl?: string; embedUrl?: string };
 
 interface LightboxProps {
   /** Full item list of the open album/event. */
@@ -44,6 +47,7 @@ export function Lightbox({ photos, index, albumTitle, onClose, onNavigate }: Lig
   const restoreFocusRef = useRef<HTMLElement | null>(null);
   const total = photos.length;
   const photo = photos[index];
+  const embedSrc = photo?.embedUrl ? toEmbeddableUrl(photo.embedUrl) : null;
 
   useLockBodyScroll(true);
 
@@ -115,7 +119,7 @@ export function Lightbox({ photos, index, albumTitle, onClose, onNavigate }: Lig
       ref={dialogRef}
       role="dialog"
       aria-modal="true"
-      aria-label={`${albumTitle} — ${photo.videoUrl ? "video" : "photo"} ${index + 1} of ${total}`}
+      aria-label={`${albumTitle} — ${photo.videoUrl || photo.embedUrl ? "video" : "photo"} ${index + 1} of ${total}`}
       tabIndex={-1}
       className="fixed inset-0 z-[90] flex flex-col bg-navy-950/95 outline-none backdrop-blur-sm"
       onClick={(event) => {
@@ -157,6 +161,22 @@ export function Lightbox({ photos, index, albumTitle, onClose, onNavigate }: Lig
             className="max-h-full max-w-full rounded-lg bg-black object-contain shadow-2xl"
             aria-label={photo.alt}
           />
+        ) : embedSrc ? (
+          /* YouTube/Vimeo — same privacy-mode iframe contract as the watch
+             player (click-to-play inside the frame; nothing autoplays). */
+          <div
+            key={photo.id}
+            className="aspect-video w-full max-w-5xl overflow-hidden rounded-lg bg-black shadow-2xl"
+          >
+            <iframe
+              src={embedSrc}
+              title={photo.alt}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+              referrerPolicy="strict-origin-when-cross-origin"
+              className="h-full w-full"
+            />
+          </div>
         ) : (
           <img
             key={photo.id}

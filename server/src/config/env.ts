@@ -153,8 +153,12 @@ export const env = {
   /** Per-user sliding-window rate limit (soft guard for the shared key). */
   aiFieldRateLimitMax: intOr(process.env.AI_FIELD_RATE_LIMIT_MAX, 20),
   aiFieldRateWindowSeconds: intOr(process.env.AI_FIELD_RATE_WINDOW_SECONDS, 300),
-  /** Upstream call budget — must stay under Vercel's function timeout. */
-  aiFieldTimeoutMs: intOr(process.env.AI_FIELD_TIMEOUT_MS, 20_000),
+  /** Upstream call budget — deliberately UNDER Vercel's shortest serverless
+   *  function timeout (10s on the Hobby plan's non-fluid default) so the
+   *  endpoint can return its own graceful 504 JSON instead of Vercel killing
+   *  the function mid-call with an opaque infrastructure 502. The vercel.json
+   *  maxDuration raises the ceiling where the plan allows it. */
+  aiFieldTimeoutMs: intOr(process.env.AI_FIELD_TIMEOUT_MS, 9_000),
 } as const;
 
 export type Env = typeof env;

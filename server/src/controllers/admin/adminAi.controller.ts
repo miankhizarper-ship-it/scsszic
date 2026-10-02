@@ -63,6 +63,28 @@ function rateLimitExceeded(userId: string): boolean {
   return false;
 }
 
+/**
+ * GET /api/admin/ai/status — what THIS deployment is actually running with.
+ *
+ * Answers the "I set the env var but nothing changed" class of confusion:
+ * the panel shows the effective model id and whether a key is present, so a
+ * missing redeploy, a var added to the wrong Vercel project, or a typo'd
+ * name is visible immediately. Nothing secret is returned — the model id
+ * and API base are configuration, not credentials; the key is a boolean.
+ */
+export const getAdminAiStatus: RequestHandler = withErrorBoundary(
+  async (_req: Request, res: Response) => {
+    res.status(200).json({
+      data: {
+        enabled: env.aiFieldEnabled,
+        model: env.groqModel,
+        apiUrl: env.groqApiUrl,
+      },
+    });
+  },
+  "admin-ai",
+);
+
 /** POST /api/admin/ai/field — generate ONE form field from pasted material. */
 export const generateAdminAiField: RequestHandler = withErrorBoundary(
   async (req: Request, res: Response) => {

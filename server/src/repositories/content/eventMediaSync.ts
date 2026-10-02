@@ -16,9 +16,11 @@ import { generateUniqueHandle } from "./slugAvailabilityRepository.js";
  *      holding the event's photo refs in order — so every event with media
  *      is represented on /gallery as the event's own album, carrying the
  *      event's title, category, date, location, and tags.
- *   2. ONE watch video per video ref (.mp4/.webm) in the event gallery —
- *      so every event recording is represented on /watch, linked to the
- *      event via eventSlug and titled "<Event> — Recording".
+ *   2. ONE watch video per video ref in the event gallery — direct files
+ *      (.mp4/.webm/…) AND YouTube/Vimeo links — so every event recording is
+ *      represented on /watch, linked to the event via eventSlug and titled
+ *      "<Event> — Recording". File refs become videoUrl (native player);
+ *      YouTube/Vimeo refs become embedUrl (privacy-mode iframe player).
  *
  * Design rules:
  *  - Derived docs are flagged `autoManaged: true`. Albums/videos that an
@@ -40,10 +42,39 @@ import { generateUniqueHandle } from "./slugAvailabilityRepository.js";
  *    philosophy as audit logging).
  */
 
-/** Video entries are recognised by their file extension — mirrors the
- *  client-side helper in EventGallery (storage issues .mp4/.webm only). */
+/** Video refs are recognised end-to-end (Task 34): direct video FILES by
+ *  extension (storage issues .mp4/.webm, but admins may paste .mov/.m4v
+ *  exports produced elsewhere) and YouTube/Vimeo LINKS by host — those play
+ *  through the watch player's embed path, never a native <video>. */
+const VIDEO_FILE_RE = /\.(mp4|webm|mov|m4v|ogv|avi|mkv)(\?|#|$)/i;
+
+const VIDEO_EMBED_HOST_RE =
+  /^(www\.)?(youtube\.com|m\.youtube\.com|youtube-nocookie\.com|youtu\.be|vimeo\.com|player\.vimeo\.com)$/i;
+
 export function isVideoMediaRef(src: string): boolean {
-  return /\.(mp4|webm)(\?|$)/i.test(src.trim());
+  const value = src.trim();
+  if (VIDEO_FILE_RE.test(value)) return true;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+    return VIDEO_EMBED_HOST_RE.test(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Where one video ref lives on the derived watch video document. Direct
+ * files go to `videoUrl` (native player); YouTube/Vimeo links go to
+ * `embedUrl` (the watch player normalizes every share form at render time
+ * and prefers it only when videoUrl is absent). Storing the ORIGINAL ref
+ * (not a pre-normalized embed URL) keeps re-save matching stable — a
+ * youtube.com/watch link always finds the doc it created before.
+ */
+function videoSourceFields(ref: string): { videoUrl: string; embedUrl: string } {
+  return VIDEO_FILE_RE.test(ref.trim())
+    ? { videoUrl: ref, embedUrl: "" }
+    : { videoUrl: "", embedUrl: ref };
 }
 
 /** What one sync pass did — scalar-only, audit-metadata shaped. */
@@ -152,12 +183,18 @@ async function syncEventVideos(
   const keptIds = new Set<string>();
 
   for (let index = 0; index < videos.length; index += 1) {
-    const videoUrl = videos[index];
+    const ref = videos[index];
+    const source = videoSourceFields(ref);
     const title =
       videos.length === 1 ? `${event.title} — Recording` : `${event.title} — Recording ${index + 1}`;
     const description = `Recording from the event "${event.title}" — ${event.excerpt}`;
 
-    const doc = existingDocs.find((candidate) => candidate.videoUrl === videoUrl);
+    // Match on EITHER source field: a doc created from a file ref carries
+    // videoUrl, one from a YouTube/Vimeo ref carries embedUrl (original
+    // share form — see videoSourceFields).
+    const doc = existingDocs.find(
+      (candidate) => candidate.videoUrl === ref || candidate.embedUrl === ref,
+    );
     if (doc) {
       keptIds.add(doc.id);
       // duration/status/featured/speaker are deliberately NOT in the
@@ -168,6 +205,8 @@ async function syncEventVideos(
         description,
         thumbnail: event.coverImage,
         thumbnailAlt: event.coverImageAlt,
+        videoUrl: source.videoUrl,
+        embedUrl: source.embedUrl,
         category: event.category,
         tags: derivedTags(event),
         publishedAt: event.date,
@@ -182,7 +221,8 @@ async function syncEventVideos(
         description,
         thumbnail: event.coverImage,
         thumbnailAlt: event.coverImageAlt,
-        videoUrl,
+        videoUrl: source.videoUrl,
+        embedUrl: source.embedUrl,
         duration: "0:00",
         category: event.category,
         tags: derivedTags(event),
