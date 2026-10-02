@@ -150,6 +150,73 @@ interface GroqChatResponse {
   choices?: Array<{ message?: { content?: string } }>;
 }
 
+/**
+ * Groq model ids are namespaced ("openai/gpt-oss-120b", "meta-llama/llama-4-…",
+ * "moonshotai/kimi-k2-instruct"), but admins routinely paste the SHORT form
+ * shown on Groq's model page, in launch posts, or copied from a colleague —
+ * and Groq then rejects the whole request with model_not_found, which used to
+ * surface as an opaque 502. Accepting the well-known short aliases turns the
+ * most common "I set GROQ_MODEL and it 502s" mistake into a non-event: the
+ * panel works with the value the admin actually typed, no env edit or extra
+ * redeploy round-trip needed. Unknown ids still fail — with a message that
+ * names valid examples.
+ */
+const GROQ_MODEL_ALIASES: Record<string, string> = {
+  "gpt-oss-120b": "openai/gpt-oss-120b",
+  "gpt-oss-20b": "openai/gpt-oss-20b",
+  "llama-4-scout-17b-16e-instruct": "meta-llama/llama-4-scout-17b-16e-instruct",
+  "llama-4-maverick-17b-128e-instruct": "meta-llama/llama-4-maverick-17b-128e-instruct",
+  "qwen3-32b": "qwen/qwen3-32b",
+  "kimi-k2-instruct": "moonshotai/kimi-k2-instruct",
+  "kimi-k2-instruct-0905": "moonshotai/kimi-k2-instruct-0905",
+};
+
+/**
+ * The model id actually sent upstream for a configured GROQ_MODEL value.
+ * Exported so the status endpoint reports the EFFECTIVE id — what the admin
+ * sees in the panel is what the provider will be asked for.
+ */
+export function effectiveGroqModel(configured: string): string {
+  const trimmed = configured.trim();
+  return GROQ_MODEL_ALIASES[trimmed.toLowerCase()] ?? trimmed;
+}
+
+/** One chat-completions call. Transport failures throw AiProviderError directly. */
+async function callChatCompletions(
+  model: string,
+  messages: ReadonlyArray<{ role: string; content: string }>,
+): Promise<Response> {
+  try {
+    return await fetch(`${env.groqApiUrl}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${env.groqApiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        temperature: 0.7,
+        max_tokens: 1_000,
+        stream: false,
+      }),
+      signal: AbortSignal.timeout(env.aiFieldTimeoutMs),
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === "TimeoutError") {
+      throw new AiProviderError(
+        504,
+        "The AI provider took too long to answer. Please try again.",
+      );
+    }
+    logger.error("[admin-ai] Groq request failed:", error instanceof Error ? error.message : error);
+    throw new AiProviderError(
+      502,
+      "The AI assistant could not be reached. Please try again shortly.",
+    );
+  }
+}
+
 /** Groq error bodies: { error: { message, code?, type? } } — logs only. */
 interface GroqErrorBody {
   error?: { message?: string; code?: string; type?: string };
@@ -254,46 +321,36 @@ export async function generateFieldText(request: AiFieldRequest): Promise<AiFiel
     },
   ];
 
-  let response: Response;
-  try {
-    response = await fetch(`${env.groqApiUrl}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${env.groqApiKey}`,
-      },
-      body: JSON.stringify({
-        model: env.groqModel,
-        messages,
-        temperature: 0.7,
-        max_tokens: 1_000,
-        stream: false,
-      }),
-      signal: AbortSignal.timeout(env.aiFieldTimeoutMs),
-    });
-  } catch (error) {
-    if (error instanceof Error && error.name === "TimeoutError") {
-      throw new AiProviderError(
-        504,
-        "The AI provider took too long to answer. Please try again.",
-      );
-    }
-    logger.error("[admin-ai] Groq request failed:", error instanceof Error ? error.message : error);
-    throw new AiProviderError(
-      502,
-      "The AI assistant could not be reached. Please try again shortly.",
-    );
-  }
+  // Candidate model ids, most-likely-correct first: the alias-normalized id,
+  // then (only for unprefixed short ids) Groq's openai/ namespace as a
+  // fallback. Unknown ids are refused by Groq with a FAST 4xx, so the retry
+  // costs milliseconds and only ever runs after an explicit model rejection —
+  // real failures (bad key, rate limit, upstream outage) throw immediately.
+  const configuredModel = env.groqModel.trim();
+  const primaryModel = effectiveGroqModel(configuredModel);
+  const candidates =
+    primaryModel.includes("/") ? [primaryModel] : [primaryModel, `openai/${primaryModel}`];
 
-  if (!response.ok) {
+  let response: Response | null = null;
+  for (const model of candidates) {
+    const attempt = await callChatCompletions(model, messages);
+    if (attempt.ok) {
+      response = attempt;
+      if (model !== configuredModel) {
+        logger.info(`[admin-ai] GROQ_MODEL "${configuredModel}" served as Groq model id "${model}"`);
+      }
+      break;
+    }
+
     // Read the upstream body for LOGGING/classification (never the key, and
     // only fixed safe messages reach the client — but precise enough that a
     // misconfigured deployment can be fixed from the panel message alone).
-    const upstream = await readUpstreamError(response);
+    const upstream = await readUpstreamError(attempt);
     logger.error(
-      `[admin-ai] Groq answered ${response.status}${upstream ? ` — ${upstream}` : ""}`,
+      `[admin-ai] Groq answered ${attempt.status} for model "${model}"${upstream ? ` — ${upstream}` : ""}`,
     );
-    if (response.status === 401 || response.status === 403) {
+
+    if (attempt.status === 401 || attempt.status === 403) {
       throw new AiProviderError(
         502,
         "The AI assistant is misconfigured — the provider rejected the API key. " +
@@ -301,23 +358,29 @@ export async function generateFieldText(request: AiFieldRequest): Promise<AiFiel
           "Environment Variables) and redeploy the server.",
       );
     }
-    if (isModelRejection(response.status, upstream)) {
+    if (!isModelRejection(attempt.status, upstream)) {
+      if (attempt.status === 429) {
+        throw new AiProviderError(
+          429,
+          "The AI provider is rate limiting requests. Please wait a moment and try again.",
+        );
+      }
       throw new AiProviderError(
         502,
-        `The AI model "${env.groqModel}" was rejected by the provider. ` +
-          "Set GROQ_MODEL to a valid Groq model id on the SERVER project " +
-          "(e.g. llama-3.3-70b-versatile) and redeploy the server.",
+        `The AI provider failed to answer (HTTP ${attempt.status}). Please try again shortly.`,
       );
     }
-    if (response.status === 429) {
-      throw new AiProviderError(
-        429,
-        "The AI provider is rate limiting requests. Please wait a moment and try again.",
-      );
-    }
+    // Model rejected — loop to the next candidate (if any), else fail below.
+  }
+
+  if (response === null) {
+    // Every candidate was refused as an unknown model.
     throw new AiProviderError(
       502,
-      `The AI provider failed to answer (HTTP ${response.status}). Please try again shortly.`,
+      `The AI model "${configuredModel}" was rejected by the provider ` +
+        `(tried: ${candidates.join(", ")}). Set GROQ_MODEL to a valid Groq model ` +
+        "id on the SERVER project — e.g. llama-3.3-70b-versatile or " +
+        "openai/gpt-oss-120b — and redeploy the server.",
     );
   }
 

@@ -7,6 +7,7 @@ import {
 } from "../../http/aiSchemas.js";
 import {
   AiProviderError,
+  effectiveGroqModel,
   generateFieldText,
 } from "../../services/ai/groq.service.js";
 import { env } from "../../config/env.js";
@@ -67,17 +68,19 @@ function rateLimitExceeded(userId: string): boolean {
  * GET /api/admin/ai/status — what THIS deployment is actually running with.
  *
  * Answers the "I set the env var but nothing changed" class of confusion:
- * the panel shows the effective model id and whether a key is present, so a
- * missing redeploy, a var added to the wrong Vercel project, or a typo'd
- * name is visible immediately. Nothing secret is returned — the model id
- * and API base are configuration, not credentials; the key is a boolean.
+ * the panel shows the EFFECTIVE model id (short aliases like "gpt-oss-120b"
+ * are mapped to their namespaced Groq id before the upstream call) and
+ * whether a key is present, so a missing redeploy, a var added to the wrong
+ * Vercel project, or a typo'd name is visible immediately. Nothing secret is
+ * returned — the model id and API base are configuration, not credentials;
+ * the key is a boolean.
  */
 export const getAdminAiStatus: RequestHandler = withErrorBoundary(
   async (_req: Request, res: Response) => {
     res.status(200).json({
       data: {
         enabled: env.aiFieldEnabled,
-        model: env.groqModel,
+        model: effectiveGroqModel(env.groqModel),
         apiUrl: env.groqApiUrl,
       },
     });
