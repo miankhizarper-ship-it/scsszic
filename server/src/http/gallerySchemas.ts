@@ -82,9 +82,11 @@ const tagSchema = z
   .max(40, "Tags must be at most 40 characters.");
 
 /**
- * One embedded photo — the EXACT GalleryPhoto shape (id, src, alt,
- * caption?). The client form may omit `id`; the repository then generates
- * a collision-safe one, exactly like album ids.
+ * One embedded photo/media entry — the EXACT GalleryPhoto shape (id, src,
+ * alt, caption?, videoUrl?, embedUrl?). The client form may omit `id`; the
+ * repository then generates a collision-safe one, exactly like album ids.
+ * Task 36: videoUrl/embedUrl let album entries carry VIDEO tiles (derived
+ * event recordings) beside photos — src then holds the poster frame.
  */
 export const galleryPhotoSchema = z
   .object({
@@ -102,6 +104,8 @@ export const galleryPhotoSchema = z
       .max(300, "Captions must be at most 300 characters.")
       .optional()
       .or(z.literal("")),
+    videoUrl: mediaRefSchema.optional(),
+    embedUrl: mediaRefSchema.optional(),
   })
   .strict();
 
@@ -120,6 +124,13 @@ export const adminGalleryCreateSchema = z
     date: isoDateSchema,
     location: z.string().trim().max(200).optional().or(z.literal("")),
     photos: z.array(galleryPhotoSchema).max(100, "Albums hold at most 100 photos."),
+    /**
+     * Task 36 — video clips embedded in the album (poster + videoUrl/
+     * embedUrl per entry). Written by the event-media sync for derived
+     * albums; admin album forms may stay photo-only. Recomputed videoCount
+     * is derived server-side on every write, never accepted from clients.
+     */
+    videos: z.array(galleryPhotoSchema).max(50, "Albums hold at most 50 videos.").optional(),
     featured: z.boolean().optional(),
     status: z.enum(GALLERY_STATUSES, { message: "Choose a valid status." }),
     tags: z.array(tagSchema).max(20),

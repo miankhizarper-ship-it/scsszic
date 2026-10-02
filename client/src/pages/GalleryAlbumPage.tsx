@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -6,6 +6,7 @@ import {
   CalendarDays,
   Camera,
   ChevronRight,
+  Clapperboard,
   MapPin,
   SearchX,
 } from "lucide-react";
@@ -51,6 +52,17 @@ export default function GalleryAlbumPage() {
   const related = relatedQuery.data ?? [];
 
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  /**
+   * Task 36 — the mosaic and lightbox show the album's FULL media list:
+   * photos first, then any embedded video clips (derived event recordings),
+   * every entry playable/zoomable through the same lightbox.
+   */
+  const mediaItems = useMemo(
+    () => [...(album?.photos ?? []), ...(album?.videos ?? [])],
+    [album],
+  );
+  const videoCount = album?.videoCount ?? album?.videos?.length ?? 0;
 
   usePageMetadata({
     title: album
@@ -164,6 +176,12 @@ export default function GalleryAlbumPage() {
                 <Camera size={14} aria-hidden="true" className="text-gold-600" />
                 {album.photoCount} {album.photoCount === 1 ? "photo" : "photos"}
               </span>
+              {videoCount > 0 && (
+                <span className="inline-flex items-center gap-1.5">
+                  <Clapperboard size={14} aria-hidden="true" className="text-gold-600" />
+                  {videoCount} {videoCount === 1 ? "video" : "videos"}
+                </span>
+              )}
               {linkedEvent && (
                 <Link
                   to={ROUTES.eventDetail(linkedEvent.slug)}
@@ -177,11 +195,11 @@ export default function GalleryAlbumPage() {
           </Reveal>
         </Container>
 
-        {/* Photo mosaic */}
+        {/* Photo + video mosaic */}
         <Container className="pb-16 lg:pb-20">
           <Reveal delay={0.08}>
             <PhotoGrid
-              photos={album.photos}
+              photos={mediaItems}
               onOpen={setLightboxIndex}
             />
           </Reveal>
@@ -202,10 +220,10 @@ export default function GalleryAlbumPage() {
       />
 
       {/* ---------- Lightbox (outside the page flow) ---------- */}
-      {lightboxIndex !== null && (
+      {lightboxIndex !== null && mediaItems.length > 0 && (
         <Lightbox
-          photos={album.photos}
-          index={Math.min(lightboxIndex, album.photos.length - 1)}
+          photos={mediaItems}
+          index={Math.min(lightboxIndex, mediaItems.length - 1)}
           albumTitle={album.title}
           onClose={() => setLightboxIndex(null)}
           onNavigate={setLightboxIndex}

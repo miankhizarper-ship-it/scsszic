@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, CalendarDays, Camera, MapPin } from "lucide-react";
+import { ArrowRight, CalendarDays, Camera, Clapperboard, MapPin } from "lucide-react";
 
 import { Badge } from "@/components/ui/Badge";
 import { ROUTES } from "@/routes/paths";
@@ -26,6 +26,7 @@ interface AlbumCardProps {
  */
 export function AlbumCard({ album, className }: AlbumCardProps) {
   const detailHref = ROUTES.albumDetail(album.slug);
+  const videoCount = album.videoCount ?? album.videos?.length ?? 0;
 
   return (
     <article
@@ -55,11 +56,24 @@ export function AlbumCard({ album, className }: AlbumCardProps) {
           {album.category}
         </Badge>
 
-        {/* Photo count chip — always visible (never hover-only info) */}
-        <span className="absolute right-4 top-4 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-navy-950/70 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-sm">
-          <Camera size={12} aria-hidden="true" className="text-gold-300" />
-          {album.photoCount} {album.photoCount === 1 ? "photo" : "photos"}
-        </span>
+        {/* Media count chips — always visible (never hover-only info) */}
+        {album.photoCount > 0 && (
+          <span className="absolute right-4 top-4 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-navy-950/70 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-sm">
+            <Camera size={12} aria-hidden="true" className="text-gold-300" />
+            {album.photoCount} {album.photoCount === 1 ? "photo" : "photos"}
+          </span>
+        )}
+        {videoCount > 0 && (
+          <span
+            className={cn(
+              "absolute top-4 inline-flex items-center gap-1.5 rounded-full border border-gold-400/40 bg-navy-950/80 px-2.5 py-1 text-[11px] font-semibold text-gold-200 backdrop-blur-sm",
+              album.photoCount > 0 ? "right-4 top-12" : "right-4 top-4",
+            )}
+          >
+            <Clapperboard size={12} aria-hidden="true" className="text-gold-300" />
+            {videoCount} {videoCount === 1 ? "video" : "videos"}
+          </span>
+        )}
 
         {/* Hover overlay + arrow — decorative (pointer-events never block
             the link that wraps it) */}

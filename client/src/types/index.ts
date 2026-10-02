@@ -552,6 +552,17 @@ export interface GalleryPhoto {
   alt: string;
   /** Optional short caption shown in the lightbox. */
   caption?: string;
+  /**
+   * Task 36 — albums can carry video tiles beside photos: direct file URL
+   * (native <video> player). `src` then holds the POSTER frame, not the
+   * video itself. Absent for ordinary photos.
+   */
+  videoUrl?: string;
+  /**
+   * Task 36 — YouTube/Vimeo link (privacy-mode iframe player) when the tile
+   * is an embed rather than a direct file. Absent for ordinary photos.
+   */
+  embedUrl?: string;
 }
 
 /**
@@ -579,6 +590,16 @@ export interface GalleryAlbum {
   /** Denormalized photo count (photoCount === photos.length) for cards/API. */
   photoCount: number;
   photos: GalleryPhoto[];
+  /**
+   * Task 36 — video clips embedded in the album (derived from the linked
+   * event's gallery by the media sync; manual albums may stay photo-only).
+   * Each entry is a GalleryPhoto whose `src` is the poster frame and which
+   * carries `videoUrl` (file) or `embedUrl` (YouTube/Vimeo). Rendered after
+   * the photos in the album grid and playable in the same lightbox.
+   */
+  videos?: GalleryPhoto[];
+  /** Denormalized video count (videoCount === videos?.length ?? 0). */
+  videoCount?: number;
   /** Marks the album highlighted on /gallery (exactly one published). */
   featured?: boolean;
   /** Only "published" albums appear on public pages. */

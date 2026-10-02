@@ -14,8 +14,9 @@ import { ROUTES } from "@/routes/paths";
 /**
  * GalleryPreview — editorial mosaic of the latest society moments.
  * Flattened from the gallery API (newest albums first) via one server-side
- * listing request — the first eight photos across the most recent albums;
- * the mosaic grid wraps into extra rows as the archive grows.
+ * listing request — the first eight media tiles across the most recent
+ * albums (photos, plus Task 36's playable event-video tiles); the mosaic
+ * grid wraps into extra rows as the archive grows.
  */
 export function GalleryPreview() {
   const albumsQuery = useAlbums();
@@ -32,6 +33,18 @@ export function GalleryPreview() {
           category: album.category,
           src: photo.src,
           alt: photo.alt,
+        });
+      }
+      for (const video of album.videos ?? []) {
+        if (items.length >= 8) break;
+        items.push({
+          id: video.id,
+          title: album.title,
+          category: album.category,
+          src: video.src,
+          alt: video.alt,
+          ...(video.videoUrl ? { videoUrl: video.videoUrl } : {}),
+          ...(video.embedUrl ? { embedUrl: video.embedUrl } : {}),
         });
       }
       if (items.length >= 8) break;

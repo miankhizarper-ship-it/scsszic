@@ -1,3 +1,5 @@
+import { Play } from "lucide-react";
+
 import { cn } from "@/lib/utils";
 
 /**
@@ -11,6 +13,9 @@ export interface GalleryGridItem {
   category: string;
   src: string;
   alt: string;
+  /** Task 36 — video tile: poster in `src`, playable source in one of these. */
+  videoUrl?: string;
+  embedUrl?: string;
 }
 
 interface GalleryGridProps {
@@ -41,34 +46,46 @@ export function GalleryGrid({ items, variant = "preview", className }: GalleryGr
         className,
       )}
     >
-      {items.map((item, index) => (
-        <figure
-          key={item.id}
-          className={cn(
-            "group relative h-full overflow-hidden rounded-xl",
-            variant === "preview" && index === 0 && "col-span-2 row-span-2",
-          )}
-        >
-          <img
-            src={item.src}
-            alt={item.alt}
-            loading="lazy"
-            className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-          />
-          {/* Hover caption overlay */}
-          <figcaption
-            aria-hidden="true"
-            className="absolute inset-0 flex items-end bg-gradient-to-t from-navy-950/85 via-navy-950/25 to-transparent p-4 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100"
+      {items.map((item, index) => {
+        const isVideo = Boolean(item.videoUrl || item.embedUrl);
+        return (
+          <figure
+            key={item.id}
+            className={cn(
+              "group relative h-full overflow-hidden rounded-xl",
+              variant === "preview" && index === 0 && "col-span-2 row-span-2",
+            )}
           >
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-gold-300">
-                {item.category}
-              </p>
-              <p className="mt-0.5 text-sm font-semibold text-white">{item.title}</p>
-            </div>
-          </figcaption>
-        </figure>
-      ))}
+            <img
+              src={item.src}
+              alt={item.alt}
+              loading="lazy"
+              className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+            />
+            {/* Video badge — always visible, marks playable clips */}
+            {isVideo && (
+              <span
+                aria-hidden="true"
+                className="absolute right-2 top-2 grid size-7 place-items-center rounded-full border border-gold-400/50 bg-navy-950/80 text-gold-300 backdrop-blur-sm"
+              >
+                <Play size={12} className="ml-0.5" />
+              </span>
+            )}
+            {/* Hover caption overlay */}
+            <figcaption
+              aria-hidden="true"
+              className="absolute inset-0 flex items-end bg-gradient-to-t from-navy-950/85 via-navy-950/25 to-transparent p-4 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100"
+            >
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-gold-300">
+                  {item.category}
+                </p>
+                <p className="mt-0.5 text-sm font-semibold text-white">{item.title}</p>
+              </div>
+            </figcaption>
+          </figure>
+        );
+      })}
     </div>
   );
 }

@@ -15,7 +15,10 @@ import { generateUniqueHandle } from "./slugAvailabilityRepository.js";
  *   1. ONE gallery album per event (keyed by eventSlug, `autoManaged: true`)
  *      holding the event's photo refs in order — so every event with media
  *      is represented on /gallery as the event's own album, carrying the
- *      event's title, category, date, location, and tags.
+ *      event's title, category, date, location, and tags. Since Task 36
+ *      the album ALSO embeds the event's videos as playable poster tiles
+ *      (album.videos, played by the same lightbox), so the video shows up
+ *      on /gallery and the home gallery preview — not only on /watch.
  *   2. ONE watch video per video ref in the event gallery — direct files
  *      (.mp4/.webm/…) AND YouTube/Vimeo links — so every event recording is
  *      represented on /watch, linked to the event via eventSlug and titled
@@ -77,6 +80,40 @@ function videoSourceFields(ref: string): { videoUrl: string; embedUrl: string } 
     : { videoUrl: "", embedUrl: ref };
 }
 
+/**
+ * YouTube poster frame for an embed ref — i.ytimg.com serves these without
+ * any API key, giving album video tiles a real poster. Server-side mirror
+ * of the client's youtubeThumbUrl (lib/mediaRef.ts) — the server cannot
+ * import browser code, and the sync must derive the same poster the UI
+ * would. Null for Vimeo (needs an API call) and non-YouTube refs — those
+ * tiles fall back to the event's cover image.
+ */
+function youtubePosterUrl(ref: string): string | null {
+  const value = ref.trim();
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+  const host = url.hostname.toLowerCase();
+  const isYoutubeFamily = host.endsWith("youtube.com") || host === "youtu.be";
+  if (!isYoutubeFamily) return null;
+
+  const segments = url.pathname.split("/").filter(Boolean);
+  let id: string | undefined;
+  if (host === "youtu.be") {
+    id = segments[0];
+  } else if (segments[0] === "embed" || segments[0] === "shorts" || segments[0] === "live") {
+    id = segments[1];
+  } else if (segments[0] === "watch") {
+    id = url.searchParams.get("v") ?? undefined;
+  }
+  if (!id || !/^[a-zA-Z0-9_-]{6,20}$/.test(id)) return null;
+  return `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+}
+
 /** What one sync pass did — scalar-only, audit-metadata shaped. */
 export interface EventMediaSyncResult {
   album: "created" | "updated" | "removed" | "none" | "failed";
@@ -120,15 +157,44 @@ function derivedTags(event: EventMediaSource): string[] {
 
 /* ------------------------------ album sync ------------------------------ */
 
+/**
+ * Album video entries (Task 36) — every event video ALSO becomes a playable
+ * tile inside the derived album: `src` holds the poster frame (the YouTube
+ * thumbnail, or the event cover for direct files), and videoUrl/embedUrl
+ * carry the same source fields the watch recordings use, so the album
+ * lightbox plays them with the exact player stages it already has.
+ * Entries merge BY SOURCE REF (not poster) so re-saves keep ids stable
+ * even when the event's cover image changes.
+ */
+function albumVideoEntries(
+  event: EventMediaSource,
+  videos: string[],
+  previous: NonNullable<GalleryAlbumDoc["videos"]>,
+): NonNullable<GalleryAlbumDoc["videos"]> {
+  return videos.map((ref, index) => {
+    const kept = previous.find((entry) => entry.videoUrl === ref || entry.embedUrl === ref);
+    if (kept) return kept;
+    const source = videoSourceFields(ref);
+    return {
+      id: `evtvid-${event.slug}-${index + 1}`,
+      src: youtubePosterUrl(ref) ?? event.coverImage,
+      alt: `${event.title} — event video ${index + 1}`,
+      ...(source.videoUrl ? { videoUrl: source.videoUrl } : {}),
+      ...(source.embedUrl ? { embedUrl: source.embedUrl } : {}),
+    };
+  });
+}
+
 async function syncEventAlbum(
   event: SerializedEvent,
   images: string[],
+  videos: string[],
 ): Promise<EventMediaSyncResult["album"]> {
   const existing = await collections
     .galleryAlbums()
     .findOne({ eventSlug: event.slug, autoManaged: true } as Filter<GalleryAlbumDoc>);
 
-  if (images.length === 0) {
+  if (images.length === 0 && videos.length === 0) {
     if (!existing) return "none";
     await adminGalleryRepository.remove(existing.id);
     return "removed";
@@ -143,16 +209,25 @@ async function syncEventAlbum(
     return { src, alt: `${event.title} — event photo ${index + 1}` };
   });
 
+  // ALWAYS carried in the payload: an empty array tells the repository to
+  // CLEAR the stored videos (a re-save that removed every video must drop
+  // the album's video tiles too, not leave stale ones behind).
+  const videoEntries = albumVideoEntries(event, videos, existing?.videos ?? []);
+
+  const cover = photos[0] ?? videoEntries[0];
   const payload = {
     title: event.title,
-    description: `Photo highlights from ${event.title} — ${event.excerpt}`,
-    coverImage: photos[0].src,
-    coverImageAlt: photos[0].alt,
+    description: videos.length
+      ? `Photo & video highlights from ${event.title} — ${event.excerpt}`
+      : `Photo highlights from ${event.title} — ${event.excerpt}`,
+    coverImage: cover?.src ?? event.coverImage,
+    coverImageAlt: cover?.alt ?? event.coverImageAlt,
     category: event.category,
     eventSlug: event.slug,
     date: event.date,
     ...(event.location ? { location: event.location } : {}),
     photos,
+    videos: videoEntries,
     status: "published" as const,
     tags: derivedTags(event),
   };
@@ -282,7 +357,7 @@ export async function syncEventMedia(
     const images = refs.filter((ref) => !isVideoMediaRef(ref));
     const videos = refs.filter(isVideoMediaRef);
 
-    const album = await syncEventAlbum(event, images);
+    const album = await syncEventAlbum(event, images, videos);
     const videoCounts = await syncEventVideos(event, videos);
     return { album, ...videoCounts };
   } catch (error) {

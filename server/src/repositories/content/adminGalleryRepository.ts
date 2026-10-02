@@ -105,9 +105,11 @@ function generatePhotoId(): string {
 }
 
 /**
- * Assign generated ids to any photos that arrive without one — the model
- * requires photo.id (PhotoGrid keys + Lightbox navigation use it). Empty
- * captions mean "no caption" and are omitted (the seed's convention).
+ * Assign generated ids to any photos/media entries that arrive without one
+ * — the model requires entry.id (PhotoGrid keys + Lightbox navigation use
+ * it). Empty captions mean "no caption" and are omitted (the seed's
+ * convention). Task 36: videoUrl/embedUrl ride along for video entries
+ * (poster in src) — ordinary photos simply never set them.
  */
 function withPhotoIds(photos: AdminGalleryPhotoInput[]): GalleryPhoto[] {
   return photos.map((photo) => ({
@@ -115,7 +117,19 @@ function withPhotoIds(photos: AdminGalleryPhotoInput[]): GalleryPhoto[] {
     src: photo.src,
     alt: photo.alt,
     ...(photo.caption ? { caption: photo.caption } : {}),
+    ...(photo.videoUrl ? { videoUrl: photo.videoUrl } : {}),
+    ...(photo.embedUrl ? { embedUrl: photo.embedUrl } : {}),
   }));
+}
+
+/**
+ * Video entries follow the photo conventions (ids assigned, empty strings
+ * omitted) — null when the payload carries no videos array at all, so
+ * create() simply omits the field and update() keeps the existing entries.
+ */
+function withVideoEntries(videos: AdminGalleryPhotoInput[] | undefined): GalleryPhoto[] | null {
+  if (videos === undefined) return null;
+  return withPhotoIds(videos);
 }
 
 /**
@@ -256,14 +270,20 @@ class AdminGalleryRepository {
   async create(input: Omit<AdminGalleryCreateInput, "slug"> & { slug: string }): Promise<GalleryAlbum> {
     const _id = generateAlbumId();
     const photos = withPhotoIds(input.photos);
-    const { set, unset } = buildWriteSets({ ...input });
+    const videos = withVideoEntries(input.videos);
+    // Videos never ride the generic set payload: the id-assigned array is
+    // placed explicitly below (same convention as photos).
+    const { videos: _rawVideos, ...restInput } = input;
+    const { set, unset } = buildWriteSets({ ...restInput });
     void unset;
 
     const doc: GalleryAlbumDoc & Document = {
-      ...(set as unknown as Omit<AdminGalleryCreateInput, "slug"> & { slug: string }),
+      ...(set as unknown as Omit<AdminGalleryCreateInput, "slug" | "videos"> & { slug: string }),
       photos,
       // The model's own denormalized invariant: photoCount === photos.length.
       photoCount: photos.length,
+      ...(videos && videos.length ? { videos } : {}),
+      videoCount: videos?.length ?? 0,
       featured: input.featured ?? false,
       id: _id,
       searchText: buildAlbumSearchText(input),
@@ -284,6 +304,16 @@ class AdminGalleryRepository {
     if (!existing) return null;
 
     const photos = input.photos ? withPhotoIds(input.photos) : existing.photos;
+    // Videos follow the photos convention: carrying the array in a payload
+    // replaces it wholesale (sync re-derives every save); omitting it keeps
+    // the existing entries. An EMPTY array clears the field (unset) while
+    // videoCount stays a real 0 — no phantom stale counts.
+    let videos: GalleryPhoto[] | null = null;
+    let videosCleared = false;
+    if (input.videos !== undefined) {
+      videos = withVideoEntries(input.videos);
+      videosCleared = (videos?.length ?? 0) === 0;
+    }
     const merged = { ...existing, ...input, photos } as GalleryAlbumDoc;
 
     const { set, unset } = buildWriteSets({
@@ -295,6 +325,10 @@ class AdminGalleryRepository {
     // photoCount is always recomputed from it.
     if (input.photos) set.photos = photos;
     set.photoCount = photos.length;
+    if (videos) set.videos = videos;
+    if (videosCleared) delete set.videos;
+    set.videoCount = videos ? videos.length : (existing.videoCount ?? 0);
+    if (videosCleared) unset.videos = 1;
 
     const result = await this.coll().findOneAndUpdate(
       { _id: id } as Filter<GalleryAlbumDoc>,
