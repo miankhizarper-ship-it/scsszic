@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { Container } from "@/components/ui/Container";
 import { Reveal } from "@/components/ui/Reveal";
 import { ROUTES } from "@/routes/paths";
-import { formatDateLong } from "@/lib/format";
+import { formatDateLong, formatDurationLabel } from "@/lib/format";
 import type { WatchVideo } from "@/types";
 
 interface FeaturedVideoProps {
@@ -61,7 +61,7 @@ export function FeaturedVideo({ video }: FeaturedVideoProps) {
                 </div>
                 <span className="absolute bottom-4 right-4 inline-flex items-center gap-1.5 rounded-md border border-white/15 bg-navy-950/75 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm">
                   <Clock3 size={12} aria-hidden="true" className="text-gold-300" />
-                  {video.duration}
+                  {formatDurationLabel(video.duration)}
                 </span>
               </Link>
             </div>
@@ -97,7 +97,7 @@ export function FeaturedVideo({ video }: FeaturedVideoProps) {
                 )}
                 <span className="inline-flex items-center gap-1.5">
                   <Clock3 size={13} aria-hidden="true" className="text-gold-600" />
-                  {video.duration}
+                  {formatDurationLabel(video.duration)}
                 </span>
                 <time dateTime={video.publishedAt}>
                   {formatDateLong(video.publishedAt)}

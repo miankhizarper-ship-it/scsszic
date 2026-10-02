@@ -122,6 +122,14 @@ export const adminVideoCreateSchema = z
     publishedAt: isoDateSchema,
     featured: z.boolean().optional(),
     status: z.enum(VIDEO_STATUSES, { message: "Choose a valid status." }),
+    /**
+     * Task 33 — server-managed flag marking a video as DERIVED from an
+     * event's gallery (event media sync). The sync refreshes the metadata
+     * of autoManaged videos on every event save (duration/status/featured/
+     * speaker stay admin-owned); admin videos leave it unset and are never
+     * touched. Accepted here so the sync persists it in one write.
+     */
+    autoManaged: z.boolean().optional(),
   })
   .strict();
 

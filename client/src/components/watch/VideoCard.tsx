@@ -1,8 +1,8 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, Clock3, Mic } from "lucide-react";
+import { ArrowRight, CalendarDays, Clock3, Mic } from "lucide-react";
 
 import { ROUTES } from "@/routes/paths";
-import { formatCardDate } from "@/lib/format";
+import { formatCardDate, formatDurationLabel } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { WatchVideo } from "@/types";
 
@@ -58,10 +58,11 @@ export function VideoCard({ video, className }: VideoCardProps) {
           </span>
         </span>
 
-        {/* Duration badge */}
+        {/* Duration badge — event-synced recordings show what they are
+            instead of a fake "0:00" (Task 33) */}
         <span className="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-md border border-white/15 bg-navy-950/75 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur-sm">
           <Clock3 size={11} aria-hidden="true" className="text-gold-300" />
-          {video.duration}
+          {formatDurationLabel(video.duration)}
         </span>
 
         <span className="absolute left-4 top-4 rounded-full border border-gold-500 bg-gold-500 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-navy-950 shadow-sm">
@@ -96,6 +97,17 @@ export function VideoCard({ video, className }: VideoCardProps) {
               <time dateTime={video.publishedAt}>{formatCardDate(video.publishedAt)}</time>
             </span>
           </p>
+
+          {video.eventSlug && (
+            <Link
+              to={ROUTES.eventDetail(video.eventSlug)}
+              className="inline-flex shrink-0 items-center gap-1 rounded-md border border-navy-100 bg-navy-50 px-1.5 py-0.5 text-xs font-medium text-navy-800 transition-colors hover:border-gold-500/60 hover:text-gold-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500"
+              aria-label="This recording is from an event — view the event"
+            >
+              <CalendarDays size={12} aria-hidden="true" className="shrink-0 text-gold-600" />
+              Event
+            </Link>
+          )}
 
           <Link
             to={detailHref}

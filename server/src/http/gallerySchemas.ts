@@ -123,6 +123,14 @@ export const adminGalleryCreateSchema = z
     featured: z.boolean().optional(),
     status: z.enum(GALLERY_STATUSES, { message: "Choose a valid status." }),
     tags: z.array(tagSchema).max(20),
+    /**
+     * Task 33 — server-managed flag marking an album as DERIVED from an
+     * event's media (event media sync). The sync overwrites the metadata
+     * of autoManaged albums on every event save; admin albums leave it
+     * unset and are never touched. Accepted here so the sync can persist
+     * it in one write — never required, never displayed as an input.
+     */
+    autoManaged: z.boolean().optional(),
   })
   .strict();
 

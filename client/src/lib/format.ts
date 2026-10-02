@@ -64,3 +64,12 @@ export function formatDateTime(iso: string): string {
 export function formatDay(iso: string): string {
   return day.format(new Date(iso));
 }
+
+/**
+ * Duration badge label — recordings synced from events carry no measurable
+ * length ("0:00" placeholder), so the badge says what the item IS instead
+ * of showing a fake duration.
+ */
+export function formatDurationLabel(duration: string): string {
+  return duration.trim() === "0:00" ? "Recording" : duration;
+}

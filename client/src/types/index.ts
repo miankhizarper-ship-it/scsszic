@@ -584,6 +584,12 @@ export interface GalleryAlbum {
   /** Only "published" albums appear on public pages. */
   status: GalleryAlbumStatus;
   tags: string[];
+  /**
+   * Task 33 — true when the album is DERIVED from an event's media and
+   * kept in step by the server's event-media sync (photos follow the
+   * event's gallery; admin captions on matching URLs are preserved).
+   */
+  autoManaged?: boolean;
 }
 
 /* ---------- Watch ---------- */
@@ -633,6 +639,12 @@ export interface WatchVideo {
   featured?: boolean;
   /** Only "published" videos appear on public pages. */
   status: VideoStatus;
+  /**
+   * Task 33 — true when the video is DERIVED from an event's gallery and
+   * kept in step by the server's event-media sync (duration stays editable
+   * by admins; unknown lengths display as "Recording").
+   */
+  autoManaged?: boolean;
 }
 
 /* ---------- Highlights ---------- */

@@ -4,29 +4,38 @@ import { ChevronLeft, ChevronRight, Expand, X } from "lucide-react";
 import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
 import type { GalleryPhoto } from "@/types";
 
+/**
+ * One viewer entry — a photo, or (Task 33) a video clip carrying its own
+ * source URL. Plain GalleryPhoto[] remains assignable, so existing album
+ * pages keep passing their photos untouched.
+ */
+export type LightboxItem = GalleryPhoto & { videoUrl?: string };
+
 interface LightboxProps {
-  /** Full photo list of the open album. */
-  photos: GalleryPhoto[];
-  /** Index of the open photo (guaranteed non-null while mounted). */
+  /** Full item list of the open album/event. */
+  photos: LightboxItem[];
+  /** Index of the open item (guaranteed non-null while mounted). */
   index: number;
-  /** Used for the dialog label and image alt context. */
+  /** Used for the dialog label and media alt context. */
   albumTitle: string;
   onClose: () => void;
   onNavigate: (index: number) => void;
 }
 
 /**
- * Lightbox — accessible full-screen photo viewer for album pages.
+ * Lightbox — accessible full-screen media viewer.
  *
  * Behavior (spec §10):
  *  - opens on photo click/tap, closes via button, backdrop, or Escape
  *  - ArrowLeft / ArrowRight navigate (wrapping), with visible prev/next buttons
- *  - current photo indicator ("2 of 6"), caption where available, real alt text
+ *  - current item indicator ("2 of 6"), caption where available, real alt text
  *  - role="dialog" + aria-modal, background scroll locked, focus moved into
  *    the dialog on open and returned to the invoking element on close
  *  - a simple Tab loop keeps keyboard focus inside while open
  *  - animations are a single subtle fade (respects prefers-reduced-motion
  *    via the global MotionConfig)
+ *  - Task 33: entries carrying `videoUrl` play inline (click-to-play native
+ *    player) — the same viewer now serves the event detail media grid
  *
  * Deliberately dependency-free — a third-party lightbox was not warranted.
  */
@@ -106,7 +115,7 @@ export function Lightbox({ photos, index, albumTitle, onClose, onNavigate }: Lig
       ref={dialogRef}
       role="dialog"
       aria-modal="true"
-      aria-label={`${albumTitle} — photo ${index + 1} of ${total}`}
+      aria-label={`${albumTitle} — ${photo.videoUrl ? "video" : "photo"} ${index + 1} of ${total}`}
       tabIndex={-1}
       className="fixed inset-0 z-[90] flex flex-col bg-navy-950/95 outline-none backdrop-blur-sm"
       onClick={(event) => {
@@ -137,12 +146,25 @@ export function Lightbox({ photos, index, albumTitle, onClose, onNavigate }: Lig
 
       {/* Stage */}
       <div className="relative flex min-h-0 flex-1 items-center justify-center px-2 sm:px-16">
-        <img
-          key={photo.id}
-          src={photo.src}
-          alt={photo.alt}
-          className="max-h-full max-w-full rounded-lg object-contain shadow-2xl"
-        />
+        {photo.videoUrl ? (
+          <video
+            key={photo.id}
+            src={photo.videoUrl}
+            controls
+            autoPlay
+            playsInline
+            preload="metadata"
+            className="max-h-full max-w-full rounded-lg bg-black object-contain shadow-2xl"
+            aria-label={photo.alt}
+          />
+        ) : (
+          <img
+            key={photo.id}
+            src={photo.src}
+            alt={photo.alt}
+            className="max-h-full max-w-full rounded-lg object-contain shadow-2xl"
+          />
+        )}
 
         {/* Prev / next — full-height hit areas on desktop, compact on mobile */}
         {total > 1 && (
@@ -150,7 +172,7 @@ export function Lightbox({ photos, index, albumTitle, onClose, onNavigate }: Lig
             <button
               type="button"
               onClick={goPrev}
-              aria-label="Previous photo"
+              aria-label="Previous item"
               className="absolute left-1 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-full border border-white/15 bg-navy-950/70 text-white backdrop-blur-sm transition-colors hover:border-gold-400/60 hover:text-gold-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500 sm:left-4 sm:size-12"
             >
               <ChevronLeft size={22} aria-hidden="true" />
@@ -158,7 +180,7 @@ export function Lightbox({ photos, index, albumTitle, onClose, onNavigate }: Lig
             <button
               type="button"
               onClick={goNext}
-              aria-label="Next photo"
+              aria-label="Next item"
               className="absolute right-1 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-full border border-white/15 bg-navy-950/70 text-white backdrop-blur-sm transition-colors hover:border-gold-400/60 hover:text-gold-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500 sm:right-4 sm:size-12"
             >
               <ChevronRight size={22} aria-hidden="true" />

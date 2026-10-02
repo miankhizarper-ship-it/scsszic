@@ -343,7 +343,7 @@ export default function EventDetailPage() {
               </h2>
             </Reveal>
 
-            <EventGallery images={event.gallery} eventTitle={event.title} className="mt-8" />
+            <EventGallery media={event.gallery} eventTitle={event.title} className="mt-8" />
           </Container>
         </section>
       )}

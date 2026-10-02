@@ -20,7 +20,7 @@ import { RelatedVideos } from "@/components/watch/RelatedVideos";
 import { CTASection } from "@/components/sections/CTASection";
 import { CollectionLoading, ErrorState } from "@/components/ui/CollectionState";
 import { useEvent, useRelatedVideos, useVideo } from "@/hooks/content";
-import { formatDateLong } from "@/lib/format";
+import { formatDateLong, formatDurationLabel } from "@/lib/format";
 import { ROUTES } from "@/routes/paths";
 import { usePageMetadata } from "@/lib/seo";
 
@@ -149,7 +149,7 @@ export default function WatchVideoPage() {
             <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-muted">
               <span className="inline-flex items-center gap-1.5">
                 <Clock3 size={14} aria-hidden="true" className="text-gold-600" />
-                {video.duration}
+                {formatDurationLabel(video.duration)}
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <CalendarDays size={14} aria-hidden="true" className="text-gold-600" />

@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, Camera, MapPin } from "lucide-react";
+import { ArrowRight, CalendarDays, Camera, MapPin } from "lucide-react";
 
 import { Badge } from "@/components/ui/Badge";
 import { ROUTES } from "@/routes/paths";
@@ -100,6 +100,16 @@ export function AlbumCard({ album, className }: AlbumCardProps) {
                 <MapPin size={12} aria-hidden="true" className="shrink-0 text-gold-600" />
                 <span className="truncate">{album.location}</span>
               </span>
+            )}
+            {album.eventSlug && (
+              <Link
+                to={ROUTES.eventDetail(album.eventSlug)}
+                className="inline-flex items-center gap-1 rounded-md border border-navy-100 bg-navy-50 px-1.5 py-0.5 font-medium text-navy-800 transition-colors hover:border-gold-500/60 hover:text-gold-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500"
+                aria-label="This album documents an event — view the event"
+              >
+                <CalendarDays size={12} aria-hidden="true" className="shrink-0 text-gold-600" />
+                Event
+              </Link>
             )}
             <Link
               to={detailHref}

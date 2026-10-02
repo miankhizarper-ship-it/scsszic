@@ -170,11 +170,17 @@ export class MongoUserRepository implements UserRepository {
  * members AFTER this deployment carry the linkage (members.userId) and are
  * re-granted by the linkage flow, never by this migration.
  *
+ * Task 33 fix — the filter must mirror the read-mapping's predicate
+ * (role === "member" && memberLinked !== true): a LINKED member account
+ * carries role "member" + memberLinked true, and this migration runs on
+ * EVERY server start, so an unqualified { role: "member" } match demoted
+ * every real member back to "user" on each restart/redeploy.
+ *
  * Idempotent by construction: after the first run no document matches.
  */
 export async function normalizeLegacyMemberRoles(): Promise<number> {
   const result = await collections.users().updateMany(
-    { role: "member" },
+    { role: "member", memberLinked: { $ne: true } },
     { $set: { role: "user", updatedAt: new Date().toISOString() } },
   );
   return result.modifiedCount ?? 0;
