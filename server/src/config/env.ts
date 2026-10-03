@@ -93,6 +93,27 @@ const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim() ?? "";
    test the full path without spending tokens. */
 const groqApiKey = process.env.GROQ_API_KEY?.trim() ?? "";
 
+/* --------------------------- ImageKit media uploads --------------------------- */
+/* Browser-DIRECT image uploads for the community surfaces (feed post artwork,
+   member avatars). OPTIONAL by design, exactly like Brevo/Google/Groq: with
+   any credential missing the sign endpoint answers 503 "unconfigured" and the
+   forms fall back to their plain URL inputs.
+
+   Flow (no file bytes ever cross this server — Vercel serverless bodies are
+   tiny and the CDN absorbs the upload bandwidth):
+     1. client  GET /api/media/imagekit-auth  → { token, signature, expire,
+        publicKey, urlEndpoint, folder, uploadUrl }
+     2. client  POST multipart → uploadUrl (ImageKit's upload API) — the
+        signature is HMAC-SHA1(token + expire) keyed with the PRIVATE key,
+        so the private key stays server-side only.
+   IMAGEKIT_UPLOAD_URL is the QA seam (mock ImageKit) in the same spirit as
+   BREVO_API_URL / GROQ_API_URL. The public key + URL endpoint are public by
+   definition (they appear in every served <img> URL); only the private key
+   is a secret. */
+const imagekitPrivateKey = process.env.IMAGEKIT_PRIVATE_KEY?.trim() ?? "";
+const imagekitPublicKey = process.env.IMAGEKIT_PUBLIC_KEY?.trim() ?? "";
+const imagekitUrlEndpoint = process.env.IMAGEKIT_URL_ENDPOINT?.trim() ?? "";
+
 export const env = {
   nodeEnv,
   isProduction,
@@ -159,6 +180,18 @@ export const env = {
    *  the function mid-call with an opaque infrastructure 502. The vercel.json
    *  maxDuration raises the ceiling where the plan allows it. */
   aiFieldTimeoutMs: intOr(process.env.AI_FIELD_TIMEOUT_MS, 9_000),
+
+  // --- ImageKit (browser-direct image uploads) ---
+  imagekitPrivateKey,
+  imagekitPublicKey,
+  imagekitUrlEndpoint,
+  /** Upload API base override — QA can point uploads at a local mock. */
+  imagekitUploadUrl:
+    process.env.IMAGEKIT_UPLOAD_URL?.trim() || "https://upload.imagekit.io/api/v1/files/upload",
+  /** Upload auth params activate only when ALL THREE credentials are set. */
+  imagekitUploadsEnabled: Boolean(imagekitPrivateKey && imagekitPublicKey && imagekitUrlEndpoint),
+  /** Signed auth params stay valid for this long (default 30 minutes). */
+  imagekitUploadTtlSeconds: intOr(process.env.IMAGEKIT_UPLOAD_TTL_SECONDS, 1_800),
 } as const;
 
 export type Env = typeof env;

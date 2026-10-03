@@ -6,7 +6,7 @@ import { useAuth } from "@/context/AuthProvider";
 import { ROUTES } from "@/routes/paths";
 
 /**
- * MemberRoute (Task 29) — gate for the MEMBER self-service pages
+ * MemberRoute (Task 29, Task 37) — gate for the member self-service pages
  * (/member/*). These surfaces are deliberately OUTSIDE the admin panel:
  * society members gain feed posting + public-profile self-editing without
  * ever touching /admin.
@@ -16,15 +16,23 @@ import { ROUTES } from "@/routes/paths";
  *  role "member"       → render children
  *  role "user"         → an upgrade panel: plain users are told what member
  *                        accounts can do and how to become one
- *  manage | admin      → pointed back at the admin panel (their CMS is the
- *                        richer surface; /member pages resolve the SIGNED-IN
- *                        account's own record, which staff accounts don't own)
+ *  manage | admin      → staff: feed posting is a COMMUNITY surface (Task
+ *                        37), so the FEED FORM renders for staff too — the
+ *                        server fills the author identity. The PROFILE
+ *                        editor keeps the staff-pointer (staff accounts
+ *                        don't own a public member record unless linked).
  *
  * The denial screens are honest routing UX, not security — every /api/me/*
- * request is independently re-verified server-side (requireRole("member")
- * plus the account↔member linkage check).
+ * and /api/media/* request is independently re-verified server-side.
  */
-export function MemberRoute({ children }: { children: React.ReactNode }) {
+export function MemberRoute({
+  children,
+  staffAllowed = false,
+}: {
+  children: React.ReactNode;
+  /** Task 37 — the feed form welcomes manage/admin; profile edit does not. */
+  staffAllowed?: boolean;
+}) {
   const { status, user } = useAuth();
   const location = useLocation();
 
@@ -72,7 +80,7 @@ export function MemberRoute({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (user?.role !== "member") {
+  if (user?.role !== "member" && !(staffAllowed && (user?.role === "manage" || user?.role === "admin"))) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-surface px-4 py-16">
         <div className="w-full max-w-md rounded-xl border border-line bg-white p-8 text-center shadow-sm">

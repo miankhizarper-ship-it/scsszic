@@ -131,13 +131,15 @@ export const appRouter = createBrowserRouter([
       },
       /*
        * Task 29 — member self-service pages, OUTSIDE the admin panel.
-       * MemberRoute renders an upgrade panel for "user" accounts (and a
-       * staff-pointer for manage/admin); every /api/me/* call behind these
-       * pages is independently re-verified server-side.
+       * MemberRoute renders an upgrade panel for "user" accounts; since
+       * Task 37 the FEED FORM also renders for staff (manage/admin — the
+       * community surface), while the profile editor stays member-only.
+       * Every /api/me/* call behind these pages is independently
+       * re-verified server-side.
        */
       {
         element: (
-          <MemberRoute>
+          <MemberRoute staffAllowed>
             <MemberFeedFormPage />
           </MemberRoute>
         ),

@@ -1,6 +1,6 @@
 import { Router } from "express";
 
-import { requireAuth, requireRole } from "../auth/authMiddleware.js";
+import { requireAnyRole, requireAuth, requireRole } from "../auth/authMiddleware.js";
 import {
   createMyFeedPost,
   getMyMemberProfile,
@@ -8,7 +8,7 @@ import {
 } from "../controllers/me.controller.js";
 
 /**
- * /api/me routes — the signed-in member's self-service surface (Task 29).
+ * /api/me routes — the member self-service surface (Task 29, Task 37).
  *
  *   GET /api/me/member-profile   the member's own directory record
  *                                (requireRole("member"))
@@ -16,17 +16,26 @@ import {
  *                                interests, about/bio, social links,
  *                                projects, avatar, location, department
  *                                (requireRole("member"))
- *   POST /api/me/feed            publish a community post as the member
- *                                (requireRole("member"), 1/minute throttle)
+ *   POST /api/me/feed            publish a community post — members post
+ *                                under their public profile, staff
+ *                                (manage/admin) post as their account or
+ *                                linked record (requireAnyRole, 1/minute
+ *                                throttle)
  *
- * Plain "user" accounts get a 403 here BY DESIGN — members-only powers live
+ * Plain "user" accounts get a 403 here BY DESIGN — community powers live
  * on this namespace, and every handler re-verifies the account↔member
- * linkage against the database (the role alone never authorizes a write).
- * Likes/comments (user-visible powers) stay on the content router's
- * requireAuth endpoints — every signed-in account may engage.
+ * linkage against the database where a directory record is required (the
+ * role alone never authorizes a write). Likes/comments (user-visible
+ * powers) stay on the content router's requireAuth endpoints — every
+ * signed-in account may engage.
  */
 export const meRouter = Router();
 
 meRouter.get("/me/member-profile", requireAuth, requireRole("member"), getMyMemberProfile);
 meRouter.put("/me/member-profile", requireAuth, requireRole("member"), updateMyMemberProfile);
-meRouter.post("/me/feed", requireAuth, requireRole("member"), createMyFeedPost);
+meRouter.post(
+  "/me/feed",
+  requireAuth,
+  requireAnyRole(["member", "manage", "admin"]),
+  createMyFeedPost,
+);

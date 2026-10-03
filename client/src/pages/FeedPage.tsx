@@ -41,8 +41,14 @@ const TYPE_LABELS: Record<(typeof FEED_TYPES)[number], string> = {
  * page only sends parameters and renders results). Cross-references arrive
  * pre-resolved on each post, so cards never issue per-card lookups. Since
  * Task 29, society members share posts via /member/feed/new and every
- * signed-in account can like + comment.
+ * signed-in account can like + comment. Task 37 opens posting to STAFF
+ * (content managers + admins) too — plain "user" accounts still engage
+ * only (like + comment), exactly as the server enforces.
  */
+
+/** Roles allowed to share feed posts — mirrors the server's requireAnyRole. */
+const FEED_AUTHOR_ROLES = ["member", "manage", "admin"];
+
 export default function FeedPage() {
   usePageMetadata({
     title: buildPageTitle("Community Feed"),
@@ -133,11 +139,13 @@ export default function FeedPage() {
             <Rss size={13} aria-hidden="true" className="text-gold-400" />
             {user?.role === "member"
               ? "You post as your public member profile"
-              : "Members share posts · everyone can like and comment"}
+              : user && FEED_AUTHOR_ROLES.includes(user.role)
+                ? "You post as a society staff account"
+                : "Members share posts · everyone can like and comment"}
           </p>
-          {/* Task 29 — society members post from here; the copy reflects the
-              real role split (members publish, every account engages). */}
-          {user?.role === "member" && (
+          {/* Task 29/37 — members + staff post from here; the copy reflects
+              the real role split (plain users engage, authors publish). */}
+          {user && FEED_AUTHOR_ROLES.includes(user.role) && (
             <div className="mx-auto mt-6 flex justify-center">
               <Button to={ROUTES.member.feedNew} variant="gold">
                 <PenLine size={15} aria-hidden="true" className="mr-1.5" />

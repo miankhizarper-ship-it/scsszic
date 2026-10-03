@@ -10,6 +10,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/CollectionState";
 import { TagsInput } from "@/components/admin/TagsInput";
+import { ImageKitUploadField } from "@/components/media/ImageKitUploadField";
 import { useMyMemberProfile, useCreateMemberFeedPost } from "@/hooks/me";
 import { useAuth } from "@/context/AuthProvider";
 import { ApiError } from "@/services/apiClient";
@@ -17,15 +18,20 @@ import { ROUTES } from "@/routes/paths";
 import { buildPageTitle, usePageMetadata } from "@/lib/seo";
 
 /**
- * MemberFeedFormPage (Task 29) — "Share a post" at /member/feed/new.
+ * MemberFeedFormPage (Task 29, Task 37) — "Share a post" at /member/feed/new.
  *
- * The MEMBER self-service posting surface — deliberately OUTSIDE the admin
- * panel. The member supplies the content (title, excerpt, body, tags, an
- * optional image URL); the SERVER owns everything else: the author identity
- * comes from the linked member record, the type is always "community", the
- * post is published immediately, and the slug/timestamp are generated
- * server-side. Plain users hitting this URL get the MemberRoute upgrade
- * panel, and the API re-verifies the role + linkage on every call.
+ * The community self-service posting surface — deliberately OUTSIDE the
+ * admin panel. The author supplies the content (title, excerpt, body, tags,
+ * an image); the SERVER owns everything else: the author identity comes
+ * from the linked member record (staff accounts without one post under
+ * their account name), the type is always "community", the post is
+ * published immediately, and the slug/timestamp are generated server-side.
+ *
+ * Task 37 — members, content managers, and admins share from here (plain
+ * users still get the upgrade panel); artwork uploads BROWSER-DIRECT to
+ * ImageKit with a server-signed token, or can still be pasted as a URL.
+ * Plain users hitting this URL get the MemberRoute upgrade panel, and the
+ * API re-verifies the role + linkage on every call.
  */
 
 const memberFeedSchema = z.object({
@@ -111,6 +117,7 @@ export default function MemberFeedFormPage() {
 
   const navigate = useNavigate();
   const { user } = useAuth();
+  const isStaff = user?.role === "admin" || user?.role === "manage";
   const [formError, setFormError] = useState<string | null>(null);
   const profileQuery = useMyMemberProfile();
   const member = profileQuery.data;
@@ -137,8 +144,9 @@ export default function MemberFeedFormPage() {
 
   const tags = watch("tags");
   const excerptValue = watch("excerpt");
+  const imageValue = watch("image") ?? "";
 
-  if (profileQuery.isError) {
+  if (profileQuery.isError && !isStaff) {
     return (
       <Container className="py-16">
         <ErrorState
@@ -216,7 +224,7 @@ export default function MemberFeedFormPage() {
           </Link>
           <p className="mt-6 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.28em] text-gold-400">
             <Rss size={13} aria-hidden="true" />
-            Member self-service
+            Community posting
           </p>
           <h1
             id="member-feed-hero"
@@ -246,7 +254,13 @@ export default function MemberFeedFormPage() {
                   <span className="font-mono font-medium text-muted">@{member.username}</span>
                 </p>
               ) : (
-                <p className="mt-0.5 text-sm text-muted">{user?.displayName}</p>
+                <p className="mt-0.5 font-display text-sm font-bold text-navy-900">
+                  {user?.displayName}
+                  <span className="ml-2 font-sans text-xs font-medium text-muted">
+                    society staff account — ask an admin to link a member record to post under
+                    your public profile
+                  </span>
+                </p>
               )}
             </div>
           </div>
@@ -309,38 +323,50 @@ export default function MemberFeedFormPage() {
                 />
               </Field>
 
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                <Field
-                  id="member-feed-image"
-                  label="Image URL"
-                  error={errors.image?.message}
-                  hint="Optional cover artwork."
-                >
+              <Field
+                id="member-feed-image"
+                label="Cover image"
+                error={errors.image?.message}
+                hint="Upload a file or paste an image URL — a wide image works best."
+              >
+                <div className="flex flex-col gap-3">
+                  <ImageKitUploadField
+                    value={imageValue}
+                    onChange={(url) =>
+                      setValue("image", url, { shouldValidate: true, shouldDirty: true })
+                    }
+                    folder="feed"
+                    altText="Feed post artwork preview"
+                    disabled={createPost.isPending || isSubmitting}
+                    label="Upload image"
+                    hint="JPG, PNG, WebP, GIF, or AVIF · up to 10 MB · stored on ImageKit."
+                  />
                   <input
-                    id="member-feed-image"
+                    id="member-feed-image-url"
                     type="url"
-                    placeholder="https://…"
+                    placeholder="…or paste an image URL (https://…)"
                     aria-invalid={Boolean(errors.image)}
                     className={INPUT_CLASS}
                     {...register("image")}
                   />
-                </Field>
-                <Field
+                </div>
+              </Field>
+
+              <Field
+                id="member-feed-image-alt"
+                label="Image alt text"
+                error={errors.imageAlt?.message}
+              >
+                <input
                   id="member-feed-image-alt"
-                  label="Image alt text"
-                  error={errors.imageAlt?.message}
-                >
-                  <input
-                    id="member-feed-image-alt"
-                    type="text"
-                    maxLength={200}
-                    placeholder="Describe the image for screen readers"
-                    aria-invalid={Boolean(errors.imageAlt)}
-                    className={INPUT_CLASS}
-                    {...register("imageAlt")}
-                  />
-                </Field>
-              </div>
+                  type="text"
+                  maxLength={200}
+                  placeholder="Describe the image for screen readers"
+                  aria-invalid={Boolean(errors.imageAlt)}
+                  className={INPUT_CLASS}
+                  {...register("imageAlt")}
+                />
+              </Field>
 
               <Field
                 id="member-feed-tags"

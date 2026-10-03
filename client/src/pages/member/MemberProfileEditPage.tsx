@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/CollectionState";
 import { TagsInput } from "@/components/admin/TagsInput";
+import { ImageKitUploadField } from "@/components/media/ImageKitUploadField";
 import { useMyMemberProfile, useUpdateMyMemberProfile } from "@/hooks/me";
 import { splitList } from "@/lib/adminMemberForm";
 import { ApiError } from "@/services/apiClient";
@@ -18,7 +19,8 @@ import { ROUTES } from "@/routes/paths";
 import { buildPageTitle, usePageMetadata } from "@/lib/seo";
 
 /**
- * MemberProfileEditPage (Task 29) — "Edit public profile" at /member/profile.
+ * MemberProfileEditPage (Task 29, Task 37) — "Edit public profile" at
+ * /member/profile.
  *
  * The MEMBER self-service editor for the PUBLIC community profile
  * (/profile/:username) — deliberately OUTSIDE the admin panel. Editable
@@ -27,6 +29,9 @@ import { buildPageTitle, usePageMetadata } from "@/lib/seo";
  * department. Identity/admin-owned fields (name, handle, role in society,
  * batch, directory status) are READ-ONLY here — the society admin owns
  * them, and the server rejects them with a strict schema regardless.
+ *
+ * Task 37 — the avatar uploads BROWSER-DIRECT to ImageKit with a
+ * server-signed token (folder "avatars"); pasting a URL still works.
  */
 
 const PROJECT_SLUG_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
@@ -248,6 +253,7 @@ export default function MemberProfileEditPage() {
 
   const skills = watch("skills");
   const interests = watch("interests");
+  const avatarValue = watch("avatar") ?? "";
 
   if (profileQuery.isError) {
     return (
@@ -439,18 +445,31 @@ export default function MemberProfileEditPage() {
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                   <Field
                     id="member-profile-avatar"
-                    label="Avatar URL"
+                    label="Profile photo"
                     error={errors.avatar?.message}
                     hint="A square image works best."
                   >
-                    <input
-                      id="member-profile-avatar"
-                      type="url"
-                      placeholder="https://…"
-                      aria-invalid={Boolean(errors.avatar)}
-                      className={INPUT_CLASS}
-                      {...register("avatar")}
-                    />
+                    <div className="flex flex-col gap-3">
+                      <ImageKitUploadField
+                        value={avatarValue}
+                        onChange={(url) =>
+                          setValue("avatar", url, { shouldValidate: true, shouldDirty: true })
+                        }
+                        folder="avatar"
+                        altText="Profile photo preview"
+                        disabled={updateProfile.isPending || isSubmitting}
+                        label="Upload photo"
+                        hint="JPG, PNG, WebP, GIF, or AVIF · up to 10 MB · stored on ImageKit."
+                      />
+                      <input
+                        id="member-profile-avatar-url"
+                        type="url"
+                        placeholder="…or paste an image URL (https://…)"
+                        aria-invalid={Boolean(errors.avatar)}
+                        className={INPUT_CLASS}
+                        {...register("avatar")}
+                      />
+                    </div>
                   </Field>
                   <Field id="member-profile-avatar-alt" label="Avatar alt text" error={errors.avatarAlt?.message}>
                     <input
@@ -534,7 +553,7 @@ export default function MemberProfileEditPage() {
                 <div className="rounded-xl border border-line bg-white p-6 shadow-sm">
                   <div className="flex flex-col items-center gap-3 text-center">
                     <Avatar
-                      src={member.avatar}
+                      src={avatarValue}
                       alt={member.avatarAlt}
                       initials={member.initials}
                       size={72}

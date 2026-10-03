@@ -81,6 +81,28 @@ export function requireRole(role: AuthUserRole) {
 }
 
 /**
+ * requireAnyRole — the multi-role sibling of requireRole (Task 37). The
+ * community surfaces are shared by society members AND staff: feed posting
+ * accepts "member" (the public-profile voice), "manage" and "admin" (staff
+ * posting as their account or linked record). Plain "user" accounts stay
+ * 403 — engagement (like/comment) is their ceiling by design.
+ */
+export function requireAnyRole(roles: readonly AuthUserRole[]) {
+  const allowed = new Set(roles);
+  return (req: Request, res: Response, next: NextFunction): void => {
+    if (!req.user) {
+      res.status(401).json({ message: "Authentication required." });
+      return;
+    }
+    if (!allowed.has(req.user.role)) {
+      res.status(403).json({ message: "You do not have access to this resource." });
+      return;
+    }
+    next();
+  };
+}
+
+/**
  * requireAdmin — the single authorization gate for every /api/admin/* route
  * (Phase 9). Builds directly on the existing Phase 7 chain: it delegates to
  * requireAuth for session resolution (which answers 401 and clears a stale

@@ -13,8 +13,8 @@ import { recordAudit } from "../audit/auditLogger.js";
 import { generateUniqueHandle } from "../repositories/content/slugAvailabilityRepository.js";
 
 /**
- * Task 29 — /api/me/* controllers: the SIGNED-IN MEMBER's self-service
- * surface. Every handler assumes the route layer already enforced
+ * Task 29 — /api/me/* controllers: the signed-in MEMBER's self-service
+ * surface. Profile routes assume the route layer already enforced
  * requireAuth + requireRole("member"), so req.user is a society member
  * whose account owns exactly one member-directory record (members.userId).
  *
@@ -22,12 +22,21 @@ import { generateUniqueHandle } from "../repositories/content/slugAvailabilityRe
  *   PUT  /api/me/member-profile   self-editable fields only (skills,
  *                                 interests, bio/about, social links,
  *                                 projects, avatar, location, department)
- *   POST /api/me/feed             publish a community post authored by
- *                                 the member record (rate-limited)
+ *   POST /api/me/feed             publish a community post (rate-limited)
  *
- * Authorization is two-layered: the role gate ("member" — plain users are
- * 403) AND the userId linkage (the record must belong to the caller). Even
- * a role granted without a linked record cannot read or write anything.
+ * Task 37 — feed posting is the COMMUNITY surface: members (role member,
+ * public-profile voice) AND staff (manage/admin) may publish. The feed
+ * route gates requireAnyRole([member, manage, admin]); this controller
+ * then resolves the author identity: the linked member record when one
+ * exists (the card links the public profile), otherwise — for STAFF only —
+ * the account identity (the feed card degrades to a plain "Society
+ * account" byline with no profile link). A plain member account without
+ * a linked record still gets the honest 404: there is no identity to
+ * post under.
+ *
+ * Authorization is two-layered: the role gate AND the userId linkage (the
+ * record must belong to the caller). Even a role granted without a linked
+ * record cannot read or write another member's profile.
  */
 
 /** Thrown internally when the caller has no linked member record. */
@@ -145,7 +154,7 @@ function pruneFeedPostHistory(now: number): void {
   }
 }
 
-/** POST /api/me/feed — publish a community post as the signed-in member. */
+/** POST /api/me/feed — publish a community post (member or staff author). */
 export const createMyFeedPost: RequestHandler = withErrorBoundary(
   async (req, res) => {
     const parsed = memberFeedCreateSchema.safeParse(req.body);
@@ -156,13 +165,20 @@ export const createMyFeedPost: RequestHandler = withErrorBoundary(
       return;
     }
 
+    // Author identity: the linked directory record wins (public profile
+    // card); staff without one fall back to the ACCOUNT identity — the
+    // feed card's cross-ref omits unknown usernames and renders a plain
+    // "Society account" byline, so no dead profile link is ever created.
     const member = await adminMembersRepository.findByUserId(req.user!.id);
-    if (!member) {
+    const isStaff = req.user!.role === "admin" || req.user!.role === "manage";
+    if (!member && !isStaff) {
       res.status(NO_MEMBER.status).json(NO_MEMBER.body);
       return;
     }
+    const authorName = member?.name ?? req.user!.displayName;
+    const authorUsername = member?.username ?? "";
 
-    // Throttle AFTER resolving the member so every real post pays the same
+    // Throttle AFTER resolving the author so every real post pays the same
     // wait (no probing differences between linked/unlinked accounts).
     const now = Date.now();
     pruneFeedPostHistory(now);
@@ -174,13 +190,14 @@ export const createMyFeedPost: RequestHandler = withErrorBoundary(
       return;
     }
 
-    // Author identity comes from the DIRECTORY record (never client input):
-    // the post's author card links to the member's public profile.
+    // Author identity comes from the DIRECTORY record or the verified
+    // session (never client input): the post's author card links to the
+    // member's public profile when one exists.
     const slug = await generateUniqueHandle("feed", parsed.data.title);
     const post = await adminFeedRepository.create({
       type: "community",
-      authorUsername: member.username,
-      authorName: member.name,
+      ...(authorUsername ? { authorUsername } : {}),
+      authorName,
       title: parsed.data.title,
       excerpt: parsed.data.excerpt,
       ...(parsed.data.content ? { content: parsed.data.content } : {}),
@@ -198,7 +215,11 @@ export const createMyFeedPost: RequestHandler = withErrorBoundary(
       resourceType: "post",
       resourceId: post.id,
       resourceLabel: post.title,
-      metadata: { slug: post.slug, status: post.status, via: "member" },
+      metadata: {
+        slug: post.slug,
+        status: post.status,
+        via: member ? "member" : isStaff ? "staff" : "member",
+      },
     });
 
     res.status(201).json({ data: post });
