@@ -188,6 +188,10 @@ export const env = {
   /** Upload API base override — QA can point uploads at a local mock. */
   imagekitUploadUrl:
     process.env.IMAGEKIT_UPLOAD_URL?.trim() || "https://upload.imagekit.io/api/v1/files/upload",
+  /** Media Library API base override — the sign endpoint verifies the
+   *  private key against <api>/v1/files (Basic auth) before signing; QA
+   *  points this at the local mock (same seam as BREVO_API_URL). */
+  imagekitApiUrl: process.env.IMAGEKIT_API_URL?.trim() || "https://api.imagekit.io",
   /** Upload auth params activate only when ALL THREE credentials are set. */
   imagekitUploadsEnabled: Boolean(imagekitPrivateKey && imagekitPublicKey && imagekitUrlEndpoint),
   /** Signed auth params stay valid for this long (default 30 minutes). */

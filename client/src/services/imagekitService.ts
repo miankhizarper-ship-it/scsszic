@@ -81,10 +81,13 @@ export async function uploadImageToImagekit(
   validateImageFile(file);
 
   // 1 — the server-signed auth params (also proves the role + config).
+  // no-store: a signed token is single-purpose — a cached replay would be
+  // rejected by the image host as a reused token.
   let auth: ImageKitAuthParams;
   try {
     const response = await apiFetch<{ data: ImageKitAuthParams }>("/media/imagekit-auth", {
       params: { folder },
+      cache: "no-store",
     });
     auth = response.data;
   } catch (error) {
@@ -121,10 +124,27 @@ export async function uploadImageToImagekit(
         resolve(body.url);
         return;
       }
+      const detail =
+        typeof body.message === "string" && body.message ? ` — ${body.message}` : "";
+      if (xhr.status === 401 || xhr.status === 403) {
+        // The upload host rejected the AUTH PARAMS, not the file. That is
+        // the signature of a server-side key problem — name the exact fix.
+        reject(
+          new ImageKitUploadError(
+            "SERVER",
+            `The image host rejected the upload (HTTP ${xhr.status}${detail}). This almost always ` +
+              "means the server's IMAGEKIT_PRIVATE_KEY doesn't match this ImageKit account: in the " +
+              "ImageKit dashboard (Developer options → API keys) press the COPY button on the " +
+              "private key — the displayed value is masked — then update IMAGEKIT_PRIVATE_KEY in " +
+              "Vercel's SERVER project and redeploy the server.",
+          ),
+        );
+        return;
+      }
       reject(
         new ImageKitUploadError(
           "SERVER",
-          body.message || "The image host rejected the upload — please try again.",
+          `The image host rejected the upload (HTTP ${xhr.status})${detail || " — please try again."}`,
         ),
       );
     });

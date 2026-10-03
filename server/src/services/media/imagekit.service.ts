@@ -50,6 +50,78 @@ export function isImagekitUploadsEnabled(): boolean {
   return env.imagekitUploadsEnabled;
 }
 
+/**
+ * True when the configured private key is obviously the MASKED display
+ * string from the dashboard (asterisks — real keys are base64-ish and can
+ * never contain them). Selecting the visible key text instead of using the
+ * dashboard's COPY button produces exactly this broken value, and every
+ * upload signed with it is rejected by ImageKit.
+ */
+export function imagekitPrivateKeyLooksMasked(): boolean {
+  return env.imagekitPrivateKey.includes("*");
+}
+
+export interface ImagekitCredentialCheck {
+  ok: boolean;
+  /** ImageKit's HTTP status when it actively rejected the key (401/403). */
+  status?: number;
+  /** ImageKit's own error message, when it returned one. */
+  upstreamMessage?: string;
+}
+
+/**
+ * Verify the configured PRIVATE key against ImageKit itself BEFORE the
+ * browser wastes an upload: GET <mediaApi>/v1/files authenticated with
+ * HTTP Basic (username = private key, empty password) answers 200 for a
+ * valid key and 401 for a wrong one. This is the same credential check the
+ * real upload endpoint applies, moved LEFT of the bytes — a mis-keyed
+ * deployment now gets a precise 503 at sign time instead of an opaque 403
+ * on the upload POST.
+ *
+ * Semantics (fail-open on infrastructure, fail-closed on evidence):
+ *  - 401/403 from ImageKit → { ok: false } — the key is definitively bad
+ *  - any other HTTP answer → { ok: true }  — rate limits or outages must
+ *    never take uploads down; the upload endpoint remains the authority
+ *  - network unreachable   → { ok: true }  — same; signing still proceeds
+ * Positive results are cached for 5 minutes per server instance.
+ */
+const CREDENTIAL_CACHE_MS = 5 * 60 * 1000;
+let credentialsVerifiedUntil = 0;
+
+export async function verifyImagekitCredentials(): Promise<ImagekitCredentialCheck> {
+  if (Date.now() < credentialsVerifiedUntil) return { ok: true };
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 4_000);
+  try {
+    const response = await fetch(`${env.imagekitApiUrl}/v1/files?limit=1`, {
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${env.imagekitPrivateKey}:`).toString("base64")}`,
+      },
+      signal: controller.signal,
+    });
+    if (response.status === 401 || response.status === 403) {
+      let upstreamMessage: string | undefined;
+      try {
+        const body = (await response.json()) as { message?: unknown };
+        if (typeof body?.message === "string" && body.message) upstreamMessage = body.message;
+      } catch {
+        /* non-JSON error body — the status alone is evidence enough */
+      }
+      return { ok: false, status: response.status, upstreamMessage };
+    }
+    credentialsVerifiedUntil = Date.now() + CREDENTIAL_CACHE_MS;
+    return { ok: true };
+  } catch {
+    // Timeout/abort/DNS/connection — an infrastructure hiccup, not evidence
+    // about the key. Fail open: signing proceeds and the upload endpoint
+    // still validates every signature for real.
+    return { ok: true };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /** The safe, client-publishable half of the ImageKit configuration. */
 export interface ImageKitAuthParams {
   /** One-time nonce — unique per sign request (UUID v4). */
